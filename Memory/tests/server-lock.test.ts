@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { acquireSqliteServerLock } from "../src/server/index.js";
+import { acquireSqliteServerLock, memoryServerAuthOptions } from "../src/server/index.js";
 
 const roots: string[] = [];
 
@@ -59,5 +59,19 @@ describe("Memory server sqlite lock", () => {
     expect(payload.pid).toBe(process.pid);
     expect(payload.port).toBe(18991);
     lock?.release();
+  });
+});
+
+describe("Memory server authentication policy", () => {
+  it("requires authentication on loopback and non-loopback listeners", () => {
+    expect(() => memoryServerAuthOptions("127.0.0.1")).toThrow(/authentication token is required/);
+    expect(() => memoryServerAuthOptions("0.0.0.0")).toThrow(/non-loopback host 0\.0\.0\.0/);
+    expect(() => memoryServerAuthOptions("::", undefined)).toThrow(/non-loopback host ::/);
+  });
+
+  it("accepts an authenticated non-loopback listener", () => {
+    expect(memoryServerAuthOptions("0.0.0.0", "service-token")).toEqual({
+      localServiceToken: "service-token"
+    });
   });
 });

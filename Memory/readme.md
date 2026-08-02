@@ -72,9 +72,14 @@ The `MEMMY_MEMORY_HOST`, `MEMMY_MEMORY_PORT`, and `MEMMY_MEMORY_DB`
 environment variables override the corresponding server settings. The
 `MEMORY_SERVICE_*` aliases are also accepted.
 
-When `storage.token`, `MEMMY_MEMORY_TOKEN`, or `MEMORY_SERVICE_TOKEN` is set,
-all HTTP routes except `GET /api/v1/health` require that token as a bearer token
-or `x-api-key`.
+`memmy-memory init` generates a local service token and preserves it on later
+initialization runs. The token can also be supplied through `storage.token`,
+`MEMMY_MEMORY_TOKEN`, or `MEMORY_SERVICE_TOKEN`. All HTTP routes except
+`GET /api/v1/health` require authentication by default. Send the token as a
+bearer token or `x-api-key`; URL query credentials are rejected. The service
+refuses to start without a token and gives a specific error for non-loopback
+listeners. The built-in panel accepts the token in its password-style header
+field and sends it through the `Authorization` header.
 
 ## CLI
 

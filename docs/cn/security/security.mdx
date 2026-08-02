@@ -8,7 +8,7 @@ Memmy 的安全边界以**本地运行**和**显式认证**为基础：
 - 桌面本地 API 默认只允许本机、`file://` 或受控来源访问，使用 `x-memmy-local-token` 校验。
 - SSE 因 EventSource 限制使用查询参数传递同一运行时 token。
 - Composio MCP bridge 使用独立的 `x-memmy-mcp-token`。
-- Memory HTTP 可通过 bearer token 保护（`MEMMY_MEMORY_TOKEN` / `MEMORY_SERVICE_TOKEN`）。
+- Memory HTTP 默认要求 bearer token；`memmy-memory init` 自动生成并保存 Token，也可通过 `MEMMY_MEMORY_TOKEN` / `MEMORY_SERVICE_TOKEN` 设置。URL 查询参数不接受 Token，非本机监听在缺少认证时拒绝启动。
 - 配置支持 `${ENV_NAME}` 环境变量引用，避免把 API Key 写进配置文件。
 - Memory client 必须连接真实 Memory Layer 或发现本地 SQLite 来源，否则启动失败，不静默展示假数据。
 
