@@ -949,7 +949,7 @@ function authenticate(
     return {
       kind: "cloud",
       tokenId: stableTokenId(candidate!),
-      namespace: mergeNamespaces(cloudNamespace, namespaceFromRequest(request, url)),
+      namespace: mergeNamespaces(namespaceFromRequest(request, url), cloudNamespace),
       scopes: ["*"]
     };
   }
@@ -958,7 +958,7 @@ function authenticate(
     return {
       kind: "scoped",
       tokenId: stableTokenId(candidate!),
-      namespace: mergeNamespaces(scoped.namespace, namespaceFromRequest(request, url)),
+      namespace: mergeNamespaces(namespaceFromRequest(request, url), scoped.namespace),
       scopes: scoped.scopes ?? ["memory:read", "memory:write"]
     };
   }
