@@ -937,6 +937,113 @@ describe("MemoryService / REST contract", () => {
     db.close();
   });
 
+  it("keeps token namespaces authoritative over request headers", async () => {
+    const { db, service } = createTestService();
+    const server = createMemoryHttpServer({
+      service,
+      auth: {
+        cloudAccessTokens: {
+          "cloud-token": {
+            source: "codex",
+            profileId: "cloud-profile",
+            userId: "cloud-user",
+            projectId: "cloud-project",
+            workspaceId: "cloud-workspace"
+          }
+        },
+        scopedApiKeys: {
+          "scoped-token": {
+            namespace: {
+              source: "claude-code",
+              profileId: "scoped-profile",
+              userId: "scoped-user",
+              projectId: "scoped-project",
+              workspaceId: "scoped-workspace"
+            },
+            scopes: ["memory:write"]
+          },
+          "partial-token": {
+            namespace: {
+              source: "hermes",
+              profileId: "partial-profile",
+              userId: "partial-user"
+            },
+            scopes: ["memory:write"]
+          }
+        }
+      }
+    });
+    await withServerClosed(server, async () => {
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("expected TCP address");
+    const endpoint = `http://127.0.0.1:${address.port}/api/v1/sessions/open`;
+
+    for (const token of ["cloud-token", "scoped-token"]) {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+          "x-memmy-profile-id": "attacker-profile",
+          "x-memmy-user-id": "attacker-user",
+          "x-memmy-project-id": "attacker-project",
+          "x-memmy-workspace-id": "attacker-workspace"
+        },
+        body: JSON.stringify({ sessionId: `header-override-${token}` })
+      });
+      const opened = await response.json() as { sessionId: string };
+      expect(response.status).toBe(200);
+      const row = db.db.prepare(
+        `SELECT source, profile_id, user_id, project_id, workspace_id
+         FROM sessions
+         WHERE id = ?`
+      ).get(opened.sessionId) as {
+        source: string;
+        profile_id: string;
+        user_id: string;
+        project_id: string;
+        workspace_id: string;
+      };
+      const prefix = token === "cloud-token" ? "cloud" : "scoped";
+      expect(row).toEqual({
+        source: token === "cloud-token" ? "codex" : "claude-code",
+        profile_id: `${prefix}-profile`,
+        user_id: `${prefix}-user`,
+        project_id: `${prefix}-project`,
+        workspace_id: `${prefix}-workspace`
+      });
+    }
+
+    const partialResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer partial-token",
+        "content-type": "application/json",
+        "x-memmy-project-id": "request-project",
+        "x-memmy-workspace-id": "request-workspace"
+      },
+      body: JSON.stringify({ sessionId: "partial-namespace-session" })
+    });
+    const partial = await partialResponse.json() as { sessionId: string };
+    expect(partialResponse.status).toBe(200);
+    const partialRow = db.db.prepare(
+      `SELECT source, profile_id, user_id, project_id, workspace_id
+       FROM sessions
+       WHERE id = ?`
+    ).get(partial.sessionId);
+    expect(partialRow).toEqual({
+      source: "hermes",
+      profile_id: "partial-profile",
+      user_id: "partial-user",
+      project_id: "request-project",
+      workspace_id: "request-workspace"
+    });
+
+    });
+    db.close();
+  });
+
   it("passes REST search tags and limit through to recall", async () => {
     const { db, service } = createTestService();
     const namespace = {
