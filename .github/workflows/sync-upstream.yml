@@ -1,0 +1,58 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'zhaomo08/memmy-agent'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward main from MemTensor upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/MemTensor/memmy-agent.git
+          git fetch --no-tags --prune upstream main
+          git fetch --no-tags --prune origin main
+
+          origin_sha="$(git rev-parse origin/main)"
+          upstream_sha="$(git rev-parse upstream/main)"
+
+          if [[ "$origin_sha" == "$upstream_sha" ]]; then
+            echo "Fork main is already synchronized with upstream/main."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$origin_sha" "$upstream_sha"; then
+            echo "Fork main has diverged from upstream/main; refusing to overwrite it." >&2
+            exit 1
+          fi
+
+          git merge --ff-only "$upstream_sha"
+          git push origin HEAD:main
+
+          {
+            echo "## Upstream synchronization"
+            echo
+            echo "Fast-forwarded \`main\` from \`$origin_sha\` to \`$upstream_sha\`."
+            echo "Integrate the updated \`main\` into \`develop\` through a tested sync branch."
+          } >> "$GITHUB_STEP_SUMMARY"
