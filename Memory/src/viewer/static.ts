@@ -96,6 +96,7 @@ export function memoryPanelHtml(): string {
     .error { color: var(--danger); }
     .shell { padding: 12px 14px 16px; display: grid; gap: 10px; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
+    .token-input { width: min(320px, 45vw); }
     .stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -210,6 +211,7 @@ export function memoryPanelHtml(): string {
   <header>
     <h1>Memmy Memory Panel</h1>
     <div class="header-actions">
+      <input id="apiToken" class="token-input" type="password" autocomplete="off" placeholder="Memory service token" aria-label="Memory service token">
       <button id="refresh" class="primary">Refresh</button>
     </div>
   </header>
@@ -294,7 +296,15 @@ export function memoryPanelHtml(): string {
 
     async function api(path, options = {}) {
       const started = Date.now();
-      const response = await fetch(path, options);
+      const token = $("apiToken").value.trim();
+      const requestOptions = {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          ...(token ? { authorization: "Bearer " + token } : {})
+        }
+      };
+      const response = await fetch(path, requestOptions);
       state.lastRequestMs = Date.now() - started;
       const text = await response.text();
       let body = {};
@@ -469,6 +479,9 @@ export function memoryPanelHtml(): string {
     }
 
     $("refresh").onclick = refreshAll;
+    $("apiToken").onkeydown = (event) => {
+      if (event.key === "Enter") refreshAll();
+    };
     $("search").onclick = applyFilters;
     $("clearFilters").onclick = () => {
       $("query").value = "";

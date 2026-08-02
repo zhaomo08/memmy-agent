@@ -177,7 +177,7 @@ The desktop app and `scripts/dev-start.sh` prepare the matching managed Chromium
 ### Option 3: `memmy-memory` CLI (memory access for external Agents / scripts)
 
 ```bash
-memmy-memory init                          # Write the Memory config and install Skills for each Agent as needed
+memmy-memory init                          # Write config, generate a local service token, and install Agent Skills
 memmy-memory health
 memmy-memory search "memory policies in this project"
 memmy-memory add "a piece of knowledge worth saving"

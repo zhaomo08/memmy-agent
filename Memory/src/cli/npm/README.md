@@ -52,10 +52,12 @@ Initialize Memory CLI config:
 memmy-memory init
 ```
 
-`init` writes the Memory endpoint and optional local SQLite path to the Memmy
-config file. The npm package does not bundle the Memory HTTP service; run the
-local service separately during development, or point the CLI at a cloud Memory
-endpoint with `--url`.
+`init` writes the Memory endpoint, optional local SQLite path, and a generated
+local service token to the Memmy config file with owner-only permissions. Later
+initialization runs preserve that token unless `--token` is supplied explicitly.
+The npm package does not bundle the Memory HTTP service; run the local service
+separately during development, or point the CLI at a cloud Memory endpoint with
+`--url`.
 
 By default, `init` installs agent-side files for each supported agent root it
 finds and skips agents that are not installed. Use `--agent` to require and

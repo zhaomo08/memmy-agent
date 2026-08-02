@@ -43,7 +43,7 @@ describe("memmy CLI", () => {
     roots.push(root);
     const db = new MemoryDb({ path: join(root, "memory.sqlite") });
     const service = new MemoryService({ db, mode: "dev", embedder: createTestEmbedder() });
-    const server = createMemoryHttpServer({ service });
+    const server = createMemoryHttpServer({ service, auth: { allowAnonymous: true } });
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(0, "127.0.0.1", () => {
@@ -188,7 +188,7 @@ describe("memmy CLI", () => {
     roots.push(root);
     const db = new MemoryDb({ path: join(root, "memory.sqlite") });
     const service = new MemoryService({ db, mode: "dev", embedder: createTestEmbedder() });
-    const server = createMemoryHttpServer({ service });
+    const server = createMemoryHttpServer({ service, auth: { allowAnonymous: true } });
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(0, "127.0.0.1", () => {

@@ -78,6 +78,34 @@ describe("memmy-memory CLI setup commands", () => {
     expect(existsSync(dbPath)).toBe(false);
   });
 
+  it("generates, preserves, and explicitly rotates the local service token", async () => {
+    const root = tempRoot();
+    const configPath = join(root, "config.yaml");
+    const commonArgs = [
+      "init",
+      "--home", root,
+      "--config", configPath,
+      "--db", join(root, "memory.sqlite"),
+      "--skip-agent-skills"
+    ];
+
+    await runCommand({ argv: commonArgs });
+    const first = YAML.parse(readFileSync(configPath, "utf8"));
+    const generatedToken = first.memmyMemory.storage.token as string;
+    expect(generatedToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    if (process.platform !== "win32") {
+      expect(statSync(configPath).mode & 0o777).toBe(0o600);
+    }
+
+    await runCommand({ argv: commonArgs });
+    const second = YAML.parse(readFileSync(configPath, "utf8"));
+    expect(second.memmyMemory.storage.token).toBe(generatedToken);
+
+    await runCommand({ argv: [...commonArgs, "--token", "replacement-token"] });
+    const rotated = YAML.parse(readFileSync(configPath, "utf8"));
+    expect(rotated.memmyMemory.storage.token).toBe("replacement-token");
+  });
+
   it("renders init results as a human-friendly success message", async () => {
     const root = tempRoot();
     createAllAgentRoots(root);

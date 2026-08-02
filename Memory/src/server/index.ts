@@ -7,7 +7,7 @@ import { createStorageBackend } from "../storage/backend.js";
 import { loadMemmyConfig } from "../config/index.js";
 import { createMemoryLogger, memoryErrorFields } from "../logging/logger.js";
 import { MemoryService } from "../service/memory-service.js";
-import { listenMemoryHttpServer } from "./http.js";
+import { listenMemoryHttpServer, type MemoryHttpAuthOptions } from "./http.js";
 import { loadCloudServiceEnv } from "../cli/load-env.js";
 
 const logger = createMemoryLogger("server");
@@ -22,6 +22,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         numberEnv("MEMORY_SERVICE_PORT") ??
         18960;
     const sqlitePath = options.dbPath ?? config.storage.sqlitePath;
+    const auth = memoryServerAuthOptions(host, config.storage.token);
     logger.info("service.starting", {
         host,
         port,
@@ -55,9 +56,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
             onShutdownRequested: () => {
                 setTimeout(() => process.kill(process.pid, "SIGTERM"), 0);
             },
-            auth: config.storage.token
-                ? { localServiceToken: config.storage.token }
-                : { allowAnonymous: true }
+            auth
         });
         if (configPath) {
             writeCurrentEndpoint(configPath, url);
@@ -75,6 +74,30 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         serverLock?.release();
         throw error;
     }
+}
+
+export function memoryServerAuthOptions(host: string, token?: string): MemoryHttpAuthOptions {
+    if (token) {
+        return { localServiceToken: token };
+    }
+    if (!isLoopbackHost(host)) {
+        throw new Error(
+            `Refusing to bind Memory service to non-loopback host ${host} without authentication. ` +
+            "Set memmyMemory.storage.token, MEMMY_MEMORY_TOKEN, or MEMORY_SERVICE_TOKEN."
+        );
+    }
+    throw new Error(
+        "Memory service authentication token is required. " +
+        "Run memmy-memory init or set MEMMY_MEMORY_TOKEN."
+    );
+}
+
+function isLoopbackHost(host: string): boolean {
+    const normalized = host.trim().toLowerCase();
+    return normalized === "localhost" ||
+        normalized === "::1" ||
+        normalized === "[::1]" ||
+        /^127(?:\.[0-9]{1,3}){3}$/.test(normalized);
 }
 
 export interface SqliteServerLock {
