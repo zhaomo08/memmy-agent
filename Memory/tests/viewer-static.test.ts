@@ -46,6 +46,18 @@ describe("memoryPanelHtml", () => {
     expect(harness.element("detailJson").textContent).toContain('"source": "second"');
     expect(harness.element("detailJson").textContent).not.toContain('"source": "first"');
   });
+
+  it("sends the panel token in an authorization header", async () => {
+    const harness = createViewerHarness();
+    harness.element("apiToken").value = "viewer-token";
+    runViewerScript(harness);
+    await flushPromises();
+
+    expect(harness.requests.length).toBeGreaterThan(0);
+    for (const request of harness.requests) {
+      expect(request.options.headers?.authorization).toBe("Bearer viewer-token");
+    }
+  });
 });
 
 type FakeRow = FakeElement & {
@@ -76,6 +88,7 @@ function createViewerHarness() {
   const detailResolvers = new Map<string, DetailResolver>();
   const ids = [
     "errorMessage",
+    "apiToken",
     "stats",
     "query",
     "layer",
@@ -121,7 +134,12 @@ function createViewerHarness() {
     }
   });
 
-  const fetch = async (path: string) => {
+  const requests: Array<{
+    path: string;
+    options: { headers?: Record<string, string> };
+  }> = [];
+  const fetch = async (path: string, options: { headers?: Record<string, string> } = {}) => {
+    requests.push({ path, options });
     if (path === "/api/v1/panel/overview") {
       return jsonResponse({ counts: { memories: 2, experiences: 0, worldModels: 0, skills: 0 } });
     }
@@ -162,6 +180,7 @@ function createViewerHarness() {
       return elements.get(id)!;
     },
     fetch,
+    requests,
     resolveDetail(id: string, body: unknown) {
       const resolve = detailResolvers.get(id);
       if (!resolve) {

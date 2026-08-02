@@ -3,7 +3,7 @@ title: Memory Runtime API
 icon: Database
 ---
 
-默认地址 `http://127.0.0.1:18960`。设置 `storage.token`、`MEMMY_MEMORY_TOKEN` 或 `MEMORY_SERVICE_TOKEN` 后，除健康检查外的接口需要携带 bearer token。
+默认地址 `http://127.0.0.1:18960`。除健康检查外，接口默认需要通过 `storage.token`、`MEMMY_MEMORY_TOKEN` 或 `MEMORY_SERVICE_TOKEN` 配置的 bearer token。`memmy-memory init` 会自动生成本地 Token。服务不接受 URL 查询参数中的 Token，非本机监听缺少认证时会拒绝启动。
 
 | Method | Path | 说明 |
 | --- | --- | --- |

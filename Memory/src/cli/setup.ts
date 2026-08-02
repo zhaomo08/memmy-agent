@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -8,6 +9,7 @@ import {
   unlinkSync,
   writeFileSync
 } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import YAML from "yaml";
 import { asRecord, expandHome, optionalString } from "./config.js";
@@ -42,7 +44,12 @@ export async function initMemoryCli(options: MemoryCliSetupOptions = {}): Promis
   if (!options.dryRun) {
     mkdirSync(home, { recursive: true });
     mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, setupConfigYaml(configPath, { dbPath, endpoint, token: options.token }), "utf8");
+    writeFileSync(
+      configPath,
+      setupConfigYaml(configPath, { dbPath, endpoint, token: options.token }),
+      { encoding: "utf8", mode: 0o600 }
+    );
+    chmodSync(configPath, 0o600);
   }
 
   let agentInstallations: AgentSkillInstallResult[] = [];
@@ -125,6 +132,12 @@ function setupConfigYaml(
   }
 ): string {
   const config = readExistingConfig(configPath);
+  const existingMemory = asRecord(config.memmyMemory);
+  const existingStorage = asRecord(existingMemory.storage);
+  const token = options.token ??
+    optionalString(existingStorage.token) ??
+    optionalString(existingMemory.token) ??
+    randomBytes(32).toString("base64url");
   const app = { ...asRecord(config.app) };
   const appUserId = optionalString(app.userId);
   delete app.user_id;
@@ -135,11 +148,11 @@ function setupConfigYaml(
   delete config.identity;
   delete config.uuid;
 
-  config.memmyMemory = setupMemmyMemoryConfig(asRecord(config.memmyMemory), {
+  config.memmyMemory = setupMemmyMemoryConfig(existingMemory, {
     appUserId,
     dbPath: options.dbPath,
     endpoint: options.endpoint,
-    token: options.token
+    token
   });
 
   const yaml = YAML.stringify(config);
@@ -188,6 +201,7 @@ function setupMemmyMemoryConfig(
     profiles.byok = byokProfileFromExisting(existing, options.appUserId);
   }
   memmyMemory.profiles = profiles;
+  delete memmyMemory.token;
   delete memmyMemory.userId;
   delete memmyMemory.summary;
   delete memmyMemory.evolution;

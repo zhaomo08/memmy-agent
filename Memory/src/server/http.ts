@@ -935,7 +935,7 @@ function authenticate(
   }
   const auth = options.auth;
   const localToken = auth?.localServiceToken ?? options.apiKey;
-  const candidate = tokenFromRequest(request, url);
+  const candidate = tokenFromRequest(request);
   if (localToken && candidate === localToken) {
     return {
       kind: "local",
@@ -962,7 +962,7 @@ function authenticate(
       scopes: scoped.scopes ?? ["memory:read", "memory:write"]
     };
   }
-  if (!localToken && (!auth || auth.allowAnonymous === true)) {
+  if (!localToken && auth?.allowAnonymous === true) {
     return {
       kind: "anonymous",
       namespace: namespaceFromRequest(request, url),
@@ -972,14 +972,14 @@ function authenticate(
   throw new MemoryServiceError("unauthorized", "invalid memory service token", 401, requestIdFromHeaders(request));
 }
 
-function tokenFromRequest(request: IncomingMessage, url: URL): string | undefined {
+function tokenFromRequest(request: IncomingMessage): string | undefined {
   const authorization = request.headers.authorization;
   const bearer = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : undefined;
   const headerKey = request.headers["x-api-key"];
   const apiKey = Array.isArray(headerKey) ? headerKey[0] : headerKey;
-  return bearer ?? apiKey ?? url.searchParams.get("token") ?? url.searchParams.get("access_token") ?? undefined;
+  return bearer ?? apiKey ?? undefined;
 }
 
 function isViewerPath(path: string): boolean {

@@ -8,7 +8,7 @@ Memmy's security boundary is built on **local execution** and **explicit authent
 - The desktop local API only accepts requests from the local machine, `file://`, or controlled origins by default, verified with `x-memmy-local-token`.
 - Due to EventSource limitations, SSE passes the same runtime token via a query parameter.
 - The Composio MCP bridge uses a separate `x-memmy-mcp-token`.
-- Memory HTTP can be protected with a bearer token (`MEMMY_MEMORY_TOKEN` / `MEMORY_SERVICE_TOKEN`).
+- Memory HTTP requires a bearer token by default. `memmy-memory init` generates and stores one, or it can be supplied through `MEMMY_MEMORY_TOKEN` / `MEMORY_SERVICE_TOKEN`. URL query credentials are rejected, and non-loopback listeners refuse to start without authentication.
 - Config supports `${ENV_NAME}` environment variable references, keeping API Keys out of config files.
 - The Memory client must connect to a real Memory Layer or discover a local SQLite source — otherwise startup fails rather than silently showing fake data.
 

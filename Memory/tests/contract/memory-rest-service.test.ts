@@ -45,6 +45,15 @@ async function withServerClosed(
   }
 }
 
+function createAnonymousMemoryHttpServer(
+  options: Parameters<typeof createMemoryHttpServer>[0]
+): ReturnType<typeof createMemoryHttpServer> {
+  return createMemoryHttpServer({
+    ...options,
+    auth: { allowAnonymous: true }
+  });
+}
+
 describe("MemoryService / REST contract", () => {
 
   it("serves the REST health endpoint", async () => {
@@ -114,7 +123,7 @@ describe("MemoryService / REST contract", () => {
     await runWorkerRounds(service, 3, 1);
     expect(service.memoryProcessingStatus([added.id], { namespace }).items[0]?.state).toBe("failed");
 
-    const server = createMemoryHttpServer({ service });
+    const server = createAnonymousMemoryHttpServer({ service });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
@@ -152,7 +161,7 @@ describe("MemoryService / REST contract", () => {
   it("preserves lifecycle routing fields across the REST boundary", async () => {
     const { db, service } = createTestService();
     const analyticsEvents: string[] = [];
-    const server = createMemoryHttpServer({
+    const server = createAnonymousMemoryHttpServer({
       service,
       pluginRuntimeAnalytics: {
         track(eventName) {
@@ -334,7 +343,7 @@ describe("MemoryService / REST contract", () => {
     const { db, service } = createTestService({
       embedder: createCapturingEmbedder(embeddingTexts)
     });
-    const server = createMemoryHttpServer({ service });
+    const server = createAnonymousMemoryHttpServer({ service });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -416,7 +425,7 @@ describe("MemoryService / REST contract", () => {
       new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
     );
 
-    const server = createMemoryHttpServer({ service });
+    const server = createAnonymousMemoryHttpServer({ service });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -492,7 +501,7 @@ describe("MemoryService / REST contract", () => {
       new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
     );
 
-    const server = createMemoryHttpServer({ service });
+    const server = createAnonymousMemoryHttpServer({ service });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -575,7 +584,7 @@ describe("MemoryService / REST contract", () => {
     expect(queuedRow).toBeUndefined();
     service.closeSession(session.sessionId);
 
-    const server = createMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
+    const server = createAnonymousMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -615,7 +624,7 @@ describe("MemoryService / REST contract", () => {
       now: Date.now() + 100
     });
 
-    const server = createMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
+    const server = createAnonymousMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -697,7 +706,7 @@ describe("MemoryService / REST contract", () => {
     expect(orphanMemoryJob).toBeDefined();
     repos.runtime.completeJob(orphanMemoryJob!.id);
 
-    const server = createMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
+    const server = createAnonymousMemoryHttpServer({ service, workerStartupFallbackMs: 0 });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
@@ -1044,6 +1053,70 @@ describe("MemoryService / REST contract", () => {
     db.close();
   });
 
+  it("denies anonymous API access unless it is explicitly enabled", async () => {
+    const { db, service } = createTestService();
+    const server = createMemoryHttpServer({ service });
+    await withServerClosed(server, async () => {
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("expected TCP address");
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    const health = await fetch(`${baseUrl}/api/v1/health`);
+    expect(health.status).toBe(200);
+
+    const protectedResponse = await fetch(`${baseUrl}/api/v1/panel/overview`);
+    expect(protectedResponse.status).toBe(401);
+
+    });
+
+    const explicitlyAnonymous = createMemoryHttpServer({
+      service,
+      auth: { allowAnonymous: true }
+    });
+    await withServerClosed(explicitlyAnonymous, async () => {
+    await new Promise<void>((resolve) => explicitlyAnonymous.listen(0, "127.0.0.1", resolve));
+    const address = explicitlyAnonymous.address();
+    if (!address || typeof address === "string") throw new Error("expected TCP address");
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/panel/overview`);
+    expect(response.status).toBe(200);
+
+    });
+    db.close();
+  });
+
+  it("rejects URL query credentials while accepting authentication headers", async () => {
+    const { db, service } = createTestService();
+    const server = createMemoryHttpServer({
+      service,
+      auth: { localServiceToken: "local-token" }
+    });
+    await withServerClosed(server, async () => {
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("expected TCP address");
+    const endpoint = `http://127.0.0.1:${address.port}/api/v1/panel/overview`;
+
+    for (const parameter of ["token", "access_token"]) {
+      const response = await fetch(`${endpoint}?${parameter}=local-token`);
+      expect(response.status).toBe(401);
+    }
+
+    const bearerResponse = await fetch(endpoint, {
+      headers: { authorization: "Bearer local-token" }
+    });
+    expect(bearerResponse.status).toBe(200);
+
+    const apiKeyResponse = await fetch(endpoint, {
+      headers: { "x-api-key": "local-token" }
+    });
+    expect(apiKeyResponse.status).toBe(200);
+
+    });
+    db.close();
+  });
+
   it("passes REST search tags and limit through to recall", async () => {
     const { db, service } = createTestService();
     const namespace = {
@@ -1073,7 +1146,7 @@ describe("MemoryService / REST contract", () => {
       content: "Jon and Gina discussed a shared beach trip detail for LoCoMo filtering."
     });
     await runWorkerRounds(service, 2, 20);
-    const server = createMemoryHttpServer({ service });
+    const server = createAnonymousMemoryHttpServer({ service });
     await withServerClosed(server, async () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
