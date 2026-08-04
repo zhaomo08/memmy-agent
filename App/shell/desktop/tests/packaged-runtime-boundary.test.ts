@@ -1154,6 +1154,7 @@ describe("desktop packaged runtime boundaries", () => {
     }
     expect(unsignedMacConfig).toContain("from: ../../../.env.example");
     expect(unsignedMacConfig).toContain("to: .env");
+    expect(packageSource).toContain("unset GH_TOKEN GITHUB_TOKEN");
     expect(packageSource).toContain('BUILDER_ARGS+=(--publish never)');
   });
 });

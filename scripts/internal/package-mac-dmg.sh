@@ -634,6 +634,7 @@ cd "$DESKTOP_DIR"
 # For style changes, see the historical generator in git history.
 BUILDER_ARGS=(--config "$BUILDER_CONFIG")
 if [ "${MEMMY_SKIP_CODESIGN:-}" = "1" ]; then
+  unset GH_TOKEN GITHUB_TOKEN
   BUILDER_ARGS+=(--publish never)
 fi
 if [ -n "${MEMMY_ELECTRON_DIST:-}" ]; then
