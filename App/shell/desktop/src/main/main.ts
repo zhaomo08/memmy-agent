@@ -3210,9 +3210,33 @@ function syncMenuBarTray(enabled: boolean): void {
   }
   menuBarTray.setContextMenu(Menu.buildFromTemplate([
     {
+      label: "Memory 服务：运行中",
+      enabled: false
+    },
+    { type: "separator" },
+    {
       label: "显示 Memmy",
       click: () => activateMainWindow()
     },
+    {
+      label: "模型与 API Key…",
+      click: () => showMainWindow({ route: "/settings" })
+    },
+    {
+      label: "同步全部记忆",
+      click: () => startMenuBarMemorySync()
+    },
+    {
+      label: "记忆管理…",
+      click: () => showMainWindow({ route: "/memory" })
+    },
+    {
+      label: "重启 Memory 服务",
+      click: () => restartMemoryService().catch((error) => {
+        dialog.showErrorBox("Memory 服务重启失败", error instanceof Error ? error.message : String(error));
+      })
+    },
+    { type: "separator" },
     {
       label: "桌宠模式",
       click: () => setPetWindowMode(true, { petIntent: "user" })
@@ -3224,6 +3248,35 @@ function syncMenuBarTray(enabled: boolean): void {
     }
   ]));
   menuBarTray.on("click", () => activateMainWindow());
+}
+
+/**
+ * Starts an incremental scan for every detected Agent from the native menu bar.
+ * The full sources UI is opened so progress, permission errors, and per-source results stay visible.
+ */
+function startMenuBarMemorySync(): void {
+  const config = runtimeConfig;
+  showMainWindow({ route: "/memory-sources" });
+  if (!config) {
+    dialog.showErrorBox("同步记忆失败", "Memmy 本地服务尚未就绪");
+    return;
+  }
+
+  const url = new URL("/api/agent-sources/scan", config.baseUrl).toString();
+  void fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-memmy-local-token": config.localToken
+    },
+    body: JSON.stringify({ sourceId: "all", mode: "incremental" })
+  }).then(async (response) => {
+    if (response.ok) return;
+    const detail = (await response.text()).trim();
+    throw new Error(detail || `HTTP ${response.status}`);
+  }).catch((error) => {
+    dialog.showErrorBox("同步记忆失败", error instanceof Error ? error.message : String(error));
+  });
 }
 
 /**
