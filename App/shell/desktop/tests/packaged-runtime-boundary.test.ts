@@ -346,6 +346,12 @@ describe("desktop packaged runtime boundaries", () => {
     expect(mainSource).toContain("function isNativeTraySupported()");
     expect(mainSource).toContain('process.platform === "darwin" || process.platform === "win32"');
     expect(mainSource).toContain("new Tray(trayImage, MENU_BAR_TRAY_GUID)");
+    expect(mainSource).toContain('label: "Memory 服务：运行中"');
+    expect(mainSource).toContain('label: "模型与 API Key…"');
+    expect(mainSource).toContain('label: "同步全部记忆"');
+    expect(mainSource).toContain('label: "记忆管理…"');
+    expect(mainSource).toContain('label: "重启 Memory 服务"');
+    expect(mainSource).toContain('body: JSON.stringify({ sourceId: "all", mode: "incremental" })');
     expect(mainSource).toContain('join(process.resourcesPath, "MenuBarIconTemplate.png")');
     expect(mainSource).toContain('resolve(import.meta.dirname, "../../build/MenuBarIconTemplate.png")');
     expect(mainSource).toContain("setTemplateImage(true)");
