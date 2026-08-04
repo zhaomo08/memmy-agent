@@ -38,7 +38,7 @@ describe("SourcesSubPage", () => {
   });
 
   it("同步按钮在扫描中旋转，完成后进入不可重复点击的勾选状态", () => {
-    const sourceIds = ["cursor", "claude_code", "codex", "opencode", "openclaw", "hermes", "workbuddy"];
+    const sourceIds = ["cursor", "claude_code", "codex", "chatwise", "opencode", "openclaw", "hermes", "workbuddy"];
     for (const sourceId of sourceIds) {
       const otherSourceId = sourceIds.find((candidate) => candidate !== sourceId)!;
       expect(resolveAgentSourceScanButtonState(sourceId, true, sourceId, new Set())).toBe("running");

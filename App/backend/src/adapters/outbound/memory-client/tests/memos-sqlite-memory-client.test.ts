@@ -134,7 +134,7 @@ describe("createMemosSqliteMemoryClient", () => {
 
     await expect(client.panelItems({
       layer: "L1",
-      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "opencode", "openclaw", "hermes"],
+      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "chatwise", "opencode", "openclaw", "hermes"],
       page: 1
     })).resolves.toMatchObject({
       total: 1,
@@ -387,7 +387,7 @@ describe("createMemosSqliteMemoryClient", () => {
     });
     const otherLogs = await client.memoryApiLogs({
       tools: ["memory_add", "memory_search"],
-      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "opencode", "openclaw", "hermes"],
+      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "chatwise", "opencode", "openclaw", "hermes"],
       limit: 20,
       offset: 0
     });

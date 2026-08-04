@@ -52,7 +52,7 @@ Switch agents, close a tab, start a new session, and you're re-introd
 
 Memmy fixes that.
 
-With a unified memory layer shared across Cursor, Claude Code, Codex, OpenClaw 🦞, Hermes Agent and more, your agents build on each other's context instead of starting over. One-shot conversations become a long-term working relationship.
+With a unified memory layer shared across Cursor, Claude Code, Codex, ChatWise, OpenClaw 🦞, Hermes Agent and more, your agents build on each other's context instead of starting over. One-shot conversations become a long-term working relationship.
 
 It distills your knowledge, preferences, and project experience into personal memory, and share the same context across every Agents.
 
@@ -94,7 +94,7 @@ Memmy is designed to guarantee your control over your personal data a
 
 After installing Memmy, it can automatically scan the history of your existing AI Agents. Within minutes, the project context, work habits, and preferences you have accumulated over the past months are converted into personal long-term memory, along with a personalized "First Meeting Report".
 
-Now supported: Cursor, Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent.
+Now supported: Cursor, Claude Code, Codex, ChatWise, OpenCode, OpenClaw, Hermes Agent, WorkBuddy.
 
 [See the full support list](https://memmy.bot/docs/memory/sources)
 

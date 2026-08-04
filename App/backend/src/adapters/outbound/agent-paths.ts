@@ -26,6 +26,52 @@ export interface ResolveCursorDataPathsOptions extends ResolveAgentPathOptions {
   xdgConfigDirectory?: string;
 }
 
+export function resolveChatwiseDataDirectory(options: ResolveAgentPathOptions = {}): string {
+  const runtime = createAgentPathRuntime(options);
+  const configured = runtime.environment.CHATWISE_DATA_DIR;
+  if (configured?.trim()) {
+    return resolveAgentPathWithRuntime(configured.trim(), runtime);
+  }
+
+  const platform = options.platform ?? process.platform;
+  if (platform === "darwin") {
+    return runtime.pathApi.join(runtime.homeDirectory, "Library", "Application Support", "app.chatwise");
+  }
+  if (platform === "win32") {
+    const appData = resolveConfiguredDirectory(
+      runtime.environment.APPDATA,
+      runtime.pathApi.join(runtime.homeDirectory, "AppData", "Roaming"),
+      runtime
+    );
+    return runtime.pathApi.join(appData, "app.chatwise");
+  }
+
+  const xdgConfigRoot = resolveConfiguredDirectory(
+    runtime.environment.XDG_CONFIG_HOME,
+    runtime.pathApi.join(runtime.homeDirectory, ".config"),
+    runtime
+  );
+  return runtime.pathApi.join(xdgConfigRoot, "app.chatwise");
+}
+
+export function resolveChatwiseDatabasePath(options: ResolveAgentPathOptions = {}): string {
+  const runtime = createAgentPathRuntime(options);
+  return resolveConfiguredDirectory(
+    runtime.environment.CHATWISE_DB_PATH,
+    runtime.pathApi.join(resolveChatwiseDataDirectory(options), "app.db"),
+    runtime
+  );
+}
+
+export function resolveChatwiseAgentHomeDirectory(options: ResolveAgentPathOptions = {}): string {
+  const runtime = createAgentPathRuntime(options);
+  return resolveConfiguredDirectory(
+    runtime.environment.CHATWISE_AGENT_HOME,
+    runtime.pathApi.join(runtime.homeDirectory, ".agents"),
+    runtime
+  );
+}
+
 export function resolveClaudeCodeHomeDirectory(options: ResolveAgentPathOptions = {}): string {
   const runtime = createAgentPathRuntime(options);
   return resolveConfiguredDirectory(
