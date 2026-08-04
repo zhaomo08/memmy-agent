@@ -29,7 +29,7 @@ extraResources:
     to: MenuBarIconTemplate.png
   - from: build/MenuBarIconTemplate@2x.png
     to: MenuBarIconTemplate@2x.png
-  - from: ../../../.env
+  - from: ../../../.env.example
     to: .env
 
 mac:
