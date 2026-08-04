@@ -119,7 +119,7 @@ describe("memmy-memory CLI setup commands", () => {
     expect(output).toContain(`Config file: ${join(root, "config.yaml")}`);
     expect(output).toContain(`Database config: ${join(root, "memory.sqlite")}`);
     expect(output).toContain("Endpoint: http://127.0.0.1:18960");
-    expect(output).toContain("Target agents: codex, cursor, claude, opencode, openclaw, hermes");
+    expect(output).toContain("Target agents: codex, cursor, claude, opencode, openclaw, hermes, chatwise");
     expect(output).toContain("Shell completion: Skipped (disabled during init)");
     expect(output).toContain("Try running: memmy-memory health");
     expect(() => JSON.parse(output)).toThrow();
@@ -183,6 +183,12 @@ describe("memmy-memory CLI setup commands", () => {
         injectPath: join(root, ".hermes", "SOUL.md"),
         skillPath: join(root, ".hermes", "skills", "memmy-memory"),
         dryRun: false
+      },
+      {
+        agent: "chatwise",
+        root: join(root, ".agents"),
+        skillPath: join(root, ".agents", "skills", "memmy-memory"),
+        dryRun: false
       }
     ]);
 
@@ -202,7 +208,8 @@ describe("memmy-memory CLI setup commands", () => {
       join(root, ".claude", "skills", "memmy-memory", "SKILL.md"),
       join(root, ".config", "opencode", "skills", "memmy-memory", "SKILL.md"),
       join(root, ".openclaw", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".hermes", "skills", "memmy-memory", "SKILL.md")
+      join(root, ".hermes", "skills", "memmy-memory", "SKILL.md"),
+      join(root, ".agents", "skills", "memmy-memory", "SKILL.md")
     ]) {
       expect(readFileSync(skillPath, "utf8")).toContain("name: memmy-memory");
     }
@@ -229,7 +236,8 @@ describe("memmy-memory CLI setup commands", () => {
       "cursor",
       "claude",
       "opencode",
-      "openclaw"
+      "openclaw",
+      "chatwise"
     ]);
     expect(existsSync(join(root, ".hermes"))).toBe(false);
     expect(existsSync(join(root, ".codex", "skills", "memmy-memory", "SKILL.md"))).toBe(true);
@@ -560,6 +568,7 @@ function createAllAgentRoots(root: string): void {
   mkdirSync(join(root, ".config", "opencode"), { recursive: true });
   mkdirSync(join(root, ".openclaw", "workspace"), { recursive: true });
   mkdirSync(join(root, ".hermes"), { recursive: true });
+  mkdirSync(join(root, ".agents"), { recursive: true });
 }
 
 function setEnv(key: string, value: string): void {

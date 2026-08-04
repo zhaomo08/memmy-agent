@@ -68,6 +68,7 @@ describe("MemoriesSubPage", () => {
       "Cursor",
       "Claude Code",
       "Codex",
+      "ChatWise",
       "OpenCode",
       "OpenClaw",
       "Hermes",

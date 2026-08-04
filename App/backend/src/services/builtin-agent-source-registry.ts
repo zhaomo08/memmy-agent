@@ -1,5 +1,6 @@
 import { createClaudeCodeSourceAdapter } from "../adapters/outbound/agent-source/claude-code/index.js";
 import { createCodexSourceAdapter } from "../adapters/outbound/agent-source/codex/index.js";
+import { createChatwiseSourceAdapter } from "../adapters/outbound/agent-source/chatwise/index.js";
 import { createCursorSourceAdapter } from "../adapters/outbound/agent-source/cursor/index.js";
 import { createHermesSourceAdapter } from "../adapters/outbound/agent-source/hermes/index.js";
 import { createOpenclawSourceAdapter } from "../adapters/outbound/agent-source/openclaw/index.js";
@@ -12,6 +13,7 @@ export function createBuiltinAgentSourceRegistry(): SourceRegistry {
     createCursorSourceAdapter(),
     createClaudeCodeSourceAdapter(),
     createCodexSourceAdapter(),
+    createChatwiseSourceAdapter(),
     createOpencodeSourceAdapter(),
     createOpenclawSourceAdapter(),
     createHermesSourceAdapter(),
