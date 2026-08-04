@@ -1139,18 +1139,22 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).not.toContain("mv -f");
   });
 
-  it("bundles the repo-root .env so packaged apps can resolve MEMMY_CLOUD_SERVICE", () => {
+  it("bundles cloud-service defaults so packaged apps can resolve MEMMY_CLOUD_SERVICE", () => {
     const configs = [
       readFileSync(electronBuilderPath, "utf8"),
-      readFileSync(unsignedElectronBuilderPath, "utf8"),
       readFileSync(winElectronBuilderPath, "utf8"),
       readFileSync(winUnsignedBuilderPath, "utf8")
     ];
+    const unsignedMacConfig = readFileSync(unsignedElectronBuilderPath, "utf8");
+    const packageSource = readFileSync(packageMacDmgPath, "utf8");
 
     for (const config of configs) {
       expect(config).toContain("from: ../../../.env");
       expect(config).toContain("to: .env");
     }
+    expect(unsignedMacConfig).toContain("from: ../../../.env.example");
+    expect(unsignedMacConfig).toContain("to: .env");
+    expect(packageSource).toContain('BUILDER_ARGS+=(--publish never)');
   });
 });
 
