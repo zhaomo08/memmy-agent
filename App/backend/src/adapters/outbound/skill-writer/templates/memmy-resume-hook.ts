@@ -69,7 +69,7 @@ async function main() {
 
   const query = parseResumeQuery(prompt);
   if (!isResumeCommand(prompt)) {
-    if (isCodexReviewContinuationNoise(prompt)) {
+    if (isSyntheticAgentPrompt(prompt)) {
       writeAllowOutput();
       return;
     }
@@ -168,7 +168,7 @@ async function captureCompletedTurn(payload) {
     latestAssistantAfterLastUser(transcriptMessages) ||
     (status === "failed" ? failedTurnText(payload) : "")
   );
-  if (!query || !answer || isResumeCommand(query) || isCodexReviewContinuationNoise(query)) {
+  if (!query || !answer || isResumeCommand(query) || isSyntheticAgentPrompt(query)) {
     await clearTurnState(payload);
     return;
   }
@@ -388,8 +388,11 @@ function parseResumeQuery(prompt) {
   return "";
 }
 
-function isCodexReviewContinuationNoise(text) {
-  return /The following is the Codex agent history added since your last approval assessment/.test(normalizeText(text));
+function isSyntheticAgentPrompt(text) {
+  const normalized = normalizeText(text);
+  return /The following is the Codex agent history (added since your last approval assessment|whose request action you are assessing)/.test(normalized) ||
+    normalized.includes("<observed_from_primary_session>") ||
+    normalized.includes("<task-notification>");
 }
 
 function isResumeCommand(prompt) {
