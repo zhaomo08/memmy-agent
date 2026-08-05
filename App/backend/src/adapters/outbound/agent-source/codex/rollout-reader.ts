@@ -2,7 +2,7 @@
 import { basename } from "node:path";
 import { readJsonlObjects, type JsonObject } from "../jsonl-lines.js";
 
-const CODEX_REVIEW_CONTINUATION_PATTERN = /The following is the Codex agent history added since your last approval assessment/;
+const CODEX_REVIEW_CONTINUATION_PATTERN = /The following is the Codex agent history (added since your last approval assessment|whose request action you are assessing)/;
 
 export interface RawCodexMessage {
   /** Message id. */
