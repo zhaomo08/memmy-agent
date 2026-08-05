@@ -68,6 +68,27 @@ describe("agent source service", () => {
     ]);
   });
 
+  it("reports a persisted source no longer in the registry as non-builtin so the UI offers deletion instead of a broken skill action", async () => {
+    const repository = createRepository();
+    repository.upsertSource({
+      sourceId: "chatwise",
+      displayName: "ChatWise",
+      dataPath: "/tmp/chatwise",
+      builtin: true
+    });
+    repository.setStatus("chatwise", "skill_installed");
+    const service = createService({ repository, adapters: [] });
+
+    await expect(service.list()).resolves.toEqual([
+      expect.objectContaining({
+        sourceId: "chatwise",
+        displayName: "ChatWise",
+        builtin: false,
+        status: "skill_installed"
+      })
+    ]);
+  });
+
   it("marks unavailable builtin sources without removing them from the list", async () => {
     const service = createService({
       adapters: [createFakeAdapter("claude_code", [], undefined, false)]
