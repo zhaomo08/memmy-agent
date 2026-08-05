@@ -48,7 +48,7 @@
 
 每一次 AI 协作都会产生新的上下文和经验，但这些信息通常被隔离在不同工具和会话中。当你切换 Agent 或工作场景时，新的 AI 又需要重新认识你。
 
-通过 Memmy，Cursor、Claude Code、Codex、OpenClaw、Hermes Agent 等 AI Agent 可以基于统一上下文持续协作，让 AI 从一次性对话变成长期理解你的 Agent。
+通过 Memmy，Claude Code、Codex、OpenClaw、Hermes Agent 等 AI Agent 可以基于统一上下文持续协作，让 AI 从一次性对话变成长期理解你的 Agent。
 
 它将你的知识、偏好和项目经验沉淀为个人记忆，并让不同 Agent 共享同一份上下文。
 
@@ -58,7 +58,7 @@
 
 Memmy 为所有 AI Agent 提供统一的个人记忆层。
 
-- **跨 Agent 共享记忆**：无论是在 Codex、Claude Code、Cursor 还是 OpenClaw 中工作，都可以继续使用相同的上下文和经验，无需重复介绍背景。
+- **跨 Agent 共享记忆**：无论是在 Codex、Claude Code 还是 OpenClaw 中工作，都可以继续使用相同的上下文和经验，无需重复介绍背景。
 - **MemOS 驱动的记忆引擎**：自动采集、理解并结构化你的知识、偏好和工作经验，将分散的对话和行为沉淀为可检索、可复用的长期记忆。
 - **历史上下文接入**：支持导入已有 Agent 的历史记录，将过去的对话和项目经验转化为持续生长的个人知识资产。
 
@@ -90,7 +90,7 @@ Memmy 从设计上保证用户对个人数据和记忆的控制权。
 
 安装 Memmy 后，它可以自动扫描已有 AI Agent 的历史记录。几分钟内，你过去几个月积累的项目上下文、工作习惯和偏好会被转换为个人长期记忆，并生成个性化的「初见报告」。
 
-现已支持：Cursor、Claude Code、Codex、OpenCode、OpenClaw、Hermes Agent。
+现已支持：Claude Code、Codex、OpenCode、OpenClaw、Hermes Agent。
 
 查看详细支持列表 → 链接到 docs/import-agent-memory.md
 
@@ -118,7 +118,7 @@ Memmy 不只是一个聊天界面，而是一套运行在本地的 AI Agent 
 | 产品定位                                        | 记忆底座 + 通用 Agent | 个人 AI Agent | 个人 AI 助理 |
 | 本地优先、数据在本机                            | ✅                    | ⚠️          | ✅           |
 | 跨 Agent 共享同一份记忆                         | ✅                    | 🚫            | 🚫           |
-| 接管外部 Agent 历史（Cursor/Codex/Claude Code） | ✅                    | 🚫            | 🚫           |
+| 接管外部 Agent 历史（Codex/Claude Code） | ✅                    | 🚫            | 🚫           |
 | 为外部 Agent 安装记忆 Skill                     | ✅                    | 🚫            | 🚫           |
 | 结构化记忆引擎（MemOS 混合检索）                | ✅                    | ⚠️          | ⚠️         |
 | 多渠道触达（Telegram / Discord / iMessage…）   | ✅                    | ✅            | ✅           |

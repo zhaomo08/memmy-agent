@@ -556,7 +556,7 @@ function helpText(): string {
     `  ${CLI_NAME} init`,
     `  ${CLI_NAME} init --skip-agent-skills`,
     `  ${CLI_NAME} init --agent codex`,
-    `  ${CLI_NAME} init --agent codex,cursor,claude`,
+    `  ${CLI_NAME} init --agent codex,claude`,
     "",
     "Memory examples:",
     `  ${CLI_NAME} health`,
@@ -578,7 +578,7 @@ function helpText(): string {
     "  --version, -v                Show CLI version",
     "",
     "Supported agents:",
-    "  codex, cursor, claude, opencode, openclaw, hermes",
+    "  codex, claude, opencode, openclaw, hermes",
     "",
     `Default URL: ${DEFAULT_MEMORY_URL}`
   ].join("\n");

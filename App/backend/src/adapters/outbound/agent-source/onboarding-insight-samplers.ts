@@ -6,7 +6,6 @@ import { stripInlineMediaPayloads } from "../../../shared/inline-media-sanitizer
 import {
   resolveClaudeCodeProjectsDirectory,
   resolveCodexSessionsDirectory,
-  resolveCursorDataPaths,
   resolveHermesHomeDirectory,
   resolveOpencodeDatabasePath,
   resolveOpenclawStateDirectory,
@@ -40,7 +39,6 @@ type JsonLineFilter = (line: string) => boolean;
 
 export function createBuiltinOnboardingInsightSamplers(): OnboardingInsightSampler[] {
   return [
-    createCursorInsightSampler(),
     createClaudeCodeInsightSampler({ root: resolveClaudeCodeProjectsDirectory() }),
     createCodexInsightSampler({ root: resolveCodexSessionsDirectory() }),
     createOpencodeInsightSampler({ databasePath: resolveOpencodeDatabasePath() }),
@@ -132,29 +130,6 @@ export function createOpenclawInsightSampler(input: { root: string }): Onboardin
       const dbPaths = await listRecentFiles(input.root, (name) => name.endsWith(".sqlite") || name.endsWith(".db"), options.maxSessionFiles, options);
       const results = await Promise.all(dbPaths.map((file) => sampleOpenclawDb(file.filePath, options)));
       return mergeSampleResults("openclaw", "OpenClaw", results, options.maxQueries);
-    }
-  };
-}
-
-export function createCursorInsightSampler(): OnboardingInsightSampler {
-  const {
-    workspaceStorageDirectory: storageRoot,
-    globalStateDbPath
-  } = resolveCursorDataPaths();
-
-  return {
-    sourceId: "cursor",
-    displayName: "Cursor",
-    async detect() {
-      return (await pathExists(storageRoot)) || (await pathExists(globalStateDbPath));
-    },
-    async sampleRecentUserQueries(options) {
-      const dbFiles = await listRecentFiles(storageRoot, (name) => name === "state.vscdb", options.maxSessionFiles, options);
-      if (await pathExists(globalStateDbPath)) {
-        dbFiles.unshift({ filePath: globalStateDbPath, mtimeMs: Date.now() });
-      }
-      const results = await Promise.all(dbFiles.slice(0, options.maxSessionFiles).map((file) => sampleCursorDb(file.filePath, options)));
-      return mergeSampleResults("cursor", "Cursor", results, options.maxQueries);
     }
   };
 }
@@ -472,50 +447,6 @@ function sampleOpenclawTable(
       workspacePath: null
     }];
   });
-}
-
-function sampleCursorDb(path: string, options: OnboardingInsightSampleOptions): OnboardingSampleResult {
-  const db = new DatabaseSync(path, { readOnly: true });
-  try {
-    const queries: OnboardingSampledQuery[] = [];
-    if (hasTable(db, "cursorDiskKV")) {
-      const rows = db.prepare(`
-        SELECT rowid, key, value
-        FROM cursorDiskKV
-        WHERE key LIKE 'bubbleId:%' AND value IS NOT NULL
-        ORDER BY rowid DESC
-        LIMIT ?
-      `).all(Math.min(DEFAULT_MAX_SQL_ROWS, options.maxQueries * 8)) as Array<{ rowid: number; key: string; value: string }>;
-      for (const row of rows) {
-        const parsed = parseJsonObject(row.value);
-        if (!parsed || parsed.type !== 1) {
-          continue;
-        }
-        const text = stringValue(parsed.text);
-        const keyParts = row.key.split(":");
-        if (!text || keyParts.length !== 3 || !keyParts[1] || !keyParts[2]) {
-          continue;
-        }
-        queries.push({
-          sourceId: "cursor",
-          conversationId: keyParts[1],
-          messageId: stringValue(parsed.bubbleId) ?? keyParts[2],
-          createdAt: normalizeTimestamp(parsed.createdAt ?? parsed.timestamp ?? row.rowid),
-          text,
-          workspacePath: null
-        });
-      }
-    }
-    return sqlResult("cursor", "Cursor", queries, options);
-  } catch (error) {
-    return emptyOnboardingSampleResult({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      errors: [{ target: path, reason: error instanceof Error ? error.message : "read failed" }]
-    });
-  } finally {
-    db.close();
-  }
 }
 
 function sqlResult(

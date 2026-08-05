@@ -65,7 +65,6 @@ describe("MemoriesSubPage", () => {
   it("筛选器和详情共用统一的 Agent 名称格式", () => {
     expect(MEMORY_AGENT_SOURCE_VALUES.map(agentSourceDisplayName)).toEqual([
       "Memmy",
-      "Cursor",
       "Claude Code",
       "Codex",
       "OpenCode",
@@ -79,7 +78,7 @@ describe("MemoriesSubPage", () => {
   });
 
   it("从导入 trace 的 tags 中识别来源 agent", () => {
-    expect(memoryDisplaySource({ tags: ["trace", "cursor", "agent-source", "摘要排队中"] })).toBe("cursor");
+    expect(memoryDisplaySource({ tags: ["trace", "opencode", "agent-source", "摘要排队中"] })).toBe("opencode");
   });
 
   it("优先使用列表项 metadata.source 展示来源 agent", () => {

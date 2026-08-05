@@ -265,7 +265,6 @@ describe("SourcesSubPage", () => {
     expect(resolveAgentSourceConnectionAction(createSource("hermes", "skill_installed"))).toBe("install_plugin");
     expect(resolveAgentSourceConnectionAction(createSource("hermes", "plugin_installed"))).toBe("remove_plugin");
     expect(resolveAgentSourceConnectionAction(createSource("opencode", "plugin_installed"))).toBe("remove_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("cursor", "not_connected"))).toBe("install_hook");
     expect(resolveAgentSourceConnectionAction(createSource("codex", "skill_installed"))).toBe("install_hook");
     expect(resolveAgentSourceConnectionAction(createSource("claude_code", "plugin_installed"))).toBe("remove_hook");
     expect(resolveAgentSourceConnectionAction(createSource("opencode", "not_connected"))).toBe("install_plugin");
@@ -289,13 +288,11 @@ describe("SourcesSubPage", () => {
   it("按安装类型展示接入源状态，不再把未安装误写成未接入", () => {
     const source = readFileSync(resolve(__dirname, "..", "..", "memory-sources-page.tsx"), "utf8");
 
-    expect(resolveAgentSourceStatusLabelKey(createSource("cursor", "not_connected"))).toBe("memory.hookNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("claude_code", "not_connected"))).toBe("memory.hookNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "not_connected"))).toBe("memory.hookNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("openclaw", "not_connected"))).toBe("memory.pluginNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("opencode", "not_connected"))).toBe("memory.pluginNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "skill_installed"))).toBe("memory.skillInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("cursor", "plugin_installed"))).toBe("memory.hookInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("claude_code", "plugin_installed"))).toBe("memory.hookInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "plugin_installed"))).toBe("memory.hookInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("hermes", "plugin_installed"))).toBe("memory.pluginInstalled");

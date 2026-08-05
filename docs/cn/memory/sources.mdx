@@ -19,7 +19,6 @@ Agent Source 是 Memmy 读取外部 Agent 本地历史的适配器。来源扫�
 
 | Agent | 默认历史来源 | 实时接入 |
 | --- | --- | --- |
-| Cursor | `~/Library/Application Support/Cursor/User/workspaceStorage/**/state.vscdb` 和 `globalStorage/state.vscdb` | Hook |
 | Claude Code | `~/.claude/projects/**/*.jsonl` | Hook |
 | Codex | `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` | Hook |
 | OpenCode | `~/.local/share/opencode/opencode.db` | 原生插件 |
@@ -86,7 +85,6 @@ Memmy 通过 Agent 原生支持的 **Hook** 或**插件**接入实时对话。�
 
 | Agent | 接入类型 | 使用的事件或接口 | 主要效果 |
 | --- | --- | --- | --- |
-| Cursor | Hook | `beforeSubmitPrompt`、`afterAgentResponse`、`stop` | 建立回合、记录回复、在回合结束时自动采集，并支持 `/memmy-resume` |
 | Claude Code | Hook | `UserPromptSubmit`、`Stop` | 请求前召回并注入相关记忆，结束时自动采集，支持 `/memmy-resume` |
 | Codex | Hook | `UserPromptSubmit`、`Stop` | 请求前召回并注入相关记忆，结束时自动采集，支持 `/memmy-resume` |
 | OpenCode | 原生插件 | 消息、工具、文本完成和会话事件 | 自动召回、采集回复与工具轨迹，并提供原生记忆工具和 `/memmy-resume` |
@@ -112,33 +110,7 @@ flowchart LR
 - **自动采集**：Hook 或插件会在回合结束时提交用户请求、Agent 回答和成功/失败状态，不需要 Agent 手动执行 `memmy-memory add`。
 - **任务接续**：输入 `/memmy-resume <query>` 会搜索最多 5 个候选 L1 episode；继续输入 `1`–`5` 可读取完整 episode 并注入接续上下文。
 - **按需查询**：随接入安装的 Skill 保留 `memmy-memory search` 和 `memmy-memory get`，只在自动上下文不足时使用。
-- **来源标记**：采集结果会记录 `cursor`、`claude_code`、`codex`、`opencode`、`openclaw` 或 `hermes`，便于过滤和追踪来源。
-
-<Callout type="warn" icon={false}>
-  <div className="mb-2 flex items-center gap-2 text-[1.0625rem] font-semibold leading-6 text-fd-card-foreground">
-    <span aria-hidden="true" className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-(--callout-color) text-xs font-bold leading-none text-fd-card">!</span>
-    <span>Cursor 当前的 Hook 重点负责自动采集和 <code>/memmy-resume</code></span>
-  </div>
-
-  普通请求需要额外记忆时，由随 Hook 安装的 Skill 执行按需搜索；其他五个接入会在普通请求前自动注入召回结果。
-</Callout>
-
-### Cursor：三个 Hook
-
-Memmy 会在 `~/.cursor/hooks.json` 中追加自己的 Hook 条目，不会覆盖其他 Hook。
-
-| Hook | 触发时机 | Memmy 的处理 |
-| --- | --- | --- |
-| `beforeSubmitPrompt` | 用户请求提交前 | 打开或复用 Memmy 会话、开始回合并保存请求；同时拦截 `/memmy-resume` 搜索和候选选择 |
-| `afterAgentResponse` | Agent 生成回复后 | 将最终回复暂存在本回合状态中，供结束 Hook 采集 |
-| `stop` | Agent 回合停止时 | 汇总请求和回复，调用 turn-complete 接口自动保存回合；失败时放行，不阻塞 Cursor |
-
-默认写入或更新：
-
-- `~/.cursor/hooks.json`
-- `~/.cursor/hooks/memmy-resume-hook.mjs`
-- `~/.cursor/hooks/memmy-memory-config.json`
-- `~/.cursor/skills/memmy-memory/SKILL.md`
+- **来源标记**：采集结果会记录 `claude_code`、`codex`、`opencode`、`openclaw` 或 `hermes`，便于过滤和追踪来源。
 
 ### Claude Code：`UserPromptSubmit` 与 `Stop`
 
@@ -242,7 +214,7 @@ Hermes 同样只允许一个活动的 Memory Provider；检测到其他 Provider
 ### 安装、验证与移除
 
 1. 打开 **记忆管理 → 跨Agent接入**。
-2. Cursor、Claude Code、Codex 点击 **安装 Hook**；OpenCode、OpenClaw、Hermes 点击 **安装插件**。
+2. Claude Code、Codex 点击 **安装 Hook**；OpenCode、OpenClaw、Hermes 点击 **安装插件**。
 3. 如果 Agent 正在运行，重启 Agent 或新建会话，让它重新加载配置。
 4. 完成一轮普通对话，再到 Memmy 的记忆或日志页面确认对应来源出现新记录。
 5. 输入 `/memmy-resume <关键词>`，确认能看到候选并用 `1`–`5` 选择一个 episode。

@@ -192,8 +192,7 @@ describe("claude code skill target", () => {
         query: "测试query",
         layers: ["L1"],
         limit: 20,
-        verbose: true,
-        source: "claude_code"
+        verbose: true
       });
       requestBody = undefined;
       const commandExpandedRun = await runNodeHook(
@@ -217,8 +216,7 @@ describe("claude code skill target", () => {
         query: "命令展开后的 query",
         layers: ["L1"],
         limit: 20,
-        verbose: true,
-        source: "claude_code"
+        verbose: true
       });
       expect(authorization).toBe("Bearer test-token");
       expect(readTargetFile(rootDirectory)).toContain(

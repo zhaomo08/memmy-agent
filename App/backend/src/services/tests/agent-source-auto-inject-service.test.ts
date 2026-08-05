@@ -39,11 +39,10 @@ describe("agent source auto inject service", () => {
     await expect(service.runOnce()).resolves.toEqual({
       ok: true,
       skipped: false,
-      installed: ["cursor", "opencode", "openclaw", "workbuddy"],
+      installed: ["opencode", "openclaw", "workbuddy"],
       failed: []
     });
     expect(calls).toEqual([
-      "plugin:cursor:auto_inject",
       "plugin:opencode:auto_inject",
       "plugin:openclaw:auto_inject",
       "skill:workbuddy",
@@ -111,7 +110,6 @@ function createAgentSources(calls: string[]) {
   return {
     async list(): Promise<AgentSourceView[]> {
       return [
-        source("cursor", "not_connected", true),
         source("codex", "skill_installed", true),
         source("opencode", "not_connected", true),
         source("openclaw", "not_connected", true),
