@@ -11,7 +11,6 @@ import { createHttpMemmyAgentAdminClient } from "../adapters/outbound/memmy-agen
 import type { MemmyAgentAdminClient } from "../adapters/outbound/memmy-agent-admin-client/index.js";
 import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
 import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
-import { createChatwiseSkillTarget } from "../adapters/outbound/skill-writer/chatwise/index.js";
 import { createCursorSkillTarget } from "../adapters/outbound/skill-writer/cursor/index.js";
 import { createHermesSkillTarget } from "../adapters/outbound/skill-writer/hermes/index.js";
 import { createOpenclawSkillTarget } from "../adapters/outbound/skill-writer/openclaw/index.js";
@@ -127,7 +126,6 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
       createCursorSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
       createClaudeCodeSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
       createCodexSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
-      createChatwiseSkillTarget(),
       createOpencodeSkillTarget(),
       createOpenclawSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
       createHermesSkillTarget({ memmyConfigPath: options.memmyConfigPath }),

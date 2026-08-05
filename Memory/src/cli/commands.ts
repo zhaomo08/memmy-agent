@@ -578,7 +578,7 @@ function helpText(): string {
     "  --version, -v                Show CLI version",
     "",
     "Supported agents:",
-    "  codex, cursor, claude, opencode, openclaw, hermes, chatwise",
+    "  codex, cursor, claude, opencode, openclaw, hermes",
     "",
     `Default URL: ${DEFAULT_MEMORY_URL}`
   ].join("\n");

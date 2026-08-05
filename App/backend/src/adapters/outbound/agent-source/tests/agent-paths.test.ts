@@ -1,8 +1,6 @@
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  resolveChatwiseAgentHomeDirectory,
-  resolveChatwiseDatabasePath,
   resolveClaudeCodeHomeDirectory,
   resolveClaudeCodeProjectsDirectory,
   resolveCodexHomeDirectory,
@@ -20,9 +18,6 @@ import {
 
 const ENVIRONMENT_VARIABLES = [
   "APPDATA",
-  "CHATWISE_AGENT_HOME",
-  "CHATWISE_DATA_DIR",
-  "CHATWISE_DB_PATH",
   "CLAUDE_CONFIG_DIR",
   "CODEBUDDY_CONFIG_DIR",
   "CODEX_HOME",
@@ -49,8 +44,6 @@ afterEach(() => {
 describe("agent paths", () => {
   it("honors each Agent's configured home or state directory", () => {
     process.env.CLAUDE_CONFIG_DIR = "/tmp/claude-home";
-    process.env.CHATWISE_AGENT_HOME = "/tmp/chatwise-agent-home";
-    process.env.CHATWISE_DB_PATH = "/tmp/chatwise.db";
     process.env.CODEX_HOME = "/tmp/codex-home";
     process.env.HERMES_HOME = "/tmp/hermes-home";
     process.env.OPENCLAW_STATE_DIR = "/tmp/openclaw-state";
@@ -58,8 +51,6 @@ describe("agent paths", () => {
     process.env.WORKBUDDY_CONFIG_DIR = "/tmp/workbuddy-home";
 
     expect(resolveClaudeCodeHomeDirectory()).toBe("/tmp/claude-home");
-    expect(resolveChatwiseAgentHomeDirectory()).toBe("/tmp/chatwise-agent-home");
-    expect(resolveChatwiseDatabasePath()).toBe("/tmp/chatwise.db");
     expect(resolveCodexHomeDirectory()).toBe("/tmp/codex-home");
     expect(resolveHermesHomeDirectory()).toBe("/tmp/hermes-home");
     expect(resolveOpenclawStateDirectory()).toBe("/tmp/openclaw-state");
@@ -89,7 +80,7 @@ describe("agent paths", () => {
     expect(resolveOpencodeConfigDirectory()).toBe("/tmp/custom-opencode");
   });
 
-  it("resolves all eight Agent source paths on macOS", () => {
+  it("resolves all seven Agent source paths on macOS", () => {
     const options = {
       platform: "darwin" as const,
       homeDirectory: "/Users/alice",
@@ -100,7 +91,6 @@ describe("agent paths", () => {
       cursor: resolveCursorDataPaths(options).workspaceStorageDirectory,
       claudeCode: resolveClaudeCodeProjectsDirectory(options),
       codex: resolveCodexSessionsDirectory(options),
-      chatwise: resolveChatwiseDatabasePath(options),
       opencode: resolveOpencodeDatabasePath(options),
       openclaw: resolveOpenclawStateDirectory(options),
       hermes: resolveHermesHomeDirectory(options),
@@ -109,7 +99,6 @@ describe("agent paths", () => {
       cursor: "/Users/alice/Library/Application Support/Cursor/User/workspaceStorage",
       claudeCode: "/Users/alice/.claude/projects",
       codex: "/Users/alice/.codex/sessions",
-      chatwise: "/Users/alice/Library/Application Support/app.chatwise/app.db",
       opencode: "/Users/alice/.local/share/opencode/opencode.db",
       openclaw: "/Users/alice/.openclaw",
       hermes: "/Users/alice/.hermes",
@@ -117,7 +106,7 @@ describe("agent paths", () => {
     });
   });
 
-  it("resolves all eight Agent source paths on Windows", () => {
+  it("resolves all seven Agent source paths on Windows", () => {
     const options = {
       platform: "win32",
       homeDirectory: "C:\\Users\\alice",
@@ -130,7 +119,6 @@ describe("agent paths", () => {
       cursor: resolveCursorDataPaths(options).workspaceStorageDirectory,
       claudeCode: resolveClaudeCodeProjectsDirectory(options),
       codex: resolveCodexSessionsDirectory(options),
-      chatwise: resolveChatwiseDatabasePath(options),
       opencode: resolveOpencodeDatabasePath(options),
       openclaw: resolveOpenclawStateDirectory(options),
       hermes: resolveHermesHomeDirectory(options),
@@ -139,7 +127,6 @@ describe("agent paths", () => {
       cursor: "C:\\Users\\alice\\AppData\\Roaming\\Cursor\\User\\workspaceStorage",
       claudeCode: "C:\\Users\\alice\\.claude\\projects",
       codex: "C:\\Users\\alice\\.codex\\sessions",
-      chatwise: "C:\\Users\\alice\\AppData\\Roaming\\app.chatwise\\app.db",
       opencode: "C:\\Users\\alice\\.local\\share\\opencode\\opencode.db",
       openclaw: "C:\\Users\\alice\\.openclaw",
       hermes: "C:\\Users\\alice\\.hermes",

@@ -66,7 +66,7 @@ configuration should be written:
 
 ```bash
 memmy-memory init --agent codex
-memmy-memory init --agent codex,cursor,claude,chatwise
+memmy-memory init --agent codex,cursor,claude
 memmy-memory init --skip-agent-skills
 ```
 
@@ -78,7 +78,6 @@ Supported agents:
 - `opencode`
 - `openclaw`
 - `hermes`
-- `chatwise` (installs to `~/.agents/skills`, which ChatWise Agent mode loads)
 
 ## Commands
 
