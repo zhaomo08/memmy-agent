@@ -105,7 +105,7 @@ function panelNormalizeKnownSource(value: unknown): string | undefined {
   const normalized = value.trim().toLowerCase();
   if (normalized === "claude" || normalized.startsWith("claude-")) return "claude-code";
   if (normalized === "open-code" || normalized.startsWith("open-code-")) return "opencode";
-  for (const source of ["hermes", "openclaw", "codex", "cursor", "claude-code", "chatwise", "opencode", "manual", "memmy"]) {
+  for (const source of ["hermes", "openclaw", "codex", "cursor", "claude-code", "opencode", "manual", "memmy"]) {
     if (normalized === source || normalized.startsWith(`${source}-`)) return source;
   }
   return undefined;

@@ -22,7 +22,6 @@ An Agent Source is Memmy's adapter for reading local history from an external Ag
 | Cursor | `~/Library/Application Support/Cursor/User/workspaceStorage/**/state.vscdb` and `globalStorage/state.vscdb` | Hook |
 | Claude Code | `~/.claude/projects/**/*.jsonl` | Hook |
 | Codex | `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` | Hook |
-| ChatWise | `~/Library/Application Support/app.chatwise/app.db` (macOS) | Agent Skill |
 | OpenCode | `~/.local/share/opencode/opencode.db` | Native plugin |
 | OpenClaw | Conversation and memory SQLite databases under `~/.openclaw` | Memory plugin |
 | Hermes | `~/.hermes/sessions/**/*.jsonl` and `~/.hermes/state.db` | Memory Provider plugin |
@@ -90,7 +89,6 @@ Memmy connects to live Agent conversations through each host's native **Hooks** 
 | Cursor | Hook | `beforeSubmitPrompt`, `afterAgentResponse`, `stop` | Starts turns, records responses, captures completed turns, and supports `/memmy-resume` |
 | Claude Code | Hook | `UserPromptSubmit`, `Stop` | Recalls and injects memory before a request, captures the completed turn, and supports `/memmy-resume` |
 | Codex | Hook | `UserPromptSubmit`, `Stop` | Recalls and injects memory before a request, captures the completed turn, and supports `/memmy-resume` |
-| ChatWise | Agent Skill | `~/.agents/skills/memmy-memory` | Searches, reads, and writes shared memory during ChatWise Agent-mode tasks |
 | OpenCode | Native plugin | Message, tool, text-completion, and session events | Recalls memory, captures responses and tool traces, and exposes native memory tools and `/memmy-resume` |
 | OpenClaw | Memory plugin | `before_prompt_build`, `agent_end` | Injects memory while building the prompt, captures the completed turn, and exposes native memory tools |
 | Hermes | Memory Provider plugin | Provider lifecycle methods such as `prefetch` and `sync_turn` | Recalls and captures automatically, mirrors explicit Hermes memory writes, and exposes native memory tools |
@@ -115,7 +113,6 @@ Common results after installation:
 - **Task resumption:** `/memmy-resume <query>` returns up to five L1 episode candidates. Enter `1`–`5` to load the complete episode and inject continuation context.
 - **On-demand lookup:** the bundled Skill keeps `memmy-memory search` and `memmy-memory get` for cases where automatic context is insufficient.
 - **Source attribution:** captured turns carry `cursor`, `claude_code`, `codex`, `opencode`, `openclaw`, or `hermes`, so you can filter and trace their origin.
-- **ChatWise boundary:** ChatWise does not currently expose a native Hook or MCP lifecycle in Agent mode. Memmy reads its SQLite history in read-only mode and installs the Skill for explicit lifecycle/search commands; it never copies provider configuration or API keys.
 
 <Callout type="warn" icon={false}>
   <div className="mb-2 flex items-center gap-2 text-[1.0625rem] font-semibold leading-6 text-fd-card-foreground">

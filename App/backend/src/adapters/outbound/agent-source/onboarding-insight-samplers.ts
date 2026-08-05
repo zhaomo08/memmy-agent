@@ -5,7 +5,6 @@ import { DatabaseSync } from "node:sqlite";
 import { stripInlineMediaPayloads } from "../../../shared/inline-media-sanitizer.js";
 import {
   resolveClaudeCodeProjectsDirectory,
-  resolveChatwiseDatabasePath,
   resolveCodexSessionsDirectory,
   resolveCursorDataPaths,
   resolveHermesHomeDirectory,
@@ -44,25 +43,11 @@ export function createBuiltinOnboardingInsightSamplers(): OnboardingInsightSampl
     createCursorInsightSampler(),
     createClaudeCodeInsightSampler({ root: resolveClaudeCodeProjectsDirectory() }),
     createCodexInsightSampler({ root: resolveCodexSessionsDirectory() }),
-    createChatwiseInsightSampler({ databasePath: resolveChatwiseDatabasePath() }),
     createOpencodeInsightSampler({ databasePath: resolveOpencodeDatabasePath() }),
     createOpenclawInsightSampler({ root: resolveOpenclawStateDirectory() }),
     createHermesInsightSampler({ root: resolveHermesHomeDirectory() }),
     createWorkbuddyInsightSampler({ root: resolveWorkbuddyProjectsDirectory() })
   ];
-}
-
-export function createChatwiseInsightSampler(input: { databasePath: string }): OnboardingInsightSampler {
-  return {
-    sourceId: "chatwise",
-    displayName: "ChatWise",
-    async detect() {
-      return pathExists(input.databasePath);
-    },
-    async sampleRecentUserQueries(options) {
-      return sampleChatwiseDb(input.databasePath, options);
-    }
-  };
 }
 
 export function createWorkbuddyInsightSampler(input: { root: string }): OnboardingInsightSampler {
@@ -410,60 +395,6 @@ function sampleOpencodeDb(path: string, options: OnboardingInsightSampleOptions)
   } finally {
     db.close();
   }
-}
-
-function sampleChatwiseDb(path: string, options: OnboardingInsightSampleOptions): OnboardingSampleResult {
-  if (!pathExistsSync(path)) {
-    return emptyOnboardingSampleResult({ sourceId: "chatwise", displayName: "ChatWise" });
-  }
-  const db = new DatabaseSync(path, { readOnly: true });
-  try {
-    if (!hasTable(db, "message") || !hasTable(db, "chat")) {
-      return emptyOnboardingSampleResult({ sourceId: "chatwise", displayName: "ChatWise" });
-    }
-    const messageColumns = tableColumns(db, "message");
-    const chatColumns = tableColumns(db, "chat");
-    if (!["id", "chatId", "createdAt", "content", "role"].every((column) => messageColumns.includes(column))) {
-      return emptyOnboardingSampleResult({ sourceId: "chatwise", displayName: "ChatWise" });
-    }
-    const agentOptions = chatColumns.includes("agentOptions") ? 'c."agentOptions" AS agent_options' : "NULL AS agent_options";
-    const rows = db.prepare(`
-      SELECT m."id" AS id, m."chatId" AS chat_id, m."createdAt" AS created_at,
-             m."content" AS content, ${agentOptions}
-      FROM "message" m
-      LEFT JOIN "chat" c ON c."id" = m."chatId"
-      WHERE m."role" = 'user' AND m."content" IS NOT NULL AND m."content" != ''
-      ORDER BY m."createdAt" DESC, m."id" DESC
-      LIMIT ?
-    `).all(Math.min(DEFAULT_MAX_SQL_ROWS, options.maxQueries * 4)) as Array<{
-      id: string;
-      chat_id: string;
-      created_at: number | string;
-      content: string;
-      agent_options: string | null;
-    }>;
-    return sqlResult("chatwise", "ChatWise", rows.map((row) => ({
-      sourceId: "chatwise",
-      conversationId: row.chat_id,
-      messageId: row.id,
-      createdAt: normalizeTimestamp(row.created_at),
-      text: row.content,
-      workspacePath: chatwiseWorkspacePath(row.agent_options)
-    })), options);
-  } catch (error) {
-    return emptyOnboardingSampleResult({
-      sourceId: "chatwise",
-      displayName: "ChatWise",
-      errors: [{ target: path, reason: error instanceof Error ? error.message : "read failed" }]
-    });
-  } finally {
-    db.close();
-  }
-}
-
-function chatwiseWorkspacePath(agentOptions: string | null): string | null {
-  const parsed = parseJsonObject(agentOptions ?? "");
-  return parsed ? stringValue(parsed.workDirectory) : null;
 }
 
 function sampleOpenclawDb(path: string, options: OnboardingInsightSampleOptions): OnboardingSampleResult {

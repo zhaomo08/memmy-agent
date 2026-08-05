@@ -10,7 +10,6 @@ const BUILTIN_AGENT_KINDS = [
   "cursor",
   "codex",
   "claude_code",
-  "chatwise",
   "opencode",
   "openclaw",
   "hermes",
