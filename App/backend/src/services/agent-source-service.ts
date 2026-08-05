@@ -490,7 +490,10 @@ async function listSources(options: CreateAgentSourceServiceOptions): Promise<Ag
     })),
     ...[...persistedById.values()].map((source) =>
       toAgentSourceView(
-        source,
+        // No longer present in the live source registry (e.g. a builtin integration
+        // that was removed from the app): treat it as non-builtin so the UI offers
+        // "delete source" instead of skill/hook/plugin actions that have no target.
+        { ...source, builtin: false },
         true,
         options.agentSourceRepository.getScanWatermark(source.sourceId)?.baselineAt ?? null
       )
