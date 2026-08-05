@@ -1,6 +1,5 @@
 import claudeCodeLogoUrl from "../assets/agent-logos/claude-code.svg";
 import codexLogoUrl from "../assets/agent-logos/codex.svg";
-import cursorLogoUrl from "../assets/agent-logos/cursor.svg";
 import hermesLogoUrl from "../assets/agent-logos/hermes.svg";
 import openclawLogoUrl from "../assets/agent-logos/openclaw.svg";
 import opencodeLogoUrl from "../assets/agent-logos/opencode.svg";
@@ -9,7 +8,6 @@ import memmyRiceLogoUrl from "../assets/mascot/memmy-rice.png";
 
 export const MEMORY_AGENT_SOURCE_VALUES = [
   "memmy-agent",
-  "cursor",
   "claude_code",
   "codex",
   "opencode",
@@ -21,7 +19,6 @@ export const MEMORY_AGENT_SOURCE_VALUES = [
 const AGENT_SOURCE_DISPLAY_NAMES: Record<string, string> = {
   memmy: "Memmy",
   memmy_agent: "Memmy",
-  cursor: "Cursor",
   claude_code: "Claude Code",
   codex: "Codex",
   opencode: "OpenCode",
@@ -31,7 +28,6 @@ const AGENT_SOURCE_DISPLAY_NAMES: Record<string, string> = {
 };
 
 export const AGENT_SOURCE_LOGOS: Partial<Record<string, string>> = {
-  cursor: cursorLogoUrl,
   claude_code: claudeCodeLogoUrl,
   codex: codexLogoUrl,
   opencode: opencodeLogoUrl,

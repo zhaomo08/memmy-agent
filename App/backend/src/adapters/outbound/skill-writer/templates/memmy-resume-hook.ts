@@ -69,6 +69,10 @@ async function main() {
 
   const query = parseResumeQuery(prompt);
   if (!isResumeCommand(prompt)) {
+    if (isCodexReviewContinuationNoise(prompt)) {
+      writeAllowOutput();
+      return;
+    }
     try {
       const started = await startCapturedTurn(payload, prompt);
       writeTurnStartOutput(started);
@@ -95,8 +99,7 @@ async function main() {
       query,
       layers: ["L1"],
       limit: SEARCH_LIMIT,
-      verbose: true,
-      source: SOURCE
+      verbose: true
     });
     const candidates = await buildEpisodeCandidates(client, query, result);
     await writePendingState({
@@ -165,7 +168,7 @@ async function captureCompletedTurn(payload) {
     latestAssistantAfterLastUser(transcriptMessages) ||
     (status === "failed" ? failedTurnText(payload) : "")
   );
-  if (!query || !answer || isResumeCommand(query)) {
+  if (!query || !answer || isResumeCommand(query) || isCodexReviewContinuationNoise(query)) {
     await clearTurnState(payload);
     return;
   }
@@ -383,6 +386,10 @@ function parseResumeQuery(prompt) {
     }
   }
   return "";
+}
+
+function isCodexReviewContinuationNoise(text) {
+  return /The following is the Codex agent history added since your last approval assessment/.test(normalizeText(text));
 }
 
 function isResumeCommand(prompt) {

@@ -55,7 +55,7 @@ const demoSkillItems: PanelItemsOutput["items"] = [
     memoryLayer: "Skill",
     status: "archived",
     title: "多端 Agent Skill 分发",
-    summary: "向 Cursor、Codex、Claude Code 等目标写入统一记忆 Skill，并记录权限差异。",
+    summary: "向 Codex、Claude Code 等目标写入统一记忆 Skill，并记录权限差异。",
     tags: ["agent", "skill", "distribution"],
     createdAt: "2026-06-18T13:20:00.000+08:00",
     updatedAt: "2026-07-01T09:50:00.000+08:00",

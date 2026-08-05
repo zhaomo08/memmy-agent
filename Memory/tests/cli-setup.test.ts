@@ -119,7 +119,7 @@ describe("memmy-memory CLI setup commands", () => {
     expect(output).toContain(`Config file: ${join(root, "config.yaml")}`);
     expect(output).toContain(`Database config: ${join(root, "memory.sqlite")}`);
     expect(output).toContain("Endpoint: http://127.0.0.1:18960");
-    expect(output).toContain("Target agents: codex, cursor, claude, opencode, openclaw, hermes");
+    expect(output).toContain("Target agents: codex, claude, opencode, openclaw, hermes");
     expect(output).toContain("Shell completion: Skipped (disabled during init)");
     expect(output).toContain("Try running: memmy-memory health");
     expect(() => JSON.parse(output)).toThrow();
@@ -148,12 +148,6 @@ describe("memmy-memory CLI setup commands", () => {
         root: join(root, ".codex"),
         injectPath: join(root, ".codex", "AGENTS.md"),
         skillPath: join(root, ".codex", "skills", "memmy-memory"),
-        dryRun: false
-      },
-      {
-        agent: "cursor",
-        root: join(root, ".cursor"),
-        skillPath: join(root, ".cursor", "skills", "memmy-memory"),
         dryRun: false
       },
       {
@@ -198,7 +192,6 @@ describe("memmy-memory CLI setup commands", () => {
 
     for (const skillPath of [
       join(root, ".codex", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".cursor", "skills", "memmy-memory", "SKILL.md"),
       join(root, ".claude", "skills", "memmy-memory", "SKILL.md"),
       join(root, ".config", "opencode", "skills", "memmy-memory", "SKILL.md"),
       join(root, ".openclaw", "skills", "memmy-memory", "SKILL.md"),
@@ -226,7 +219,6 @@ describe("memmy-memory CLI setup commands", () => {
 
     expect((result.agents as Array<{ agent: string }>).map(({ agent }) => agent)).toEqual([
       "codex",
-      "cursor",
       "claude",
       "opencode",
       "openclaw"
@@ -555,7 +547,6 @@ function createCliAssets(assetRoot: string): void {
 
 function createAllAgentRoots(root: string): void {
   mkdirSync(join(root, ".codex"), { recursive: true });
-  mkdirSync(join(root, ".cursor"), { recursive: true });
   mkdirSync(join(root, ".claude"), { recursive: true });
   mkdirSync(join(root, ".config", "opencode"), { recursive: true });
   mkdirSync(join(root, ".openclaw", "workspace"), { recursive: true });

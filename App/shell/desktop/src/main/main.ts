@@ -65,7 +65,6 @@ import {
   appendOpenClawSessionToDashboardUrl,
   claudeCodeBinaryCandidates,
   codexBinaryCandidates,
-  cursorAgentBinaryCandidates,
   extractOpenClawDashboardUrl,
   extractOpenClawSessionKey,
   hermesBinaryCandidates,
@@ -5306,9 +5305,6 @@ async function openAgentTool(rawSourceId: unknown, rawPrompt: unknown): Promise<
       return { opened: true };
     }
     return { opened: await openClaudeCodeTerminal(request.prompt) };
-  }
-  if (request.sourceId === "cursor") {
-    return { opened: await openDirectPromptTerminal(request.prompt, cursorAgentBinaryCandidates(homeDirectory)) };
   }
   if (request.sourceId === "codex") {
     return { opened: await openDirectPromptTerminal(request.prompt, codexBinaryCandidates(homeDirectory)) };

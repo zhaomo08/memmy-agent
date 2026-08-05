@@ -193,8 +193,7 @@ describe("codex skill target", () => {
         query: "测试query",
         layers: ["L1"],
         limit: 20,
-        verbose: true,
-        source: "codex"
+        verbose: true
       });
       expect(authorization).toBe("Bearer test-token");
 

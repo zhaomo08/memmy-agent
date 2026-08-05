@@ -1,5 +1,4 @@
 const AGENT_TOOL_PROMPT_DEEPLINK_BUILDERS: Readonly<Record<string, (prompt: string) => string>> = {
-  cursor: (prompt) => `cursor://anysphere.cursor-deeplink/prompt?text=${encodeURIComponent(prompt)}`,
   claude_code: (prompt) => `claude://claude.ai/new?q=${encodeURIComponent(prompt)}`,
   workbuddy: () => "workbuddy://"
 };

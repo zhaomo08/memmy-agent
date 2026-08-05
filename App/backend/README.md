@@ -25,7 +25,7 @@ npm run db:migrate
 
 - `adapters/inbound/local-api`: Fastify routes, runtime-token authentication,
   CORS, SSE, and the Composio MCP bridge.
-- `adapters/outbound/agent-source`: built-in history readers for Cursor, Claude
+- `adapters/outbound/agent-source`: built-in history readers for Claude
   Code, Codex, OpenCode, OpenClaw, Hermes, and WorkBuddy.
 - `adapters/outbound/skill-writer`: Memory skill, hook, command, and plugin
   installation for the supported agents.
@@ -111,7 +111,6 @@ Every route in this table requires the local runtime token.
 
 | Agent       | Default history source                                                                                                                                                                                      | Installed Memory integration                                                                           |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Cursor      | Windows: `%APPDATA%\Cursor\User`; macOS: `~/Library/Application Support/Cursor/User`; Linux: `${XDG_CONFIG_HOME:-~/.config}/Cursor/User` (`workspaceStorage/*/state.vscdb` and `globalStorage/state.vscdb`) | `~/.cursor/skills/memmy-memory/` and `~/.cursor/hooks.json`                                            |
 | Claude Code | `~/.claude/projects/**/*.jsonl`                                                                                                                                                                             | `~/.claude/CLAUDE.md`, `skills/memmy-memory/`, hooks, and the resume command                           |
 | Codex       | `~/.codex/sessions/**/rollout-*.jsonl`                                                                                                                                                                      | `~/.codex/AGENTS.md`, `skills/memmy-memory/`, and hooks                                                |
 | OpenCode    | `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db`                                                                                                                                                     | `${XDG_CONFIG_HOME:-~/.config}/opencode/AGENTS.md`, `skills/memmy-memory/`, plugin, and resume command |

@@ -6,7 +6,6 @@ describe("built-in agent source registry", () => {
     const registry = createBuiltinAgentSourceRegistry();
 
     expect(registry.list().map((adapter) => adapter.descriptor.sourceId)).toEqual([
-      "cursor",
       "claude_code",
       "codex",
       "opencode",

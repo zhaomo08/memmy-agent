@@ -66,14 +66,13 @@ configuration should be written:
 
 ```bash
 memmy-memory init --agent codex
-memmy-memory init --agent codex,cursor,claude
+memmy-memory init --agent codex,claude
 memmy-memory init --skip-agent-skills
 ```
 
 Supported agents:
 
 - `codex`
-- `cursor`
 - `claude`
 - `opencode`
 - `openclaw`
@@ -116,4 +115,4 @@ profile's user ID and then the application user ID from the configured Memmy
 configuration. Configure the application default with
 `memmy config set app.userId <user_id>`.
 Use `--source <agent-source>` to identify the calling agent/source, such as
-`codex`, `cursor`, or `openclaw`.
+`codex` or `openclaw`.

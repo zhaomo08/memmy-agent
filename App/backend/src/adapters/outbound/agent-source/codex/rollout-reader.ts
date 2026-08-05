@@ -2,6 +2,8 @@
 import { basename } from "node:path";
 import { readJsonlObjects, type JsonObject } from "../jsonl-lines.js";
 
+const CODEX_REVIEW_CONTINUATION_PATTERN = /The following is the Codex agent history added since your last approval assessment/;
+
 export interface RawCodexMessage {
   /** Message id. */
   messageId: string;
@@ -47,7 +49,7 @@ function toRawCodexMessage(
   }
 
   const content = getContentText(record.payload.content);
-  if (!content) {
+  if (!content || CODEX_REVIEW_CONTINUATION_PATTERN.test(content)) {
     return null;
   }
 

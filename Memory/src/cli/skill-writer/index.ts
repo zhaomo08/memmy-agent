@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const SUPPORTED_MEMMY_AGENT_IDS = ["codex", "cursor", "claude", "opencode", "openclaw", "hermes"] as const;
+export const SUPPORTED_MEMMY_AGENT_IDS = ["codex", "claude", "opencode", "openclaw", "hermes"] as const;
 export type MemmyAgentId = typeof SUPPORTED_MEMMY_AGENT_IDS[number];
 
 export interface AgentSkillInstallOptions {
@@ -38,10 +38,6 @@ const SKILL_DIRECTORY_NAME = "memmy-memory";
 const AGENT_TARGETS: Record<MemmyAgentId, Omit<AgentTarget, "id" | "root">> = {
   codex: {
     injectRelativePath: "AGENTS.md",
-    skillsRelativePath: "skills"
-  },
-  cursor: {
-    injectRelativePath: null,
     skillsRelativePath: "skills"
   },
   claude: {
@@ -132,7 +128,6 @@ export function normalizeAgentIds(agents: string[]): MemmyAgentId[] {
 function normalizeAgentId(agent: string): MemmyAgentId {
   switch (agent) {
     case "codex":
-    case "cursor":
     case "opencode":
     case "openclaw":
     case "hermes":
@@ -160,8 +155,6 @@ function defaultAgentRoot(agent: MemmyAgentId): string {
   switch (agent) {
     case "codex":
       return configuredDirectory("CODEX_HOME", join(homeDirectory(), ".codex"));
-    case "cursor":
-      return join(homeDirectory(), ".cursor");
     case "claude":
       return configuredDirectory("CLAUDE_CONFIG_DIR", join(homeDirectory(), ".claude"));
     case "opencode": {
