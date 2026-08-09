@@ -28,7 +28,7 @@ export type AgentSourceInstallType =
 
 export type AgentSourceKind = "hook" | "native_plugin" | "skill" | "managed_skill";
 
-const HOOK_AGENT_SOURCE_IDS = new Set(["cursor", "claude_code", "codex"]);
+const HOOK_AGENT_SOURCE_IDS = new Set(["claude_code", "codex"]);
 const NATIVE_PLUGIN_AGENT_SOURCE_IDS = new Set(["opencode", "openclaw", "hermes"]);
 const AGENT_SOURCE_ANALYTICS_SOURCE = "memmy-backend";
 

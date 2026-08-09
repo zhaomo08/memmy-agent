@@ -1254,7 +1254,7 @@ function SourceStatusBadge(props: { source: Pick<AgentSourceView, "sourceId" | "
 }
 
 const NATIVE_PLUGIN_AGENT_SOURCE_IDS = new Set(["opencode", "openclaw", "hermes"]);
-const HOOK_AGENT_SOURCE_IDS = new Set(["codex", "claude_code", "cursor"]);
+const HOOK_AGENT_SOURCE_IDS = new Set(["codex", "claude_code"]);
 
 export function resolveAgentSourceStatusLabelKey(source: Pick<AgentSourceView, "sourceId" | "status">): MessageKey {
   if (source.status === "skill_installed") {

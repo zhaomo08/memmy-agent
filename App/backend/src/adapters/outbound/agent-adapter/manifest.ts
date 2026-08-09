@@ -7,7 +7,6 @@ import type { BuiltinAgentKind } from "./types/domain.js";
 import type { AgentAdapterPluginManifest } from "./types/plugin.js";
 
 const BUILTIN_AGENT_KINDS = [
-  "cursor",
   "codex",
   "claude_code",
   "opencode",

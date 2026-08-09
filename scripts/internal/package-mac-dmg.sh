@@ -633,6 +633,10 @@ cd "$DESKTOP_DIR"
 # DMG background images are committed static assets and are no longer generated during packaging.
 # For style changes, see the historical generator in git history.
 BUILDER_ARGS=(--config "$BUILDER_CONFIG")
+if [ "${MEMMY_SKIP_CODESIGN:-}" = "1" ]; then
+  unset GH_TOKEN GITHUB_TOKEN
+  BUILDER_ARGS+=(--publish never)
+fi
 if [ -n "${MEMMY_ELECTRON_DIST:-}" ]; then
   BUILDER_ARGS+=(--config.electronDist="$MEMMY_ELECTRON_DIST")
 fi

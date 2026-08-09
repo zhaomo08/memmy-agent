@@ -59,6 +59,30 @@ describe("claude code source adapter", () => {
     expect(phases).toEqual(expect.arrayContaining(["discover", "read", "redact", "emit", "done"]));
   });
 
+  it("drops subagent observation and task-notification prompts as non-memory-worthy noise", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "memmy-claude-code-"));
+    const projectsRoot = join(tempDir, "projects");
+    const projectDirectory = join(projectsRoot, "-tmp-project");
+    const sessionFilePath = join(projectDirectory, "session-1.jsonl");
+
+    mkdirSync(projectDirectory, { recursive: true });
+    writeFileSync(
+      sessionFilePath,
+      [
+        JSON.stringify({ type: "user", message: { role: "user", content: "Hello memory agent, you are continuing to observe the primary Claude session.\n\n<observed_from_primary_session>\n  <what_happened>Bash</what_happened>\n</observed_from_primary_session>" }, uuid: "obs-uuid", timestamp: "2026-05-29T10:00:00.000Z", sessionId: "session-1" }),
+        JSON.stringify({ type: "user", message: { role: "user", content: "<task-notification>\n<task-id>abc</task-id>\n</task-notification>" }, uuid: "task-uuid", timestamp: "2026-05-29T10:00:01.000Z", sessionId: "session-1" }),
+        JSON.stringify({ type: "user", message: { role: "user", content: "What does this function do?" }, uuid: "real-uuid", timestamp: "2026-05-29T10:00:02.000Z", sessionId: "session-1" })
+      ].join("\n"),
+      "utf8"
+    );
+
+    const messages = await collect(readClaudeCodeTranscript(sessionFilePath));
+
+    expect(messages).toEqual([
+      expect.objectContaining({ role: "user", content: "What does this function do?" })
+    ]);
+  });
+
   it("treats a missing projects directory as an empty history", async () => {
     const projectsRoot = join(tmpdir(), `memmy-missing-claude-${crypto.randomUUID()}`);
 

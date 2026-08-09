@@ -5,7 +5,6 @@ import {
   resolveClaudeCodeProjectsDirectory,
   resolveCodexHomeDirectory,
   resolveCodexSessionsDirectory,
-  resolveCursorDataPaths,
   resolveHermesHomeDirectory,
   resolveOpencodeConfigDirectory,
   resolveOpencodeDataDirectory,
@@ -80,7 +79,7 @@ describe("agent paths", () => {
     expect(resolveOpencodeConfigDirectory()).toBe("/tmp/custom-opencode");
   });
 
-  it("resolves all seven Agent source paths on macOS", () => {
+  it("resolves all six Agent source paths on macOS", () => {
     const options = {
       platform: "darwin" as const,
       homeDirectory: "/Users/alice",
@@ -88,7 +87,6 @@ describe("agent paths", () => {
     };
 
     expect({
-      cursor: resolveCursorDataPaths(options).workspaceStorageDirectory,
       claudeCode: resolveClaudeCodeProjectsDirectory(options),
       codex: resolveCodexSessionsDirectory(options),
       opencode: resolveOpencodeDatabasePath(options),
@@ -96,7 +94,6 @@ describe("agent paths", () => {
       hermes: resolveHermesHomeDirectory(options),
       workbuddy: resolveWorkbuddyProjectsDirectory(options)
     }).toEqual({
-      cursor: "/Users/alice/Library/Application Support/Cursor/User/workspaceStorage",
       claudeCode: "/Users/alice/.claude/projects",
       codex: "/Users/alice/.codex/sessions",
       opencode: "/Users/alice/.local/share/opencode/opencode.db",
@@ -106,7 +103,7 @@ describe("agent paths", () => {
     });
   });
 
-  it("resolves all seven Agent source paths on Windows", () => {
+  it("resolves all six Agent source paths on Windows", () => {
     const options = {
       platform: "win32",
       homeDirectory: "C:\\Users\\alice",
@@ -116,7 +113,6 @@ describe("agent paths", () => {
     } as const;
 
     expect({
-      cursor: resolveCursorDataPaths(options).workspaceStorageDirectory,
       claudeCode: resolveClaudeCodeProjectsDirectory(options),
       codex: resolveCodexSessionsDirectory(options),
       opencode: resolveOpencodeDatabasePath(options),
@@ -124,7 +120,6 @@ describe("agent paths", () => {
       hermes: resolveHermesHomeDirectory(options),
       workbuddy: resolveWorkbuddyProjectsDirectory(options)
     }).toEqual({
-      cursor: "C:\\Users\\alice\\AppData\\Roaming\\Cursor\\User\\workspaceStorage",
       claudeCode: "C:\\Users\\alice\\.claude\\projects",
       codex: "C:\\Users\\alice\\.codex\\sessions",
       opencode: "C:\\Users\\alice\\.local\\share\\opencode\\opencode.db",
@@ -132,21 +127,5 @@ describe("agent paths", () => {
       hermes: "C:\\Users\\alice\\.hermes",
       workbuddy: "C:\\Users\\alice\\.workbuddy\\projects"
     });
-  });
-
-  it("resolves Cursor's Linux XDG path and Windows fallback path", () => {
-    expect(resolveCursorDataPaths({
-      platform: "linux",
-      homeDirectory: "/home/alice",
-      environment: {
-        XDG_CONFIG_HOME: "/srv/alice/config"
-      }
-    }).userDirectory).toBe("/srv/alice/config/Cursor/User");
-
-    expect(resolveCursorDataPaths({
-      platform: "win32",
-      homeDirectory: "C:\\Users\\alice",
-      environment: {}
-    }).userDirectory).toBe("C:\\Users\\alice\\AppData\\Roaming\\Cursor\\User");
   });
 });
