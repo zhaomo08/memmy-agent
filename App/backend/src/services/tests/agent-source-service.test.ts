@@ -68,6 +68,27 @@ describe("agent source service", () => {
     ]);
   });
 
+  it("reports a persisted source no longer in the registry as non-builtin so the UI offers deletion instead of a broken skill action", async () => {
+    const repository = createRepository();
+    repository.upsertSource({
+      sourceId: "chatwise",
+      displayName: "ChatWise",
+      dataPath: "/tmp/chatwise",
+      builtin: true
+    });
+    repository.setStatus("chatwise", "skill_installed");
+    const service = createService({ repository, adapters: [] });
+
+    await expect(service.list()).resolves.toEqual([
+      expect.objectContaining({
+        sourceId: "chatwise",
+        displayName: "ChatWise",
+        builtin: false,
+        status: "skill_installed"
+      })
+    ]);
+  });
+
   it("marks unavailable builtin sources without removing them from the list", async () => {
     const service = createService({
       adapters: [createFakeAdapter("claude_code", [], undefined, false)]
@@ -1043,15 +1064,15 @@ describe("agent source service", () => {
   it("emits agent source lifecycle and conflict analytics", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const analytics = createAgentSourceAnalyticsRecorder();
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor")],
+      adapters: [createFakeAdapter("codex", undefined, undefined, undefined, { displayName: "Codex", builtin: true })],
       agentSourceAnalytics: analytics.recorder,
       getScanPermission: async () => "scan_and_write_skill",
       skillDistributionService: {
@@ -1080,8 +1101,8 @@ describe("agent source service", () => {
       }
     });
 
-    await service.installPlugin("cursor", { installType: "manual" });
-    await service.uninstallPlugin("cursor", { installType: "manual" });
+    await service.installPlugin("codex", { installType: "manual" });
+    await service.uninstallPlugin("codex", { installType: "manual" });
     await service.detectMemoryPluginConflicts();
 
     expect(analytics.events.map((event) => event.eventName)).toEqual([
@@ -1090,7 +1111,7 @@ describe("agent source service", () => {
       AGENT_SOURCE_ANALYTICS_EVENTS.pluginConflictDetected,
     ]);
     expect(analytics.events[0]?.params).toMatchObject({
-      source_id: "cursor",
+      source_id: "codex",
       source_kind: "hook",
       permission: "scan_and_write_skill",
       status_before: "not_connected",
@@ -1099,7 +1120,7 @@ describe("agent source service", () => {
       success: true,
     });
     expect(analytics.events[1]?.params).toMatchObject({
-      source_id: "cursor",
+      source_id: "codex",
       status_after: "not_connected",
       success: true,
     });
@@ -1161,15 +1182,15 @@ describe("agent source service", () => {
   it("emits failed plugin install analytics before rethrowing", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const analytics = createAgentSourceAnalyticsRecorder();
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor")],
+      adapters: [createFakeAdapter("codex", undefined, undefined, undefined, { displayName: "Codex", builtin: true })],
       agentSourceAnalytics: analytics.recorder,
       getScanPermission: async () => "scan_and_write_skill",
       skillDistributionService: {
@@ -1188,12 +1209,12 @@ describe("agent source service", () => {
       }
     });
 
-    await expect(service.installPlugin("cursor", { installType: "auto_inject" })).rejects.toThrow("install failed");
+    await expect(service.installPlugin("codex", { installType: "auto_inject" })).rejects.toThrow("install failed");
     expect(analytics.events).toHaveLength(1);
     expect(analytics.events[0]).toMatchObject({
       eventName: AGENT_SOURCE_ANALYTICS_EVENTS.pluginInstalled,
       params: {
-        source_id: "cursor",
+        source_id: "codex",
         source_kind: "hook",
         permission: "scan_and_write_skill",
         status_before: "not_connected",
@@ -1307,13 +1328,15 @@ function createFakeAdapter(
   sourceId: string,
   messages: readonly ConversationMessage[] = [createMessage(sourceId, 1)],
   scanImpl?: (options: ScanOptions) => AsyncIterable<ConversationMessage>,
-  available = true
+  available = true,
+  descriptorOverrides?: Partial<SourceDescriptor>
 ): SourceAdapter {
   const descriptor: SourceDescriptor = {
     sourceId,
     displayName: sourceId === "cursor" ? "Cursor" : "Custom",
     builtin: sourceId === "cursor",
-    dataPath: `/tmp/${sourceId}`
+    dataPath: `/tmp/${sourceId}`,
+    ...descriptorOverrides
   };
 
   return {

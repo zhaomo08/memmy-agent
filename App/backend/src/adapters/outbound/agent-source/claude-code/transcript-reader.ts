@@ -1,6 +1,8 @@
 /** Transcript reader module. */
 import { readJsonlObjects, type JsonObject } from "../jsonl-lines.js";
 
+const SUBAGENT_OBSERVATION_PATTERN = /<observed_from_primary_session>|<task-notification>/;
+
 /** Contract for raw claude code message. */
 export interface RawClaudeCodeMessage {
   messageId: string;
@@ -37,7 +39,7 @@ function toRawClaudeCodeMessage(record: JsonObject, fallbackIndex: number): RawC
 
   const message = isRecord(record.message) ? record.message : null;
   const content = getContentText(message?.content);
-  if (!message || !content) {
+  if (!message || !content || SUBAGENT_OBSERVATION_PATTERN.test(content)) {
     return null;
   }
 

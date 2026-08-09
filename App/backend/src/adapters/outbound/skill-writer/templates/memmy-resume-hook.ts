@@ -69,6 +69,10 @@ async function main() {
 
   const query = parseResumeQuery(prompt);
   if (!isResumeCommand(prompt)) {
+    if (isSyntheticAgentPrompt(prompt)) {
+      writeAllowOutput();
+      return;
+    }
     try {
       const started = await startCapturedTurn(payload, prompt);
       writeTurnStartOutput(started);
@@ -95,8 +99,7 @@ async function main() {
       query,
       layers: ["L1"],
       limit: SEARCH_LIMIT,
-      verbose: true,
-      source: SOURCE
+      verbose: true
     });
     const candidates = await buildEpisodeCandidates(client, query, result);
     await writePendingState({
@@ -165,7 +168,7 @@ async function captureCompletedTurn(payload) {
     latestAssistantAfterLastUser(transcriptMessages) ||
     (status === "failed" ? failedTurnText(payload) : "")
   );
-  if (!query || !answer || isResumeCommand(query)) {
+  if (!query || !answer || isResumeCommand(query) || isSyntheticAgentPrompt(query)) {
     await clearTurnState(payload);
     return;
   }
@@ -383,6 +386,13 @@ function parseResumeQuery(prompt) {
     }
   }
   return "";
+}
+
+function isSyntheticAgentPrompt(text) {
+  const normalized = normalizeText(text);
+  return /The following is the Codex agent history (added since your last approval assessment|whose request action you are assessing)/.test(normalized) ||
+    normalized.includes("<observed_from_primary_session>") ||
+    normalized.includes("<task-notification>");
 }
 
 function isResumeCommand(prompt) {

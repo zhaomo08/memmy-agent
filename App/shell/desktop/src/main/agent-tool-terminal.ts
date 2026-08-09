@@ -108,15 +108,6 @@ export function claudeCodeBinaryCandidates(homeDirectory: string): string[] {
   return [`${homeDirectory}/.local/bin/claude`, `${homeDirectory}/.claude/local/claude`, "/opt/homebrew/bin/claude", "/usr/local/bin/claude"];
 }
 
-export function cursorAgentBinaryCandidates(homeDirectory: string): string[] {
-  return [
-    `${homeDirectory}/.local/bin/cursor-agent`,
-    `${homeDirectory}/.cursor/bin/cursor-agent`,
-    "/opt/homebrew/bin/cursor-agent",
-    "/usr/local/bin/cursor-agent"
-  ];
-}
-
 export function codexBinaryCandidates(homeDirectory: string): string[] {
   return [`${homeDirectory}/.local/bin/codex`, `${homeDirectory}/.codex/bin/codex`, "/Applications/ChatGPT.app/Contents/Resources/codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex"];
 }

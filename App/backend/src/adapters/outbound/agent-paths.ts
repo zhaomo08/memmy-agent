@@ -15,17 +15,6 @@ export interface ResolveAgentPathOptions {
   environment?: NodeJS.ProcessEnv;
 }
 
-export interface CursorDataPaths {
-  userDirectory: string;
-  workspaceStorageDirectory: string;
-  globalStateDbPath: string;
-}
-
-export interface ResolveCursorDataPathsOptions extends ResolveAgentPathOptions {
-  appDataDirectory?: string;
-  xdgConfigDirectory?: string;
-}
-
 export function resolveClaudeCodeHomeDirectory(options: ResolveAgentPathOptions = {}): string {
   const runtime = createAgentPathRuntime(options);
   return resolveConfiguredDirectory(
@@ -122,34 +111,6 @@ export function resolveWorkbuddyHomeDirectory(options: ResolveAgentPathOptions =
 
 export function resolveWorkbuddyProjectsDirectory(options: ResolveAgentPathOptions = {}): string {
   return createAgentPathRuntime(options).pathApi.join(resolveWorkbuddyHomeDirectory(options), "projects");
-}
-
-export function resolveCursorDataPaths(options: ResolveCursorDataPathsOptions = {}): CursorDataPaths {
-  const runtime = createAgentPathRuntime(options);
-  const platform = options.platform ?? process.platform;
-  const userDirectory = platform === "win32"
-    ? runtime.pathApi.join(
-        options.appDataDirectory?.trim() ||
-          runtime.environment.APPDATA?.trim() ||
-          runtime.pathApi.join(runtime.homeDirectory, "AppData", "Roaming"),
-        "Cursor",
-        "User"
-      )
-    : platform === "darwin"
-      ? runtime.pathApi.join(runtime.homeDirectory, "Library", "Application Support", "Cursor", "User")
-      : runtime.pathApi.join(
-          options.xdgConfigDirectory?.trim() ||
-            runtime.environment.XDG_CONFIG_HOME?.trim() ||
-            runtime.pathApi.join(runtime.homeDirectory, ".config"),
-          "Cursor",
-          "User"
-        );
-
-  return {
-    userDirectory,
-    workspaceStorageDirectory: runtime.pathApi.join(userDirectory, "workspaceStorage"),
-    globalStateDbPath: runtime.pathApi.join(userDirectory, "globalStorage", "state.vscdb")
-  };
 }
 
 export function resolveAgentPath(value: string): string {

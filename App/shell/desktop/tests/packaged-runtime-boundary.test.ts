@@ -346,6 +346,12 @@ describe("desktop packaged runtime boundaries", () => {
     expect(mainSource).toContain("function isNativeTraySupported()");
     expect(mainSource).toContain('process.platform === "darwin" || process.platform === "win32"');
     expect(mainSource).toContain("new Tray(trayImage, MENU_BAR_TRAY_GUID)");
+    expect(mainSource).toContain('label: "Memory 服务：运行中"');
+    expect(mainSource).toContain('label: "模型与 API Key…"');
+    expect(mainSource).toContain('label: "同步全部记忆"');
+    expect(mainSource).toContain('label: "记忆管理…"');
+    expect(mainSource).toContain('label: "重启 Memory 服务"');
+    expect(mainSource).toContain('body: JSON.stringify({ sourceId: "all", mode: "incremental" })');
     expect(mainSource).toContain('join(process.resourcesPath, "MenuBarIconTemplate.png")');
     expect(mainSource).toContain('resolve(import.meta.dirname, "../../build/MenuBarIconTemplate.png")');
     expect(mainSource).toContain("setTemplateImage(true)");
@@ -1133,18 +1139,23 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).not.toContain("mv -f");
   });
 
-  it("bundles the repo-root .env so packaged apps can resolve MEMMY_CLOUD_SERVICE", () => {
+  it("bundles cloud-service defaults so packaged apps can resolve MEMMY_CLOUD_SERVICE", () => {
     const configs = [
       readFileSync(electronBuilderPath, "utf8"),
-      readFileSync(unsignedElectronBuilderPath, "utf8"),
       readFileSync(winElectronBuilderPath, "utf8"),
       readFileSync(winUnsignedBuilderPath, "utf8")
     ];
+    const unsignedMacConfig = readFileSync(unsignedElectronBuilderPath, "utf8");
+    const packageSource = readFileSync(packageMacDmgPath, "utf8");
 
     for (const config of configs) {
       expect(config).toContain("from: ../../../.env");
       expect(config).toContain("to: .env");
     }
+    expect(unsignedMacConfig).toContain("from: ../../../.env.example");
+    expect(unsignedMacConfig).toContain("to: .env");
+    expect(packageSource).toContain("unset GH_TOKEN GITHUB_TOKEN");
+    expect(packageSource).toContain('BUILDER_ARGS+=(--publish never)');
   });
 });
 

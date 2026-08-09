@@ -52,7 +52,7 @@ Switch agents, close a tab, start a new session, and you're re-introd
 
 Memmy fixes that.
 
-With a unified memory layer shared across Cursor, Claude Code, Codex, OpenClaw 🦞, Hermes Agent and more, your agents build on each other's context instead of starting over. One-shot conversations become a long-term working relationship.
+With a unified memory layer shared across Claude Code, Codex, OpenClaw 🦞, Hermes Agent and more, your agents build on each other's context instead of starting over. One-shot conversations become a long-term working relationship.
 
 It distills your knowledge, preferences, and project experience into personal memory, and share the same context across every Agents.
 
@@ -62,7 +62,7 @@ Available as a desktop app, CLI, and API. You can use the same long
 
 Memmy provides a unified personal memory layer for all AI Agents.
 
-- **Cross-Agent shared memory** Whether working in Codex, Claude Code, Cursor, or OpenClaw, you can keep using the same context and experience, no need to re-introduce anything again.
+- **Cross-Agent shared memory** Whether working in Codex, Claude Code, or OpenClaw, you can keep using the same context and experience, no need to re-introduce anything again.
 - **MemOS-powered memory engine** Automatically collects, understands, and structures your knowledge, preferences, and work experience, distilling scattered conversations and behavior into searchable, reusable long-term memory.
 - **Historical context onboarding** Supports importing the history of your existing Agents, turning past conversations and project experience into a continuously growing personal knowledge asset.
 
@@ -94,7 +94,7 @@ Memmy is designed to guarantee your control over your personal data a
 
 After installing Memmy, it can automatically scan the history of your existing AI Agents. Within minutes, the project context, work habits, and preferences you have accumulated over the past months are converted into personal long-term memory, along with a personalized "First Meeting Report".
 
-Now supported: Cursor, Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent.
+Now supported: Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent, WorkBuddy.
 
 [See the full support list](https://memmy.bot/docs/memory/sources)
 
@@ -122,7 +122,7 @@ Compared with "personal AI Agents" like Hermes and OpenClaw, what sets
 | Product positioning                                          | Memory foundation + general Agent | Personal AI Agent | Personal AI assistant |
 | Local-first, data stays on your machine                      | ✅                                | ⚠️              | ✅                    |
 | One memory shared across Agents                              | ✅                                | 🚫                | 🚫                    |
-| Takes over external Agent history (Cursor/Codex/Claude Code) | ✅                                | 🚫                | 🚫                    |
+| Takes over external Agent history (Codex/Claude Code) | ✅                                | 🚫                | 🚫                    |
 | Installs memory Skills for external Agents                   | ✅                                | 🚫                | 🚫                    |
 | Structured memory engine (MemOS hybrid retrieval)            | ✅                                | ⚠️              | ⚠️                  |
 | Multi-channel reach (Telegram / Discord / iMessage…)        | ✅                                | ✅                | ✅                    |
