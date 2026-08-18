@@ -133,7 +133,7 @@ export class MemmyMemoryHook extends AgentHook implements MemmyMemoryToolRuntime
     const messages = ctx.messages ?? ctx.spec?.initialMessages ?? [];
     try {
       const sessionId = await this.ensureSession(ctx, sessionKey);
-      const turnId = randomUUID();
+      const turnId = stringOrUndefined(ctx.spec?.turnId) ?? randomUUID();
       const userText = lastUserText(messages);
       const turn: MemmyMemoryTurnState = {
         sessionKey,

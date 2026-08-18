@@ -14,8 +14,11 @@ import {
 } from "../analytics/agent-source-analytics.js";
 import { createAgentSourceService } from "./agent-source-service.js";
 import { createBuiltinAgentSourceRegistry } from "./builtin-agent-source-registry.js";
+import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
+import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
+import { createSkillTargetRegistry } from "../adapters/outbound/skill-writer/target-registry.js";
 import { createIngestionService } from "./ingestion-service.js";
-import type { SkillDistributionService } from "./skill-distribution-service.js";
+import { createSkillDistributionService } from "./skill-distribution-service.js";
 import {
   type AgentSourceScanWorkerCommand,
   type AgentSourceScanWorkerData,
@@ -95,7 +98,12 @@ function createAgentSources(appStateStore: AppStateStore, memoryClient: MemoryCl
     agentSourceRepository: appStateStore.repositories.agentSources,
     ingestionService,
     memoryClient,
-    skillDistributionService: createUnavailableSkillDistributionService(),
+    skillDistributionService: createSkillDistributionService({
+      targetRegistry: createSkillTargetRegistry([
+        createClaudeCodeSkillTarget(),
+        createCodexSkillTarget()
+      ])
+    }),
     agentSourceAnalytics: createAgentSourceLifecycleAnalytics({
       getUserId: () => {
         const session = accountSessionRepository.get();
@@ -140,19 +148,6 @@ function readMemoryLayerConfig(env: NodeJS.ProcessEnv): MemoryLayerConfig | null
     token: env.MEMMY_MEMORY_LAYER_TOKEN ?? env.MEMMY_MEMORY_TOKEN ?? env.MEMORY_SERVICE_TOKEN ?? "",
     timeoutMs: Number.parseInt(env.MEMMY_MEMORY_LAYER_TIMEOUT_MS ?? String(DEFAULT_MEMORY_LAYER_TIMEOUT_MS), 10),
     maxRetries: Number.parseInt(env.MEMMY_MEMORY_LAYER_MAX_RETRIES ?? "3", 10)
-  };
-}
-
-function createUnavailableSkillDistributionService(): SkillDistributionService {
-  const unavailable = async () => {
-    throw new Error("Skill distribution is not available in agent source scan worker");
-  };
-
-  return {
-    install: unavailable,
-    uninstall: unavailable,
-    installPlugin: unavailable,
-    uninstallPlugin: unavailable
   };
 }
 

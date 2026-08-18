@@ -17,6 +17,7 @@ import type {
   MemoryProcessingStatusOutput,
   MemoryReloadConfigInput,
   MemoryReloadConfigOutput,
+  RecallEvidenceOutput,
   PanelAnalysisOutput,
   PanelItemsInput,
   PanelItemsOutput,
@@ -33,6 +34,11 @@ import type {
   WorkerRunOutput
 } from "@memmy/local-api-contracts";
 
+/** Per-request metadata forwarded to the Memory service. */
+export interface MemoryRequestContext {
+  timeZone?: string;
+}
+
 /** Contract for memory client. */
 export interface MemoryClient {
   health(): Promise<MemoryHealthSnapshot>;
@@ -44,10 +50,11 @@ export interface MemoryClient {
   startTurn(input: StartTurnInput): Promise<StartTurnOutput>;
   completeTurn(input: CompleteTurnInput & { turnId: string }): Promise<CompleteTurnOutput>;
 
-  search(input: SearchInput): Promise<SearchOutput>;
-  addMemory(input: AddMemoryInput): Promise<AddMemoryOutput>;
-  getMemory(input: { memoryId: string }): Promise<GetMemoryOutput>;
-  deleteMemory(input: DeleteMemoryInput & { memoryId: string }): Promise<DeleteMemoryOutput>;
+  search(input: SearchInput, context?: MemoryRequestContext): Promise<SearchOutput>;
+  addMemory(input: AddMemoryInput, context?: MemoryRequestContext): Promise<AddMemoryOutput>;
+  getMemory(input: { memoryId: string }, context?: MemoryRequestContext): Promise<GetMemoryOutput>;
+  deleteMemory(input: DeleteMemoryInput & { memoryId: string }, context?: MemoryRequestContext): Promise<DeleteMemoryOutput>;
+  recallEvidence(queryId: string, context?: MemoryRequestContext): Promise<RecallEvidenceOutput>;
 
   enqueueImportSummaries(memoryIds?: string[]): Promise<EnqueueImportSummariesOutput>;
   getMemoryProcessingStatus(memoryIds: string[]): Promise<MemoryProcessingStatusOutput>;

@@ -2114,6 +2114,7 @@ export function HomePage() {
                 sanitizePlatformApiErrors={sanitizePlatformApiErrors}
                 accountMode={isAccountMode}
                 artifactClient={sessionArtifactClient}
+                memoryRuntimeClient={clients?.memoryRuntime ?? null}
               />
             </div>
           </div>
