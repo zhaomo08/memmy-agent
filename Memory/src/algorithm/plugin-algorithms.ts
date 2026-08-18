@@ -14,6 +14,7 @@ import { stableHash } from "../utils/id.js";
 export interface CapturedTraceStep {
   key: string;
   ts: number;
+  timeZone?: string;
   turnId: string;
   rawTurnId?: string;
   stepIndex: number;
@@ -42,6 +43,7 @@ export interface TraceMemoryMeta {
   id: string;
   memory: MemoryRow;
   ts: number;
+  timeZone?: string;
   turnId?: string;
   rawTurnId?: string;
   episodeId?: string;
@@ -74,7 +76,7 @@ export interface PolicyMemoryMeta {
   support: number;
   gain: number;
   confidence: number;
-  status: "candidate" | "active" | "archived";
+  status: "candidate" | "active" | "verification_required" | "quarantined" | "superseded" | "archived";
   experienceType: "success_pattern" | "repair_validated" | "failure_avoidance" | "repair_instruction" | "preference" | "verifier_feedback";
   evidencePolarity: "positive" | "negative" | "mixed" | "neutral";
   skillEligible: boolean;
@@ -969,6 +971,10 @@ Produce ONE policy describing the action pattern. The policy must:
 - Note at least one CAVEAT or failure mode observed in the traces — a
   step-level pitfall, NOT a generic environment taboo.
 - Generalize across the input traces, not restate one of them.
+- Return should_generate=false when the evidence has no reusable task action,
+  is only a user preference or factual statement, duplicates an existing rule,
+  or contains unresolved contradictory feedback. Do not invent a policy merely
+  to satisfy the output schema.
 
 Source-specific entity boundary:
 - Names, locations, product names, file names, one-off requested targets,
@@ -1030,9 +1036,13 @@ libs by default":
 
 Return JSON:
 {
+  "should_generate": true | false,
   "title": "short imperative title",
   "trigger": "state-level condition the agent can detect",
   "action": "templated step or step sequence",
+  "expected_outcome": "observable result expected after the action",
+  "verification": "how to verify that result",
+  "exclusions": ["condition where this policy must not be used", ...],
   "rationale": "why this action works ON THESE TRACES (not why the
                 environment behaves this way)",
   "caveats": ["step-level pitfall string", ...],
@@ -3135,6 +3145,7 @@ export function captureTurnSteps(input: {
   toolCalls?: ToolCallPayload[];
   toolResults?: unknown[];
   createdAtIso: string;
+  timeZone?: string;
   maxTextChars?: number;
   maxToolOutputChars?: number;
 }): CapturedTraceStep[] {
@@ -3147,6 +3158,7 @@ export function captureTurnSteps(input: {
   const rawSteps: Array<Omit<CapturedTraceStep, "summary" | "tags" | "vecSummary" | "vecAction" | "errorSignatures">> = [{
     key: `${input.episodeId}:${input.turnId}:turn`,
     ts: Number.isFinite(baseTs) ? baseTs : Date.now(),
+    timeZone: input.timeZone,
     turnId: input.turnId,
     stepIndex: 0,
     subStepTotal: 1,
@@ -3195,6 +3207,7 @@ export function traceMetaFromMemory(memory: MemoryRow): TraceMemoryMeta | null {
     id: memory.id,
     memory,
     ts: numberField(trace, "ts") ?? Date.parse(memory.timeline),
+    timeZone: stringField(trace, "time_zone") ?? stringField(memory.info, "time_zone"),
     turnId: stringField(trace, "turn_id"),
     rawTurnId: stringField(trace, "raw_turn_id"),
     episodeId: stringField(trace, "episode_id"),
@@ -3247,7 +3260,14 @@ export function policyMetaFromMemory(memory: MemoryRow): PolicyMemoryMeta | null
     support: numberField(policy, "support") ?? 0,
     gain: numberField(policy, "gain") ?? 0,
     confidence: numberField(policy, "policy_confidence") ?? numberField(policy, "confidence") ?? clamp01(0.5 + (numberField(policy, "gain") ?? 0)),
-    status: statusField(policy, "status", ["candidate", "active", "archived"]) ?? "candidate",
+    status: statusField(policy, "status", [
+      "candidate",
+      "active",
+      "verification_required",
+      "quarantined",
+      "superseded",
+      "archived"
+    ]) ?? "candidate",
     experienceType: statusField(policy, "experience_type", [
       "success_pattern",
       "repair_validated",
@@ -3520,14 +3540,24 @@ export function buildPolicyDraft(args: {
     alpha: args.gainEmaAlpha ?? 0.4,
     isFirst: args.currentSupport === undefined || args.currentSupport === 0
   });
-  const status = policyStatusAfterGain({
+  const minSupport = args.minSupport ?? 1;
+  let status = policyStatusAfterGain({
     currentStatus: args.currentStatus ?? "candidate",
     support,
     gain,
-    minSupport: args.minSupport ?? 1,
+    minSupport,
     minGain: args.minGain ?? 0.02,
     archiveGain: args.archiveGain ?? -0.05
   });
+  if (status === "active" && minSupport >= 3) {
+    const successfulEpisodes = distinct(
+      args.evidenceTraces
+        .filter((trace) => trace.value > 0)
+        .map((trace) => trace.episodeId || trace.id)
+        .filter(isString)
+    ).length;
+    if (successfulEpisodes < 2) status = "candidate";
+  }
   const tags = distinct(args.evidenceTraces.flatMap((trace) => trace.tags)).slice(0, 10);
   const confidence = clamp01(0.5 + rawGain);
   const label = signatureLabel(args.signature, tags);
@@ -3845,7 +3875,11 @@ export function buildSkillDraft(args: {
     tools: toolsFromSignature(args.policy.signature)
   };
   return {
-    key: `skill:${args.policy.id}`,
+    key: `skill:${stableHash({
+      name,
+      trigger: args.policy.trigger,
+      tools: toolsFromSignature(args.policy.signature)
+    }).slice(0, 20)}`,
     name,
     status: "candidate",
     eta,
@@ -4663,7 +4697,7 @@ export function policyStatusAfterGain(input: {
   if (input.currentStatus === "candidate") {
     return input.support >= input.minSupport && input.gain >= input.minGain ? "active" : "candidate";
   }
-  return input.gain < input.archiveGain || input.support <= 0 ? "archived" : "active";
+  return input.gain < input.archiveGain || input.support < input.minSupport ? "archived" : "active";
 }
 
 function buildPolicyProcedure(evidence: TraceMemoryMeta[]): string {
@@ -4893,6 +4927,12 @@ interface RankedMemoryCandidate {
 
 export function isMemoryReadyForRetrieval(memory: MemoryRow): boolean {
   if (memory.status === "deleted" || memory.status === "archived") return false;
+  const evidenceStatus = memory.properties.internal_info.evidence_status;
+  if (evidenceStatus === "provisional" || evidenceStatus === "disputed") return false;
+  const policy = memory.memoryLayer === "L2" ? policyMetaFromMemory(memory) : null;
+  if (policy && policy.status !== "candidate" && policy.status !== "active") return false;
+  const skill = memory.memoryLayer === "Skill" ? skillMetaFromMemory(memory) : null;
+  if (skill && skill.status !== "candidate" && skill.status !== "active") return false;
   if (hasMemoryRetrievalIndex(memory)) return true;
   if (hasPendingImportPipeline(memory)) return false;
   return hasSearchableText(memory);

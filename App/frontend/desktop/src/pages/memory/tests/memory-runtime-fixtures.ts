@@ -13,6 +13,7 @@ import type {
   PanelItemsInput,
   PanelItemsOutput,
   PanelOverviewOutput,
+  RecallEvidenceOutput,
   RecallHit,
   SearchOutput,
   StartTurnOutput,
@@ -210,6 +211,7 @@ export const mockMemoryDetails: Record<string, GetMemoryOutput> = {
 export const mockPanelOverview: PanelOverviewOutput = {
   counts: {
     memories: 9,
+    userMemories: 5,
     skills: 2,
     experiences: 4,
     worldModels: 3
@@ -407,6 +409,17 @@ export function createMockMemoryRuntimeClient(): MemoryRuntimeClient {
         changeSeq: 46,
         syncCursor: "cursor-change-46",
         auditId: "audit-delete-1",
+        serverTime: now
+      };
+    },
+
+    async recallEvidence(queryId): Promise<RecallEvidenceOutput> {
+      return {
+        recallEventId: "recall-event-1",
+        queryId,
+        query: "mock query",
+        hits: [],
+        createdAt: now,
         serverTime: now
       };
     },
