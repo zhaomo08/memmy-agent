@@ -1054,6 +1054,7 @@ export class MemmyMemoryConfig extends Base {
   profiles?: Dict;
   version?: number;
   storage?: Dict;
+  retrievalLayers?: Array<"L1" | "L2" | "L3" | "Skill">;
   summary?: Dict;
   evolution?: Dict;
   embedding?: Dict;
@@ -1067,6 +1068,12 @@ export class MemmyMemoryConfig extends Base {
     this.profiles = pickMemoryProfiles(init.profiles);
     this.version = pick<number | undefined>(init, ["version"], undefined);
     this.storage = pick<Dict | undefined>(init, ["storage"], undefined);
+    const retrievalLayers = pick<unknown>(init, ["retrievalLayers"], undefined);
+    this.retrievalLayers = retrievalLayers === undefined
+      ? undefined
+      : [...new Set(assertStringArray("memmyMemory.retrievalLayers", retrievalLayers).map((layer, index) =>
+          assertOneOf(`memmyMemory.retrievalLayers[${index}]`, layer, ["L1", "L2", "L3", "Skill"] as const)
+        ))];
     this.summary = pick<Dict | undefined>(init, ["summary"], undefined);
     this.evolution = pick<Dict | undefined>(init, ["evolution"], undefined);
     this.embedding = pick<Dict | undefined>(init, ["embedding"], undefined);
@@ -1081,6 +1088,7 @@ export class MemmyMemoryConfig extends Base {
       profiles: this.profiles,
       version: this.version,
       storage: this.storage,
+      retrievalLayers: this.retrievalLayers,
       summary: this.summary,
       evolution: this.evolution,
       embedding: this.embedding,
