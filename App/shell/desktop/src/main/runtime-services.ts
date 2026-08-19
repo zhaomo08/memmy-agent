@@ -1,3 +1,4 @@
+import type { AgentGatewayStartupIssue } from "@memmy/local-api-contracts";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -32,6 +33,8 @@ export interface PackagedRuntimeServices {
     baseUrl: string;
     bootstrapSecret: string;
     configPath: string;
+    workspace: string;
+    startupIssue?: AgentGatewayStartupIssue;
   };
   restartMemory(): Promise<void>;
   close(): Promise<void>;
@@ -154,7 +157,7 @@ export async function startPackagedRuntimeServices(
       .catch((error) => {
         console.warn(`Memory service unavailable during desktop startup: ${errorMessage(error)}`);
       });
-    await gatewaySupervisor.ensureStarted();
+    const agentGatewayStartupIssue = await startAgentGatewayWithRecovery(gatewaySupervisor);
 
     return {
       memory: {
@@ -166,7 +169,9 @@ export async function startPackagedRuntimeServices(
       agentGateway: {
         baseUrl: runtimeConfig.agentGatewayBaseUrl,
         bootstrapSecret: runtimeConfig.agentGatewayBootstrapSecret,
-        configPath: runtimeConfig.configPath
+        configPath: runtimeConfig.configPath,
+        workspace: runtimeConfig.agentWorkspace,
+        ...(agentGatewayStartupIssue ? { startupIssue: agentGatewayStartupIssue } : {})
       },
       async restartMemory() {
         if (closing) {
@@ -668,6 +673,26 @@ export interface AgentGatewaySupervisorDependencies {
   clearTimer?: typeof clearTimeout;
 }
 
+export async function startAgentGatewayWithRecovery(
+  supervisor: Pick<AgentGatewaySupervisor, "ensureStarted" | "startRecovery">
+): Promise<AgentGatewayStartupIssue | null> {
+  try {
+    await supervisor.ensureStarted();
+    return null;
+  } catch (error) {
+    console.warn(`Agent gateway unavailable during desktop startup: ${errorMessage(error)}`);
+    supervisor.startRecovery();
+    return classifyAgentGatewayStartupIssue(error);
+  }
+}
+
+function classifyAgentGatewayStartupIssue(error: unknown): AgentGatewayStartupIssue | null {
+  const message = errorMessage(error);
+  return /failed to load config[\s\S]*\b(providers|modelPresets|modelAssignments|agents\.defaults)\b/i.test(message)
+    ? "model_config_invalid"
+    : null;
+}
+
 export class AgentGatewaySupervisor {
   ownership: "external" | "owned" | null = null;
   ownedChild: ManagedChild | null = null;
@@ -714,6 +739,11 @@ export class AgentGatewaySupervisor {
       this.startPromise = null;
     });
     return this.startPromise;
+  }
+
+  startRecovery(): void {
+    if (this.stopping || this.hasReachedReady) return;
+    this.scheduleReplacement();
   }
 
   async close(): Promise<void> {
@@ -895,6 +925,9 @@ export class AgentGatewaySupervisor {
     }
     try {
       await this.spawnOwnedGateway(false);
+      if (!this.hasReachedReady) {
+        this.scheduleReplacement();
+      }
     } catch {
       this.scheduleReplacement();
     }
