@@ -83,6 +83,7 @@ describe("memmy memory discovery", () => {
         version: 1,
         storage: { endpoint: "http://127.0.0.1:18960", token: "service-token" },
         embedding: { provider: "hash" },
+        retrievalLayers: ["L1", "L3", "L1"],
       },
     });
     const defaultConfig = new Config();
@@ -93,6 +94,7 @@ describe("memmy memory discovery", () => {
     expect(resolveMemmyMemoryConfig(enabled).enabled).toBe(true);
     expect(resolveMemmyMemoryConfig(defaultConfig).enabled).toBe(true);
     expect(resolveMemmyMemoryConfig(enabled).userId).toBe("user_config_1");
+    expect(resolveMemmyMemoryConfig(enabled).retrievalLayers).toEqual(["L1", "L3"]);
     expect(resolveMemmyMemoryConfig(disabled).enabled).toBe(false);
     expect(resolveMemmyMemoryConfig(disabled).userId).toBe("local-user");
     expect(enabled.toObject().memmyMemory).toEqual({
@@ -101,6 +103,7 @@ describe("memmy memory discovery", () => {
       version: 1,
       storage: { endpoint: "http://127.0.0.1:18960", token: "service-token" },
       embedding: { provider: "hash" },
+      retrievalLayers: ["L1", "L3"],
     });
     expect(enabled.toObject().app).toEqual({
       userId: "user_config_1",
