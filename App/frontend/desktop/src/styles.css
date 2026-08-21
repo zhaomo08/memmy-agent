@@ -6385,11 +6385,6 @@ input[type="checkbox"].check-sky:checked::after {
   outline: 1px solid rgba(17, 29, 28, 0.06);
 }
 
-.channel-integration-icon-imessage {
-  background: color-mix(in srgb, #34c759 12%, var(--color-background-paper));
-  color: #238a43;
-}
-
 .generic-integration-icon-badge {
   background: color-mix(in srgb, var(--color-canvas-oat) 70%, var(--color-background-paper));
   outline: 1px solid rgba(17, 29, 28, 0.06);

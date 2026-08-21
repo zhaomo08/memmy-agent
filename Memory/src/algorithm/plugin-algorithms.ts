@@ -215,7 +215,7 @@ const RELATION_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const RELATION_STRONG_HEURISTIC_THRESHOLD = 0.85;
 const RELATION_ARBITRATION_THRESHOLD = 0.8;
 const RELATION_ALLOWED: TurnRelation[] = ["revision", "follow_up", "new_task", "end_topic", "unknown"];
-const RELATION_GENERIC_TAGS = new Set(["trace", "turn", "memory", "openclaw", "codex", "hermes"]);
+const RELATION_GENERIC_TAGS = new Set(["trace", "turn", "memory", "codex", "claude", "claude-code"]);
 export function classifyIntent(text: string): IntentDecision {
   const trimmed = text.trim();
   if (!trimmed) {

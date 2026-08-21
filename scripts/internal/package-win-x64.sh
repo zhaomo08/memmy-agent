@@ -433,15 +433,6 @@ verify_windows_sharp_module() {
   require_packaged_runtime_glob "$sharp_dir/libvips*.dll"
 }
 
-verify_windows_agent_native_artifacts() {
-  local node_pty_dir="$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64"
-
-  require_packaged_runtime_file "$node_pty_dir/conpty.node"
-  require_packaged_runtime_file "$node_pty_dir/conpty/conpty.dll"
-  require_packaged_runtime_file "$node_pty_dir/conpty/OpenConsole.exe"
-  require_packaged_runtime_glob "$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/sqlite-vec-windows-x64/vec0.*"
-}
-
 verify_packaged_windows_unpacked_artifacts() {
   local unpacked_runtime="$DESKTOP_DIR/release/win-unpacked/resources/app.asar.unpacked/dist/runtime"
 
@@ -454,8 +445,6 @@ verify_packaged_windows_unpacked_artifacts() {
     echo "Packaged migrations package must not be a symbolic link." >&2
     exit 1
   fi
-  require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty/conpty.dll"
-  require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty/OpenConsole.exe"
 }
 
 npm_ci_win_x64() {
@@ -545,7 +534,6 @@ if [ -e "$MIGRATIONS_STAGING_DIR" ]; then
   echo "Migrations staging directory was not removed." >&2
   exit 1
 fi
-verify_windows_agent_native_artifacts
 (
   cd "$RUNTIME_DIR/memmy-agent"
   node --input-type=module --eval '

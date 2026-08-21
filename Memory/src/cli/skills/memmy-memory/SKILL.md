@@ -25,7 +25,7 @@ Use this skill when the task needs persistent agent memory through the `memmy-me
 - `--url <url>` sends requests to a specific Memory HTTP service.
 - `--token <token>` sends a bearer token.
 - `--config <path>` loads a specific Memmy config file.
-- `--source <agent-source>` identifies the calling agent/source, such as `codex` or `openclaw`; use it on memory commands from installed agent skills.
+- `--source <agent-source>` identifies the calling agent/source, either `codex` or `claude`; use it on memory commands from installed agent skills.
 - `--body '<json>'`, `--json '<json-or-path>'`, and `--body-file <path>` provide request body fields.
 
 Prefer explicit CLI parameters for required fields. Use JSON body options only for extra request fields or raw debugging.
