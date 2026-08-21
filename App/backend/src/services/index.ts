@@ -7,14 +7,8 @@ import {
 import type { AgentAdapterRegistry } from "../adapters/outbound/agent-adapter/index.js";
 import { createBuiltinOnboardingInsightSamplers } from "../adapters/outbound/agent-source/onboarding-insight-samplers.js";
 import type { SourceRegistry } from "../adapters/outbound/agent-source/source-registry.js";
-import { createHttpMemmyAgentAdminClient } from "../adapters/outbound/memmy-agent-admin-client/http-memmy-agent-admin-client.js";
-import type { MemmyAgentAdminClient } from "../adapters/outbound/memmy-agent-admin-client/index.js";
 import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
 import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
-import { createHermesSkillTarget } from "../adapters/outbound/skill-writer/hermes/index.js";
-import { createOpenclawSkillTarget } from "../adapters/outbound/skill-writer/openclaw/index.js";
-import { createOpencodeSkillTarget } from "../adapters/outbound/skill-writer/opencode/index.js";
-import { createWorkbuddySkillTarget } from "../adapters/outbound/skill-writer/workbuddy/index.js";
 import { createSkillTargetRegistry, type SkillTargetRegistry } from "../adapters/outbound/skill-writer/target-registry.js";
 import type { CloudClient } from "../adapters/outbound/cloud-client/index.js";
 import type { MemoryClient } from "../adapters/outbound/memory-client/index.js";
@@ -39,7 +33,6 @@ import {
   type BootstrapScenario,
   type BootstrapService
 } from "./bootstrap-service.js";
-import { createChannelService, type ChannelService } from "./channel-service.js";
 import { createIntegrationService, type IntegrationService } from "./integration-service.js";
 import { createIngestionService, type IngestionService } from "./ingestion-service.js";
 import { createLocalDataService, type LocalDataService } from "./local-data-service.js";
@@ -67,8 +60,6 @@ export interface BackendServices {
   account: AccountService;
   /** Integrations. */
   integrations: IntegrationService;
-  /** Channels. */
-  channels: ChannelService;
   localData: LocalDataService;
   agentSources: AgentSourceService;
   agentSourceAutoInject: AgentSourceAutoInjectService;
@@ -102,10 +93,6 @@ export interface CreateBackendServicesOptions {
   memmyConfigWriter?: MemmyConfigWriter;
   /** Memmy config path. */
   memmyConfigPath?: string;
-  /** Memmy agent admin client. */
-  memmyAgentAdminClient?: MemmyAgentAdminClient;
-  /** Memmy agent admin bootstrap secret. */
-  memmyAgentAdminBootstrapSecret?: string | null;
 }
 
 export function createBackendServices(options: CreateBackendServicesOptions): BackendServices {
@@ -123,21 +110,13 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
     options.skillTargetRegistry ??
     createSkillTargetRegistry([
       createClaudeCodeSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
-      createCodexSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
-      createOpencodeSkillTarget(),
-      createOpenclawSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
-      createHermesSkillTarget({ memmyConfigPath: options.memmyConfigPath }),
-      createWorkbuddySkillTarget()
+      createCodexSkillTarget({ memmyConfigPath: options.memmyConfigPath })
     ]);
   const skillDistributionService =
     options.skillDistributionService ??
     createSkillDistributionService({
       targetRegistry: skillTargetRegistry
     });
-  const memmyAgentAdminClient =
-    options.memmyAgentAdminClient ??
-    createHttpMemmyAgentAdminClient({ bootstrapSecret: options.memmyAgentAdminBootstrapSecret });
-  const memmyConfigWriter = options.memmyConfigWriter ?? createUnavailableMemmyConfigWriter();
   const accountSessionRepository = options.appStateStore.repositories.accountSession;
   const agentSources = createAgentSourceService({
     sourceRegistry,
@@ -183,10 +162,6 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
     integrations: createIntegrationService({
       cloudClient: options.cloudClient,
       composioMachineTokenRepository: options.appStateStore.repositories.composioMachineToken
-    }),
-    channels: createChannelService({
-      memmyConfigWriter,
-      memmyAgentAdminClient
     }),
     localData: createLocalDataService({
       localDataStore: options.appStateStore.localDataStore
@@ -278,20 +253,5 @@ function createAppStateAgentTaskModelResolver(appStateStore: AppStateStore): Onb
         apiType: projection.agentApiType
       };
     }
-  };
-}
-
-function createUnavailableMemmyConfigWriter(): MemmyConfigWriter {
-  const unavailable = () => {
-    throw new Error("Memmy config writer is not configured");
-  };
-
-  return {
-    writeAccountModelProjection: async () => unavailable(),
-    clearAccountModelProjection: async () => unavailable(),
-    writeByokModelProjection: async () => unavailable(),
-    writeActiveMemoryProfile: async () => unavailable(),
-    patchChannelConfig: async () => unavailable(),
-    patchMcpServerConfig: async () => unavailable()
   };
 }

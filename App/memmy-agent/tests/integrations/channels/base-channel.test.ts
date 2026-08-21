@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InboundMessage, MessageBus, OutboundMessage } from "../../../src/core/runtime-messages/index.js";
 import { BaseChannel } from "../../../src/integrations/channels/base.js";
-import { approveCode, clearStore, generateCode, PAIRING_CODE_META_KEY } from "../../../src/integrations/channel-auth/index.js";
 
 class DummyChannel extends BaseChannel {
   name = "dummy";
@@ -30,18 +29,13 @@ class ReasoningChannel extends DummyChannel {
 }
 
 describe("BaseChannel permissions and inbound handling", () => {
-  it("requires exact allowFrom matches and supports star plus pairing fallback", () => {
-    clearStore();
+  it("requires exact allowFrom matches and supports star", () => {
     const channel = new DummyChannel({ allowFrom: ["allow@email.com"] }, new MessageBus());
 
     expect(channel.isAllowed("allow@email.com")).toBe(true);
     expect(channel.isAllowed("attacker|allow@email.com")).toBe(false);
     expect(new DummyChannel({ allowFrom: ["*"] }, new MessageBus()).isAllowed("anyone")).toBe(true);
     expect(new DummyChannel({ allowFrom: null }, new MessageBus()).isAllowed("alice")).toBe(false);
-
-    const code = generateCode("dummy", "paired");
-    approveCode(code);
-    expect(new DummyChannel({ allowFrom: [] }, new MessageBus()).isAllowed("paired")).toBe(true);
   });
 
   it("supports object allowFrom aliases", () => {
@@ -57,25 +51,11 @@ describe("BaseChannel permissions and inbound handling", () => {
     expect(new DummyChannel({ allowFrom: null }, new MessageBus()).isAllowed("alice")).toBe(false);
   });
 
-  it("denies unknown senders when pairing fallback does not approve them", () => {
-    clearStore();
-    const code = generateCode("dummy", "paired");
-    approveCode(code);
-    const channel = new DummyChannel({ allowFrom: [] }, new MessageBus());
-
-    expect(channel.isAllowed("paired")).toBe(true);
-    expect(channel.isAllowed("unknown")).toBe(false);
-  });
-
-  it("sends pairing codes in DMs and ignores unapproved group messages", async () => {
-    clearStore();
+  it("ignores unapproved direct and group messages", async () => {
     const channel = new DummyChannel({ allowFrom: [] }, new MessageBus());
 
     await channel.handleMessage("stranger", "chat1", "hello", [], {}, null, true);
-    expect(channel.sent).toHaveLength(1);
-    const code = channel.sent[0].metadata[PAIRING_CODE_META_KEY];
-    expect(code).toBeTruthy();
-    expect(channel.sent[0].content).toContain(code);
+    expect(channel.sent).toEqual([]);
 
     const group = new DummyChannel({ allowFrom: [] }, new MessageBus());
     await group.handleMessage("stranger", "chat1", "hello", [], {}, null, false);

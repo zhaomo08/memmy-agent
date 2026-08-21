@@ -557,12 +557,8 @@ function filterMemoryItems(input: PanelItemsInput): PanelItemsOutput {
       const sourceAgent = metadataSource || item.tags.find((tag) => [
         "memmy",
         "memmy_agent",
-        "cursor",
         "claude_code",
-        "codex",
-        "opencode",
-        "openclaw",
-        "hermes"
+        "codex"
       ].includes(normalizeSourceAgentKey(tag))) || "";
       if (input.sourceAgent) {
         return normalizeSourceAgentKey(sourceAgent) === normalizeSourceAgentKey(input.sourceAgent);

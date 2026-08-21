@@ -12,7 +12,6 @@ export * as cron from "./cron/index.js";
 export * as byokTokenUsage from "./integrations/byok-token-usage/index.js";
 export * as heartbeat from "./heartbeat/index.js";
 export * as memmyMemory from "./memmy-memory/index.js";
-export * as channelAuth from "./integrations/channel-auth/index.js";
 export * as providers from "./providers/index.js";
 export * as security from "./security/index.js";
 export * as session from "./core/session/index.js";

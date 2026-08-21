@@ -18,7 +18,7 @@ describe("ProductTourGuide", () => {
     expect(resolveMainWindowActionRoute("/settings")).toBe("workspace");
   });
 
-  it("原封不动保留 v2 原型 2 步导览内容和相对锚点", () => {
+  it("保留两步导览结构并只展示当前支持范围", () => {
     expect(
       productTourSteps.map((step) => ({
         tab: step.tab,
@@ -52,7 +52,7 @@ describe("ProductTourGuide", () => {
         tab: "tools",
         title: "连接与工具",
         pose: "chat",
-        description: "在这里绑定 Telegram、Discord、微信、飞书等消息渠道，并启用 GitHub、Notion、Slack 等工具集成，让 Agent 跨平台、跨工具为你服务",
+        description: "在这里启用 GitHub、Notion 等工具集成，让 Agent 在你授权的范围内完成任务",
         arrow: "bottom",
         bubblePlacement: {
           anchorId: PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,

@@ -26,10 +26,9 @@ export type AgentSourceInstallType =
   | "auto_inject"
   | "conflict_replace";
 
-export type AgentSourceKind = "hook" | "native_plugin" | "skill" | "managed_skill";
+export type AgentSourceKind = "hook" | "skill" | "managed_skill";
 
 const HOOK_AGENT_SOURCE_IDS = new Set(["claude_code", "codex"]);
-const NATIVE_PLUGIN_AGENT_SOURCE_IDS = new Set(["opencode", "openclaw", "hermes"]);
 const AGENT_SOURCE_ANALYTICS_SOURCE = "memmy-backend";
 
 export type AgentSourceLifecycleAnalytics = {
@@ -72,7 +71,6 @@ export type AgentSourceConflictInput = {
 
 export function resolvePluginSourceKind(sourceId: string): AgentSourceKind | undefined {
   if (HOOK_AGENT_SOURCE_IDS.has(sourceId)) return "hook";
-  if (NATIVE_PLUGIN_AGENT_SOURCE_IDS.has(sourceId)) return "native_plugin";
   return undefined;
 }
 

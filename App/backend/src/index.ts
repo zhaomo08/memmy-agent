@@ -13,10 +13,7 @@ import {
   type MemoryLayerConfig
 } from "./adapters/outbound/memory-client/index.js";
 import { resolveDefaultRuntimeConfigPath, writeRuntimeConfigFile } from "./infrastructure/cli-binary/index.js";
-import {
-  createMemmyConfigWriter,
-  readAgentGatewayBootstrapSecret
-} from "./infrastructure/memmy-config/index.js";
+import { createMemmyConfigWriter } from "./infrastructure/memmy-config/index.js";
 import { createPermissionManager } from "./permission/index.js";
 import { createLocalApiServer } from "./adapters/inbound/local-api/server.js";
 import { createBackendServices, type BootstrapScenario } from "./services/index.js";
@@ -119,8 +116,7 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
       permissionManager,
       bootstrapScenario: options.bootstrapScenario,
       memmyConfigWriter,
-      memmyConfigPath,
-      memmyAgentAdminBootstrapSecret: await readAgentGatewayBootstrapSecret(memmyConfigPath)
+      memmyConfigPath
     });
     const localToken = await permissionManager.getRuntimeToken();
     const composioMcpToken = `mmt_${randomBytes(32).toString("base64url")}`;

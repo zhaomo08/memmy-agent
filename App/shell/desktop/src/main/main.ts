@@ -58,18 +58,8 @@ import { buildAgentToolCliPromptDeepLink, buildAgentToolPromptDeepLink, normaliz
 import {
   CLAUDE_CODE_TERMINAL_SCRIPT,
   DIRECT_PROMPT_TERMINAL_SCRIPT,
-  HERMES_TERMINAL_SCRIPT,
-  OPENCLAW_RELAY_SESSION_LABEL,
-  OPENCLAW_TERMINAL_SCRIPT,
-  OPENCODE_TERMINAL_SCRIPT,
-  appendOpenClawSessionToDashboardUrl,
   claudeCodeBinaryCandidates,
-  codexBinaryCandidates,
-  extractOpenClawDashboardUrl,
-  extractOpenClawSessionKey,
-  hermesBinaryCandidates,
-  openClawBinaryCandidates,
-  opencodeBinaryCandidates
+  codexBinaryCandidates
 } from "./agent-tool-terminal.js";
 import {
   desktopRuntimeHomeDirectoryName,
@@ -5264,25 +5254,7 @@ function formatExportTimestamp(date: Date): string {
  * @param rawUrl The URL passed in by the renderer or triggered by the page's window.open.
  * @returns Resolves once opened.
  */
-/**
- * The allowlist of permitted macOS System Settings deep links: direct jumps to the permission
- * toggle panels (Full Disk Access / Automation).
- *
- * openExternalUrl only allows http(s) by default (normalizeHttpUrl rejects other schemes); the
- * iMessage channel needs a "one-click jump to System Settings", so we allow exactly these two
- * controlled deep links and do not open up arbitrary schemes.
- */
-const MACOS_SETTINGS_DEEPLINKS = new Set<string>([
-  "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
-  "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
-]);
-
 async function openExternalUrl(rawUrl: string): Promise<void> {
-  const trimmed = rawUrl.trim();
-  if (MACOS_SETTINGS_DEEPLINKS.has(trimmed)) {
-    await shell.openExternal(trimmed);
-    return;
-  }
   await shell.openExternal(normalizeHttpUrl(rawUrl));
 }
 
@@ -5292,9 +5264,6 @@ async function openAgentTool(rawSourceId: unknown, rawPrompt: unknown): Promise<
     return { opened: false };
   }
   const homeDirectory = homedir();
-  if (request.sourceId === "openclaw") {
-    return { opened: await openOpenClawGuiOrTerminal(request.prompt) };
-  }
   const deepLink = buildAgentToolPromptDeepLink(request.sourceId, request.prompt, { homeDirectory });
   if (deepLink && await tryOpenRegisteredAgentToolDeepLink(deepLink)) {
     return { opened: true };
@@ -5309,12 +5278,6 @@ async function openAgentTool(rawSourceId: unknown, rawPrompt: unknown): Promise<
   if (request.sourceId === "codex") {
     return { opened: await openDirectPromptTerminal(request.prompt, codexBinaryCandidates(homeDirectory)) };
   }
-  if (request.sourceId === "opencode") {
-    return { opened: await openScriptedAgentTerminal(OPENCODE_TERMINAL_SCRIPT, [request.prompt, homeDirectory], opencodeBinaryCandidates(homeDirectory)) };
-  }
-  if (request.sourceId === "hermes") {
-    return { opened: await openScriptedAgentTerminal(HERMES_TERMINAL_SCRIPT, [request.prompt], hermesBinaryCandidates(homeDirectory)) };
-  }
   return { opened: false };
 }
 
@@ -5326,66 +5289,6 @@ async function tryOpenRegisteredAgentToolDeepLink(deepLink: string): Promise<boo
     await shell.openExternal(deepLink);
     return true;
   } catch {
-    return false;
-  }
-}
-
-async function openOpenClawGuiOrTerminal(prompt: string): Promise<boolean> {
-  const binaryPath = openClawBinaryCandidates(homedir()).find((candidate) => existsSync(candidate));
-  if (!binaryPath) {
-    return false;
-  }
-  try {
-    const output = await runProcessAndCaptureOutput(binaryPath, ["dashboard", "--yes", "--no-open"]);
-    const dashboardUrl = extractOpenClawDashboardUrl(output);
-    if (!dashboardUrl) {
-      return openOpenClawTerminal(prompt, binaryPath);
-    }
-    // Open a fresh Control UI session so the relay prompt matches other agents'
-    // "new chat + same text" handoff instead of continuing the shared main session.
-    const sessionOutput = await runProcessAndCaptureOutput(binaryPath, [
-      "gateway",
-      "call",
-      "sessions.create",
-      "--json",
-      "--params",
-      JSON.stringify({ label: OPENCLAW_RELAY_SESSION_LABEL })
-    ]);
-    const sessionKey = extractOpenClawSessionKey(sessionOutput);
-    const targetUrl = sessionKey
-      ? appendOpenClawSessionToDashboardUrl(dashboardUrl, sessionKey)
-      : dashboardUrl;
-    await shell.openExternal(targetUrl, { activate: true });
-    try {
-      clipboard.writeText(prompt);
-    } catch {
-      // The renderer already attempted to copy the prompt. Keep the CLI handoff.
-    }
-    if (sessionKey) {
-      startDetachedProcess(binaryPath, ["agent", "--session-key", sessionKey, "--message", prompt]);
-    } else {
-      startDetachedProcess(binaryPath, ["agent", "--message", prompt]);
-    }
-    return true;
-  } catch {
-    return openOpenClawTerminal(prompt, binaryPath);
-  }
-}
-
-async function openOpenClawTerminal(prompt: string, binaryPath: string): Promise<boolean> {
-  if (process.platform !== "darwin") {
-    return false;
-  }
-  try {
-    try {
-      clipboard.writeText(prompt);
-    } catch {
-      // The renderer already attempted to copy the prompt; keep the fallback usable.
-    }
-    await runProcessAndWait("/usr/bin/osascript", ["-e", OPENCLAW_TERMINAL_SCRIPT, binaryPath, prompt]);
-    return true;
-  } catch {
-    await openMacTerminalFallback();
     return false;
   }
 }
@@ -5433,52 +5336,6 @@ async function runProcessAndWait(command: string, args: string[]): Promise<void>
         return;
       }
       reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
-    });
-  });
-}
-
-function startDetachedProcess(command: string, args: string[]): void {
-  const child = spawn(command, args, { detached: true, stdio: "ignore" });
-  child.unref();
-}
-
-async function runProcessAndCaptureOutput(command: string, args: string[]): Promise<string> {
-  return new Promise<string>((resolvePromise, reject) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
-    let output = "";
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      child.kill();
-      reject(new Error(`${command} timed out`));
-    }, 15_000);
-    const finish = (callback: () => void) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      callback();
-    };
-    const append = (chunk: Buffer) => {
-      if (output.length < 65_536) {
-        output += chunk.toString("utf8").slice(0, 65_536 - output.length);
-      }
-    };
-    child.stdout.on("data", append);
-    child.stderr.on("data", append);
-    child.once("error", (error) => finish(() => reject(error)));
-    child.once("close", (code) => {
-      finish(() => {
-        if (code === 0) {
-          resolvePromise(output);
-          return;
-        }
-        reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
-      });
     });
   });
 }

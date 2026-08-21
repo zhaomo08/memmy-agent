@@ -11,7 +11,6 @@ import type {
 } from "@memmy/local-api-contracts";
 import type { AppRoutePath, PreferredMode } from "../app/routes.js";
 import type { InvitationToastKind } from "../app/invitation-result.js";
-import type { ChannelsClient } from "../api/channels-client.js";
 import type { ModelProviderConfig } from "../api/config-client.js";
 import { isIntegrationSetupDiagnosticError, logHiddenIntegrationSetupDiagnosticError } from "../api/integration-errors.js";
 import type { IntegrationsClient } from "../api/integrations-client.js";
@@ -103,7 +102,7 @@ export type AppAction =
   | { type: "account/updated"; email?: string; phoneNumber?: string | null; nickname?: string; registeredAt?: string | null }
   | { type: "account/cleared" }
   | { type: "modelConfig/updated"; config: Partial<ModelProviderConfig> }
-  | { type: "modal/changed"; modal: "nickname" | "scanPermission" | "improvement" | "modelConfig" | "manualSource"; open: boolean };
+  | { type: "modal/changed"; modal: "nickname" | "scanPermission" | "improvement" | "modelConfig"; open: boolean };
 
 /** Definition for app actions. */
 export const appActions = {
@@ -225,7 +224,7 @@ export const appActions = {
   },
 
   /** Handles modal changed. */
-  modalChanged(modal: "nickname" | "scanPermission" | "improvement" | "modelConfig" | "manualSource", open: boolean): AppAction {
+  modalChanged(modal: "nickname" | "scanPermission" | "improvement" | "modelConfig", open: boolean): AppAction {
     return { type: "modal/changed", modal, open };
   },
 
@@ -451,11 +450,11 @@ export const agentActions = {
 /** Definition for tools actions. */
 export const toolsActions = {
   /** App actions module. */
-  async loadConnections(client: IntegrationsClient, channelsClient: ChannelsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
+  async loadConnections(client: IntegrationsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
     dispatch({ type: "tools/loadStart" });
 
     try {
-      const connections = await loadToolConnectionRecords(client, channelsClient);
+      const connections = await loadToolConnectionRecords(client);
       dispatch({
         type: "tools/loadSuccess",
         connections
@@ -472,9 +471,9 @@ export const toolsActions = {
   },
 
   /** App actions module. */
-  async refreshConnections(client: IntegrationsClient, channelsClient: ChannelsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
+  async refreshConnections(client: IntegrationsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
     try {
-      const connections = await loadToolConnectionRecords(client, channelsClient);
+      const connections = await loadToolConnectionRecords(client);
       dispatch({ type: "tools/connectionsUpdated", connections });
     } catch (error) {
       if (isIntegrationSetupDiagnosticError(error)) {
@@ -488,13 +487,8 @@ export const toolsActions = {
 };
 
 /** Reads load tool connection records. */
-export async function loadToolConnectionRecords(client: IntegrationsClient, channelsClient: ChannelsClient): Promise<IntegrationConnection[]> {
-  const [integrationConnections, channelConnections] = await Promise.all([
-    listIntegrationConnections(client),
-    listChannelConnections(channelsClient)
-  ]);
-
-  return [...integrationConnections, ...channelConnections];
+export async function loadToolConnectionRecords(client: IntegrationsClient): Promise<IntegrationConnection[]> {
+  return listIntegrationConnections(client);
 }
 
 /** Handles list integration connections. */
@@ -509,49 +503,6 @@ async function listIntegrationConnections(client: IntegrationsClient): Promise<I
     }
 
     throw error;
-  }
-}
-
-/** Handles list channel connections. */
-async function listChannelConnections(client: ChannelsClient): Promise<IntegrationConnection[]> {
-  try {
-    const response = await client.listConnections();
-    return response.connections.flatMap((connection) => {
-      const status = mapChannelStatus(connection.status);
-
-      return status
-        ? [
-            {
-              id: connection.id,
-              toolkit: connection.provider,
-              status,
-              surface: "channel",
-              lastError: connection.lastError ?? null
-            }
-          ]
-        : [];
-    });
-  } catch (error) {
-    console.warn("[tools] channel connection state unavailable:", error);
-    return [];
-  }
-}
-
-/** Maps map channel status. */
-function mapChannelStatus(status: string): string | null {
-  switch (status) {
-    case "connected":
-      return "connected";
-    case "pendingQr":
-    case "starting":
-    case "restarting":
-      return "pending";
-    case "expired":
-      return "expired";
-    case "error":
-      return "error";
-    default:
-      return null;
   }
 }
 

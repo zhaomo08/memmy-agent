@@ -1,6 +1,5 @@
 const AGENT_TOOL_PROMPT_DEEPLINK_BUILDERS: Readonly<Record<string, (prompt: string) => string>> = {
-  claude_code: (prompt) => `claude://claude.ai/new?q=${encodeURIComponent(prompt)}`,
-  workbuddy: () => "workbuddy://"
+  claude_code: (prompt) => `claude://claude.ai/new?q=${encodeURIComponent(prompt)}`
 };
 
 const AGENT_TOOL_CLI_DEEPLINK_BUILDERS: Readonly<Record<string, (prompt: string) => string>> = {
@@ -40,11 +39,6 @@ export function buildAgentToolPromptDeepLink(
     return homeDirectory
       ? `codex://threads/new?${promptParameter}&path=${encodeURIComponent(homeDirectory)}`
       : `codex://threads/new?${promptParameter}`;
-  }
-  if (request.sourceId === "opencode") {
-    return homeDirectory
-      ? `opencode://new-session?directory=${encodeURIComponent(homeDirectory)}&prompt=${encodeURIComponent(request.prompt)}`
-      : null;
   }
   const buildDeepLink = AGENT_TOOL_PROMPT_DEEPLINK_BUILDERS[request.sourceId];
   return buildDeepLink ? buildDeepLink(request.prompt) : null;

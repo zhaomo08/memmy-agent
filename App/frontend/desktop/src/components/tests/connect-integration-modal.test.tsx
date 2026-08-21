@@ -18,30 +18,7 @@ const github: IntegrationMeta = {
   authKind: "oauth",
   surface: "integration",
   identity: "integration:github",
-  isChannel: false,
   authProvider: "Composio"
-};
-
-const wechat: IntegrationMeta = {
-  ...github,
-  slug: "wechat",
-  name: "微信",
-  authKind: "qrCode",
-  surface: "channel",
-  identity: "channel:wechat",
-  isChannel: true,
-  authProvider: undefined
-};
-
-const imessage: IntegrationMeta = {
-  ...github,
-  slug: "imessage",
-  name: "iMessage",
-  authKind: "none",
-  surface: "channel",
-  identity: "channel:imessage",
-  isChannel: true,
-  authProvider: undefined
 };
 
 describe("ConnectIntegrationModal", () => {
@@ -287,35 +264,12 @@ describe("ConnectIntegrationModal", () => {
     expect(html).not.toContain("border-red-200");
   });
 
-  it("二维码渠道显示 warning，不进入 openUrl 流程", () => {
-    const html = renderModal(wechat, { qrWarning: true });
-
-    expect(html).toContain("QR sign-in is coming soon; awaiting backend");
-    expect(html).not.toContain("Reopen browser");
-  });
-
-  it("无授权渠道默认显示渠道待接入，不展示 OAuth 浏览器授权说明", () => {
-    const html = renderModal(imessage, {}, "zh-CN");
-
-    expect(html).toContain("该渠道连接服务即将上线，请等待后端就绪");
-    expect(html).toContain("disabled=\"\"");
-    expect(html).not.toContain("我们会打开浏览器窗口");
-    expect(html).not.toContain("重新打开浏览器");
-  });
-
   it("idle 阶段展示第三方连接服务说明", () => {
     const html = renderModal(github, {}, "zh-CN");
 
     expect(html).toContain("连接由 Composio 提供");
     expect(html).toContain("跳转至 Composio 的安全授权页面");
     expect(html).toContain("Composio 是 Memmy 的集成合作伙伴");
-  });
-
-  it("idle 阶段渠道项不展示第三方说明", () => {
-    const html = renderModal(wechat, {}, "zh-CN");
-
-    expect(html).not.toContain("连接由");
-    expect(html).not.toContain("Composio");
   });
 
   it("waiting 阶段展示第三方授权页提示", () => {

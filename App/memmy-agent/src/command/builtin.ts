@@ -7,7 +7,6 @@ import {
   setRestartNoticeToEnv,
   type ManagedRestartNotice
 } from "../utils/restart.js";
-import { handlePairingCommand } from "../integrations/channel-auth/store.js";
 import { DEFAULT_MAX_TOKENS } from "../token-budget.js";
 import { buildStatusContent } from "../utils/helpers.js";
 import { fetchSearchUsage } from "../utils/searchusage.js";
@@ -42,7 +41,6 @@ export const BUILTIN_COMMAND_SPECS = [
   new BuiltinCommandSpec("/dream-log", "Show Dream log", "Show what the last Dream consolidation changed.", "book-open"),
   new BuiltinCommandSpec("/dream-restore", "Restore memory", "Revert memory to a previous Dream snapshot.", "undo-2"),
   new BuiltinCommandSpec("/help", "Show help", "List available slash commands.", "circle-help"),
-  new BuiltinCommandSpec("/pairing", "Manage pairing", "List, approve, deny or revoke pairing requests.", "shield", "[list|approve <code>|deny <code>|revoke <user_id>]"),
 ];
 
 type BuiltinCommandOptions = {
@@ -394,10 +392,6 @@ export async function cmdDreamRestore(ctx: CommandContext): Promise<OutboundMess
   return reply(ctx, content, { renderAs: "text" });
 }
 
-export async function cmdPairing(ctx: CommandContext): Promise<OutboundMessage> {
-  return reply(ctx, handlePairingCommand(ctx.msg.channel, ctx.args), { pairingCommand: true });
-}
-
 export async function cmdHelp(ctx: CommandContext): Promise<OutboundMessage> {
   return reply(
     ctx,
@@ -579,6 +573,4 @@ export function registerBuiltinCommands(router: CommandRouter): void {
   router.exact("/dream-restore", cmdDreamRestore);
   router.prefix("/dream-restore ", cmdDreamRestore);
   router.exact("/help", cmdHelp);
-  router.exact("/pairing", cmdPairing);
-  router.prefix("/pairing ", cmdPairing);
 }

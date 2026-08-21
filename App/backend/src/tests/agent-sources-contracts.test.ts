@@ -1,12 +1,10 @@
 /** Agent sources contracts tests. */
 import { describe, expect, it } from "vitest";
 import {
-  AddManualInputSchema,
   AgentSourceIdParamsSchema,
   AgentSourceScanInputSchema,
   AgentSourceScanJobResponseSchema,
   AgentSourceViewSchema,
-  ManagedAgentSyncRecipeSchema,
   OkResponseSchema,
   ScanCompletedSseEventSchema,
   ScanProgressSseEventSchema,
@@ -15,12 +13,12 @@ import {
 } from "@memmy/local-api-contracts";
 
 describe("agent source contracts", () => {
-  it("parses agent source views, scan results, and manual add input", () => {
+  it("parses Codex and Claude Code source views and scan results", () => {
     expect(
       AgentSourceViewSchema.parse({
-        sourceId: "cursor",
-        displayName: "Cursor",
-        dataPath: "/Users/test/Library/Application Support/Cursor",
+        sourceId: "codex",
+        displayName: "Codex",
+        dataPath: "/Users/test/.codex/sessions",
         builtin: true,
         available: true,
         status: "skill_installed",
@@ -28,14 +26,14 @@ describe("agent source contracts", () => {
         lastScannedAt: "2026-05-28T10:00:00.000Z"
       })
     ).toMatchObject({
-      sourceId: "cursor",
+      sourceId: "codex",
       status: "skill_installed",
       messageCount: 12
     });
 
     expect(
       ScanResultSchema.parse({
-        sourceId: "cursor",
+        sourceId: "codex",
         discoveredConversations: 2,
         emittedMessages: 10,
         skipped: 1,
@@ -46,43 +44,11 @@ describe("agent source contracts", () => {
       skipped: 1
     });
 
-    expect(
-      AddManualInputSchema.parse({
-        displayName: "Custom Agent"
-      })
-    ).toEqual({
-      displayName: "Custom Agent"
-    });
-
-    expect(AgentSourceIdParamsSchema.parse({ sourceId: "cursor" })).toEqual({ sourceId: "cursor" });
+    expect(AgentSourceIdParamsSchema.parse({ sourceId: "codex" })).toEqual({ sourceId: "codex" });
     expect(AgentSourceScanInputSchema.parse(undefined)).toEqual({ sourceId: "all" });
-    expect(AgentSourceScanInputSchema.parse({ sourceId: "openclaw" })).toEqual({ sourceId: "openclaw" });
+    expect(AgentSourceScanInputSchema.parse({ sourceId: "claude_code" })).toEqual({ sourceId: "claude_code" });
     expect(AgentSourceScanJobResponseSchema.parse({ jobId: "job-1" })).toEqual({ jobId: "job-1" });
     expect(OkResponseSchema.parse({ ok: true })).toEqual({ ok: true });
-  });
-
-  it("parses a reusable managed Agent sync recipe", () => {
-    expect(ManagedAgentSyncRecipeSchema.parse({
-      version: 1,
-      format: "jsonl",
-      path: "/Users/test/.example/history",
-      fileSuffix: ".jsonl",
-      fields: {
-        messageId: "id",
-        conversationId: "conversation_id",
-        role: "role",
-        content: "content.text",
-        createdAt: "created_at"
-      },
-      roleMap: {
-        human: "user",
-        ai: "assistant"
-      }
-    })).toMatchObject({
-      version: 1,
-      format: "jsonl",
-      timestampFormat: "auto"
-    });
   });
 
   it("includes agent source scan progress and completion in the SSE union", () => {
@@ -92,7 +58,7 @@ describe("agent source contracts", () => {
       timestamp: "2026-05-28T10:00:00.000Z",
       payload: {
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "codex",
         phase: "scan",
         current: 1,
         total: 3,
@@ -106,10 +72,10 @@ describe("agent source contracts", () => {
       timestamp: "2026-05-28T10:00:01.000Z",
       payload: {
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "codex",
         results: [
           {
-            sourceId: "cursor",
+            sourceId: "codex",
             discoveredConversations: 1,
             emittedMessages: 2,
             skipped: 0,

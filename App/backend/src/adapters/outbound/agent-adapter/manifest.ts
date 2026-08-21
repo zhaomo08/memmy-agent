@@ -8,11 +8,7 @@ import type { AgentAdapterPluginManifest } from "./types/plugin.js";
 
 const BUILTIN_AGENT_KINDS = [
   "codex",
-  "claude_code",
-  "opencode",
-  "openclaw",
-  "hermes",
-  "workbuddy"
+  "claude_code"
 ] as const satisfies readonly BuiltinAgentKind[];
 
 /** Parses parse agent adapter plugin manifest. */

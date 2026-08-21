@@ -1,10 +1,4 @@
 import { InboundMessage, MessageBus, OutboundMessage } from "../../core/runtime-messages/index.js";
-import {
-  formatPairingReply,
-  generateCode,
-  isApproved,
-  PAIRING_CODE_META_KEY,
-} from "../channel-auth/index.js";
 
 function configValue(config: any, key: string): any {
   if (!config) return undefined;
@@ -115,7 +109,7 @@ export class BaseChannel {
     const allowList = Array.isArray(allow) ? allow.map(String) : [];
     if (allowList.includes("*")) return true;
     if (allowList.includes(String(senderId))) return true;
-    return isApproved(this.name, String(senderId));
+    return false;
   }
 
   async handleMessage(options: ChannelHandleMessageOptions): Promise<void>;
@@ -156,24 +150,10 @@ export class BaseChannel {
       media: optionMedia = [],
       metadata: optionMetadata = {},
       sessionKey: optionSessionKey,
-      isDm: optionIsDm,
     } = options;
     const sender = String(senderId ?? "");
     const chat = String(optionChatId ?? "");
-    if (!this.isAllowed(sender)) {
-      if (optionIsDm) {
-        const code = generateCode(this.name, sender);
-        await this.send(
-          new OutboundMessage({
-            channel: this.name,
-            chatId: chat,
-            content: formatPairingReply(code),
-            metadata: { [PAIRING_CODE_META_KEY]: code },
-          }),
-        );
-      }
-      return;
-    }
+    if (!this.isAllowed(sender)) return;
     const meta = this.supportsStreaming ? { ...optionMetadata, wantsStream: true } : optionMetadata;
     await this.bus.publishInbound(
       new InboundMessage({

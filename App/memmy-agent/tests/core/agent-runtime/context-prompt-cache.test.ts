@@ -248,37 +248,25 @@ describe("Context prompt cache inputs", () => {
     expect(soul).toContain("multi-step tasks");
   });
 
-  it("adds a messaging format hint for Telegram", () => {
-    const prompt = new ContextBuilder({ workspace: makeWorkspace() }).buildSystemPrompt(null, "telegram");
-    expect(prompt).toContain("Format Hint");
-    expect(prompt).toContain("messaging app");
-  });
-
-  it("adds a plain-text format hint for WhatsApp", () => {
-    const prompt = new ContextBuilder({ workspace: makeWorkspace() }).buildSystemPrompt(null, "whatsapp");
-    expect(prompt).toContain("Format Hint");
-    expect(prompt).toContain("plain text only");
-  });
-
-  it("omits format hints for unknown channels", () => {
+  it("omits format hints for the desktop WebSocket", () => {
     const builder = new ContextBuilder({ workspace: makeWorkspace() });
     expect(builder.buildSystemPrompt(null, null)).not.toContain("Format Hint");
-    expect(builder.buildSystemPrompt(null, "feishu")).not.toContain("Format Hint");
+    expect(builder.buildSystemPrompt(null, "websocket")).not.toContain("Format Hint");
   });
 
-  it("passes channel through buildMessages to the system prompt", () => {
+  it("passes the CLI surface through buildMessages to the system prompt", () => {
     const messages = new ContextBuilder({ workspace: makeWorkspace() }).buildMessages({
       history: [],
       currentMessage: "hi",
-      channel: "telegram",
+      channel: "cli",
       chatId: "123",
     });
     expect(String(messages[0].content)).toContain("Format Hint");
-    expect(String(messages[0].content)).toContain("messaging app");
+    expect(String(messages[0].content)).toContain("terminal");
   });
 
   it("keeps message tool out of normal current-chat replies", () => {
-    const prompt = new ContextBuilder({ workspace: makeWorkspace() }).buildSystemPrompt(null, "slack");
+    const prompt = new ContextBuilder({ workspace: makeWorkspace() }).buildSystemPrompt(null, "websocket");
     expect(prompt).toContain("Do not use the 'message' tool for ordinary replies in the current chat");
     expect(prompt).toContain("When 'generate_image' creates images");
     expect(prompt).toContain("call 'message' and include the artifact paths in the 'media' parameter");
@@ -328,19 +316,6 @@ describe("Context prompt cache inputs", () => {
     const indexText = skillsSection[1].split("\n\n---", 1)[0];
     expect(indexText).not.toContain("**always-test**");
     expect(indexText).not.toContain("**memory**");
-  });
-
-  it("loads the onboarding guide only for the button-generated explicit task", () => {
-    const builder = new ContextBuilder({ workspace: makeWorkspace() });
-
-    expect(builder.buildSystemPrompt()).not.toContain("agent-memory-onboarding");
-
-    const messages = builder.buildMessages({
-      history: [],
-      currentMessage: "请使用 $agent-memory-onboarding 完成接入"
-    });
-    expect(String(messages[0]?.content)).toContain("### Skill: agent-memory-onboarding");
-    expect(String(messages[0]?.content)).toContain("This is a button-triggered guide");
   });
 
   it("skips template MEMORY.md in the system prompt", () => {

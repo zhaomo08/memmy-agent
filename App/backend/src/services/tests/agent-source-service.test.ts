@@ -1,9 +1,5 @@
 /** Agent source service tests. */
 import { DatabaseSync } from "node:sqlite";
-import { MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH } from "@memmy/local-api-contracts";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createSourceRegistry } from "../../adapters/outbound/agent-source/source-registry.js";
 import type {
@@ -27,42 +23,37 @@ import {
 import type { SkillDistributionService } from "../skill-distribution-service.js";
 
 let db: DatabaseSync | undefined;
-let tempDir: string | undefined;
 
 afterEach(() => {
   db?.close();
   db = undefined;
-  if (tempDir) {
-    rmSync(tempDir, { recursive: true, force: true });
-    tempDir = undefined;
-  }
 });
 
 describe("agent source service", () => {
-  it("lists builtin registry sources together with persisted manual sources", async () => {
+  it("lists builtin registry sources together with a stale persisted source so it can be deleted", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "manual-1",
-      displayName: "Manual Agent",
-      dataPath: "/tmp/manual",
+      sourceId: "legacy-source",
+      displayName: "Legacy Source",
+      dataPath: "/tmp/legacy-source",
       builtin: false
     });
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor")]
+      adapters: [createFakeAdapter("codex")]
     });
 
     await expect(service.list()).resolves.toEqual([
       expect.objectContaining({
-        sourceId: "cursor",
-        displayName: "Cursor",
+        sourceId: "codex",
+        displayName: "Codex",
         builtin: true,
         available: true,
         status: "not_connected"
       }),
       expect.objectContaining({
-        sourceId: "manual-1",
-        displayName: "Manual Agent",
+        sourceId: "legacy-source",
+        displayName: "Legacy Source",
         builtin: false
       })
     ]);
@@ -71,18 +62,18 @@ describe("agent source service", () => {
   it("reports a persisted source no longer in the registry as non-builtin so the UI offers deletion instead of a broken skill action", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "chatwise",
-      displayName: "ChatWise",
-      dataPath: "/tmp/chatwise",
+      sourceId: "legacy-source",
+      displayName: "Legacy Source",
+      dataPath: "/tmp/legacy-source",
       builtin: true
     });
-    repository.setStatus("chatwise", "skill_installed");
+    repository.setStatus("legacy-source", "skill_installed");
     const service = createService({ repository, adapters: [] });
 
     await expect(service.list()).resolves.toEqual([
       expect.objectContaining({
-        sourceId: "chatwise",
-        displayName: "ChatWise",
+        sourceId: "legacy-source",
+        displayName: "Legacy Source",
         builtin: false,
         status: "skill_installed"
       })
@@ -107,13 +98,13 @@ describe("agent source service", () => {
     const repository = createRepository();
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor", createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:00.000Z"))]
+      adapters: [createFakeAdapter("codex", createCompleteMemoryMessages("codex", 1, "2026-05-28T10:00:00.000Z"))]
     });
 
-    const result = await service.scanOne("cursor", { since: "2026-05-28T00:00:00.000Z" });
+    const result = await service.scanOne("codex", { since: "2026-05-28T00:00:00.000Z" });
 
     expect(result).toEqual({
-      sourceId: "cursor",
+      sourceId: "codex",
       discoveredConversations: 1,
       emittedMessages: 2,
       skipped: 0,
@@ -121,17 +112,17 @@ describe("agent source service", () => {
       errors: []
     });
     expect(repository.listSources()[0]).toMatchObject({
-      sourceId: "cursor",
+      sourceId: "codex",
       lastScannedAt: "2026-05-28T10:00:00.000Z"
     });
   });
 
   it("completes the scan and advances checkpoints when every memory is skipped", async () => {
     const repository = createRepository();
-    const messages = createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:00.000Z");
+    const messages = createCompleteMemoryMessages("codex", 1, "2026-05-28T10:00:00.000Z");
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor", messages)],
+      adapters: [createFakeAdapter("codex", messages)],
       ingestionService: {
         async ingest(input) {
           const collected: ConversationMessage[] = [];
@@ -148,7 +139,7 @@ describe("agent source service", () => {
             failedMemories: 0,
             memoryIds: [],
             conversations: 1,
-            completedConversationIds: ["cursor-conv-1"],
+            completedConversationIds: ["codex-conv-1"],
             incompleteConversationIds: [],
             failedConversationIds: [],
             errors: []
@@ -157,18 +148,18 @@ describe("agent source service", () => {
       }
     });
 
-    const result = await service.scanOne("cursor");
+    const result = await service.scanOne("codex");
 
     expect(result).toEqual({
-      sourceId: "cursor",
+      sourceId: "codex",
       discoveredConversations: 1,
       emittedMessages: 2,
       skipped: 2,
       memoryIds: [],
       errors: []
     });
-    expect(repository.getConversationCheckpoint("cursor", "cursor-conv-1")).not.toBeNull();
-    expect(repository.getScanWatermark("cursor")).not.toBeNull();
+    expect(repository.getConversationCheckpoint("codex", "codex-conv-1")).not.toBeNull();
+    expect(repository.getScanWatermark("codex")).not.toBeNull();
     expect(repository.listSources()[0]?.messageCount).toBe(0);
   });
 
@@ -176,20 +167,20 @@ describe("agent source service", () => {
     const phases: string[] = [];
     const service = createService({
       adapters: [
-        createFakeAdapter("cursor", [createMessage("cursor", 1)], async function* (options) {
+        createFakeAdapter("codex", [createMessage("codex", 1)], async function* (options) {
           options.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "codex",
             phase: "read",
             current: 1,
             total: 1,
             message: "adapter read"
           });
-          yield createMessage("cursor", 1);
+          yield createMessage("codex", 1);
         })
       ]
     });
 
-    await service.scanOne("cursor", {
+    await service.scanOne("codex", {
       onProgress: (progress) => phases.push(`${progress.phase}:${progress.message ?? ""}`)
     });
 
@@ -199,24 +190,24 @@ describe("agent source service", () => {
   it("returns source-scoped scan errors instead of throwing the whole scan job", async () => {
     const service = createService({
       adapters: [
-        createFakeAdapter("cursor", [], async function* () {
-          for (const message of createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:00.000Z")) {
+        createFakeAdapter("codex", [], async function* () {
+          for (const message of createCompleteMemoryMessages("codex", 1, "2026-05-28T10:00:00.000Z")) {
             yield message;
           }
-          throw new Error("cursor database is corrupt");
+          throw new Error("codex database is corrupt");
         })
       ]
     });
 
-    const result = await service.scanOne("cursor");
+    const result = await service.scanOne("codex");
 
     expect(result).toEqual({
-      sourceId: "cursor",
+      sourceId: "codex",
       discoveredConversations: 1,
       emittedMessages: 2,
       skipped: 0,
       memoryIds: [],
-      errors: [{ conversationId: "scan", reason: "cursor database is corrupt" }]
+      errors: [{ conversationId: "scan", reason: "codex database is corrupt" }]
     });
   });
 
@@ -231,7 +222,7 @@ describe("agent source service", () => {
       createFakeAdapter(sourceId, [createMessage(sourceId, 1)], async function* (options) {
         options.signal?.throwIfAborted();
         started.push(sourceId);
-        if (sourceId === "cursor") {
+        if (sourceId === "codex") {
           await firstGate;
         } else {
           releaseFirst();
@@ -240,23 +231,23 @@ describe("agent source service", () => {
         finished.push(sourceId);
       });
     const service = createService({
-      adapters: [createSequentialAdapter("cursor"), createSequentialAdapter("custom")]
+      adapters: [createSequentialAdapter("codex"), createSequentialAdapter("custom")]
     });
 
     const results = await service.scanAll();
 
-    expect(started).toEqual(["cursor", "custom"]);
-    expect(finished.sort()).toEqual(["cursor", "custom"]);
-    expect(results.map((result) => result.sourceId)).toEqual(["cursor", "custom"]);
+    expect(started).toEqual(["codex", "custom"]);
+    expect(finished.sort()).toEqual(["codex", "custom"]);
+    expect(results.map((result) => result.sourceId)).toEqual(["codex", "custom"]);
   });
 
   it("skips unavailable sources during all-source scans", async () => {
     const scanned: string[] = [];
     const service = createService({
       adapters: [
-        createFakeAdapter("cursor", [createMessage("cursor", 1)], async function* () {
-          scanned.push("cursor");
-          yield createMessage("cursor", 1);
+        createFakeAdapter("codex", [createMessage("codex", 1)], async function* () {
+          scanned.push("codex");
+          yield createMessage("codex", 1);
         }),
         createFakeAdapter("claude_code", [createMessage("claude_code", 1)], async function* () {
           scanned.push("claude_code");
@@ -267,8 +258,8 @@ describe("agent source service", () => {
 
     const results = await service.scanAll();
 
-    expect(scanned).toEqual(["cursor"]);
-    expect(results.map((result) => result.sourceId)).toEqual(["cursor"]);
+    expect(scanned).toEqual(["codex"]);
+    expect(results.map((result) => result.sourceId)).toEqual(["codex"]);
   });
 
   it("rejects single-source collection when the source is unavailable", async () => {
@@ -313,17 +304,17 @@ describe("agent source service", () => {
     const service = createService({
       repository,
       adapters: [
-        createFakeAdapter("cursor", [], async function* (options) {
+        createFakeAdapter("codex", [], async function* (options) {
           scanOptions.push(options);
-          for (const message of createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:00.000Z")) {
+          for (const message of createCompleteMemoryMessages("codex", 1, "2026-05-28T10:00:00.000Z")) {
             yield message;
           }
         })
       ]
     });
 
-    await service.scanOne("cursor");
-    await service.scanOne("cursor");
+    await service.scanOne("codex");
+    await service.scanOne("codex");
 
     expect(scanOptions[0]).toMatchObject({
       order: "recent_first",
@@ -335,8 +326,8 @@ describe("agent source service", () => {
       order: "source_default",
       since: "2026-05-28T10:00:02.000Z"
     });
-    expect(repository.getScanWatermark("cursor")).toMatchObject({
-      sourceId: "cursor",
+    expect(repository.getScanWatermark("codex")).toMatchObject({
+      sourceId: "codex",
       mode: "incremental",
       baselineAt: "2026-05-28T10:00:00.000Z",
       latestSeenCreatedAt: "2026-05-28T10:00:02.000Z"
@@ -346,89 +337,89 @@ describe("agent source service", () => {
   it("bounds first all-source scan to global recent complete memories plus absent source reserve", async () => {
     const service = createService({
       adapters: [
-        createFakeAdapter("cursor", createCompleteMemoryMessages("cursor", 1000, "2026-06-01T00:00:00.000Z")),
+        createFakeAdapter("codex", createCompleteMemoryMessages("codex", 1000, "2026-06-01T00:00:00.000Z")),
         createFakeAdapter("claude_code", createCompleteMemoryMessages("claude_code", 300, "2026-05-01T00:00:00.000Z")),
-        createFakeAdapter("codex", createCompleteMemoryMessages("codex", 300, "2026-04-01T00:00:00.000Z"))
+        createFakeAdapter("custom", createCompleteMemoryMessages("custom", 300, "2026-04-01T00:00:00.000Z"))
       ]
     });
 
     const collected = await service.collectAll({ mode: "initial_subset" });
 
-    expectMemoryCount(collected.find((source) => source.sourceId === "cursor")?.messages, 1000);
+    expectMemoryCount(collected.find((source) => source.sourceId === "codex")?.messages, 1000);
     expectMemoryCount(collected.find((source) => source.sourceId === "claude_code")?.messages, 200);
-    expectMemoryCount(collected.find((source) => source.sourceId === "codex")?.messages, 200);
+    expectMemoryCount(collected.find((source) => source.sourceId === "custom")?.messages, 200);
   });
 
   it("bounds one initial source by complete memory count instead of raw message count", async () => {
     const service = createService({
       adapters: [
-        createFakeAdapter("cursor", createCompleteMemoryMessages("cursor", 1200, "2026-06-01T00:00:00.000Z", {
+        createFakeAdapter("codex", createCompleteMemoryMessages("codex", 1200, "2026-06-01T00:00:00.000Z", {
           includeTool: true
         }))
       ]
     });
 
-    const collected = await service.collectOne("cursor", { mode: "initial_subset" });
+    const collected = await service.collectOne("codex", { mode: "initial_subset" });
 
     expectMemoryCount(collected.messages, 1000);
     expect(collected.messages).toHaveLength(3000);
   });
 
   it("skips incomplete turns when bounding initial memories", async () => {
-    const completeMessages = createCompleteMemoryMessages("cursor", 10, "2026-05-01T00:00:00.000Z");
-    const incompleteMessages = createIncompleteUserMessages("cursor", 5, "2026-06-01T00:00:00.000Z");
+    const completeMessages = createCompleteMemoryMessages("codex", 10, "2026-05-01T00:00:00.000Z");
+    const incompleteMessages = createIncompleteUserMessages("codex", 5, "2026-06-01T00:00:00.000Z");
     const service = createService({
-      adapters: [createFakeAdapter("cursor", [...incompleteMessages, ...completeMessages])]
+      adapters: [createFakeAdapter("codex", [...incompleteMessages, ...completeMessages])]
     });
 
-    const collected = await service.collectOne("cursor", { mode: "initial_subset" });
+    const collected = await service.collectOne("codex", { mode: "initial_subset" });
 
     expectMemoryCount(collected.messages, 10);
     expect(collected.messages.some((message) => message.messageId.includes("incomplete"))).toBe(false);
   });
 
   it("excludes units whose first or last message violates the complete-turn boundary", async () => {
-    const valid = createCompleteMemoryMessages("cursor", 1, "2026-05-01T00:00:00.000Z", {
+    const valid = createCompleteMemoryMessages("codex", 1, "2026-05-01T00:00:00.000Z", {
       includeTool: true
     });
     const invalid = [
       {
-        ...createMessage("cursor", 20),
+        ...createMessage("codex", 20),
         messageId: "invalid-user",
         conversationId: "invalid-user-tool",
         role: "user" as const,
         content: "query"
       },
       {
-        ...createMessage("cursor", 21),
+        ...createMessage("codex", 21),
         messageId: "invalid-tool",
         conversationId: "invalid-user-tool",
         role: "tool" as const,
         content: "tool output"
       },
       {
-        ...createMessage("cursor", 22),
+        ...createMessage("codex", 22),
         messageId: "orphan-assistant",
         conversationId: "orphan-assistant",
         role: "assistant" as const,
         content: "answer without query"
       },
       {
-        ...createMessage("cursor", 23),
+        ...createMessage("codex", 23),
         messageId: "trailing-user",
         conversationId: "assistant-then-user",
         role: "user" as const,
         content: "query"
       },
       {
-        ...createMessage("cursor", 24),
+        ...createMessage("codex", 24),
         messageId: "middle-assistant",
         conversationId: "assistant-then-user",
         role: "assistant" as const,
         content: "answer"
       },
       {
-        ...createMessage("cursor", 25),
+        ...createMessage("codex", 25),
         messageId: "trailing-tool",
         conversationId: "assistant-then-user",
         role: "tool" as const,
@@ -436,10 +427,10 @@ describe("agent source service", () => {
       }
     ];
     const service = createService({
-      adapters: [createFakeAdapter("cursor", [...invalid, ...valid])]
+      adapters: [createFakeAdapter("codex", [...invalid, ...valid])]
     });
 
-    const collected = await service.collectOne("cursor", { mode: "initial_subset" });
+    const collected = await service.collectOne("codex", { mode: "initial_subset" });
 
     expectMemoryCount(collected.messages, 1);
     expect(collected.messages.map((message) => message.messageId)).toEqual(
@@ -455,7 +446,7 @@ describe("agent source service", () => {
         yield createMessage(sourceId, 1);
       });
     const service = createService({
-      adapters: [createAdapter("cursor"), createAdapter("custom")],
+      adapters: [createAdapter("codex"), createAdapter("custom")],
       ingestionService: {
         async ingest(messages, ctx) {
           events.push(`ingest:${ctx.sourceId}`);
@@ -484,7 +475,7 @@ describe("agent source service", () => {
 
     await service.scanAll();
 
-    expect(events).toEqual(["scan:cursor", "scan:custom", "ingest:cursor", "ingest:custom"]);
+    expect(events).toEqual(["scan:codex", "scan:custom", "ingest:codex", "ingest:custom"]);
   });
 
   it("reconciles summary progress when another worker finishes the scan memories", async () => {
@@ -528,7 +519,7 @@ describe("agent source service", () => {
     const progress: Array<{ current: number; total: number }> = [];
 
     await expect(service.processImportSummaries(["memory-a", "memory-b"], {
-      progressSourceId: "hermes",
+      progressSourceId: "codex",
       onProgress(event) {
         if (event.phase === "summarize") {
           progress.push({ current: event.current, total: event.total });
@@ -563,7 +554,7 @@ describe("agent source service", () => {
     const progress: Array<{ current: number; total: number }> = [];
 
     await expect(service.processImportSummaries([], {
-      progressSourceId: "hermes",
+      progressSourceId: "codex",
       onProgress(event) {
         if (event.phase === "summarize") progress.push({ current: event.current, total: event.total });
       }
@@ -602,7 +593,7 @@ describe("agent source service", () => {
     const progress: Array<{ current: number; total: number }> = [];
 
     await expect(service.processImportSummaries(["memory-failed"], {
-      progressSourceId: "hermes",
+      progressSourceId: "codex",
       onProgress(event) {
         if (event.phase === "summarize") progress.push({ current: event.current, total: event.total });
       }
@@ -619,9 +610,9 @@ describe("agent source service", () => {
   it("checkpoints only completed conversations and does not advance the global cursor on partial failure", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const service = createService({
@@ -647,13 +638,13 @@ describe("agent source service", () => {
       }
     });
     const messages = [
-      { ...createMessage("cursor", 1), conversationId: "conversation-complete", messageId: "complete-1" },
-      { ...createMessage("cursor", 2), conversationId: "conversation-incomplete", messageId: "incomplete-1" },
-      { ...createMessage("cursor", 3), conversationId: "conversation-failed", messageId: "failed-1" }
+      { ...createMessage("codex", 1), conversationId: "conversation-complete", messageId: "complete-1" },
+      { ...createMessage("codex", 2), conversationId: "conversation-incomplete", messageId: "incomplete-1" },
+      { ...createMessage("codex", 3), conversationId: "conversation-failed", messageId: "failed-1" }
     ];
 
     const [result] = await service.ingestCollected([{
-      sourceId: "cursor",
+      sourceId: "codex",
       scanMode: "incremental",
       scanStartedAt: "2026-05-28T09:00:00.000Z",
       conversationIds: messages.map((message) => message.conversationId),
@@ -665,36 +656,36 @@ describe("agent source service", () => {
       memoryIds: ["memory-complete"],
       errors: [{ conversationId: "conversation-failed", reason: "write failed" }]
     });
-    expect(repository.getConversationCheckpoint("cursor", "conversation-complete")).toMatchObject({
+    expect(repository.getConversationCheckpoint("codex", "conversation-complete")).toMatchObject({
       lastMessageId: "complete-1"
     });
-    expect(repository.getConversationCheckpoint("cursor", "conversation-incomplete")).toBeNull();
-    expect(repository.getConversationCheckpoint("cursor", "conversation-failed")).toBeNull();
-    expect(repository.getScanWatermark("cursor")).toBeNull();
+    expect(repository.getConversationCheckpoint("codex", "conversation-incomplete")).toBeNull();
+    expect(repository.getConversationCheckpoint("codex", "conversation-failed")).toBeNull();
+    expect(repository.getScanWatermark("codex")).toBeNull();
   });
 
   it("rescans a conversation when its content changes without changing the message cursor", async () => {
     const repository = createRepository();
-    let messages = createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:02.000Z");
+    let messages = createCompleteMemoryMessages("codex", 1, "2026-05-28T10:00:02.000Z");
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("cursor", [], async function* () {
+      adapters: [createFakeAdapter("codex", [], async function* () {
         for (const message of messages) yield message;
       })]
     });
 
-    await service.scanOne("cursor");
+    await service.scanOne("codex");
     messages = messages.map((message) => message.role === "assistant"
       ? { ...message, content: "revised answer with the same id and timestamp" }
       : message);
 
-    const revised = await service.collectOne("cursor");
+    const revised = await service.collectOne("codex");
     expect(revised.messages.map((message) => message.content)).toContain(
       "revised answer with the same id and timestamp"
     );
 
     await service.ingestCollected([revised]);
-    const unchanged = await service.collectOne("cursor");
+    const unchanged = await service.collectOne("codex");
     expect(unchanged.messages).toEqual([]);
   });
 
@@ -702,9 +693,9 @@ describe("agent source service", () => {
     const ingestedOrder: string[] = [];
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const service = createService({
@@ -737,13 +728,13 @@ describe("agent source service", () => {
 
     await service.ingestCollected([
       {
-        sourceId: "cursor",
+        sourceId: "codex",
         conversationIds: ["b", "a"],
         messages: [
-          { ...createMessage("cursor", 1), conversationId: "b", messageId: "b-1", createdAt: "2026-05-28T10:00:01.000Z" },
-          { ...createMessage("cursor", 2), conversationId: "a", messageId: "a-1", createdAt: "2026-05-28T10:00:02.000Z" },
-          { ...createMessage("cursor", 3), conversationId: "b", messageId: "b-2", createdAt: "2026-05-28T10:00:03.000Z" },
-          { ...createMessage("cursor", 4), conversationId: "a", messageId: "a-2", createdAt: "2026-05-28T10:00:04.000Z" }
+          { ...createMessage("codex", 1), conversationId: "b", messageId: "b-1", createdAt: "2026-05-28T10:00:01.000Z" },
+          { ...createMessage("codex", 2), conversationId: "a", messageId: "a-1", createdAt: "2026-05-28T10:00:02.000Z" },
+          { ...createMessage("codex", 3), conversationId: "b", messageId: "b-2", createdAt: "2026-05-28T10:00:03.000Z" },
+          { ...createMessage("codex", 4), conversationId: "a", messageId: "a-2", createdAt: "2026-05-28T10:00:04.000Z" }
         ],
         errors: []
       }
@@ -752,214 +743,12 @@ describe("agent source service", () => {
     expect(ingestedOrder).toEqual(["a:a-1", "a:a-2", "b:b-1", "b:b-2"]);
   });
 
-  it("adds and removes manual sources", async () => {
-    const service = createService();
-
-    const added = await service.addManual({
-      displayName: "Manual Agent"
-    });
-    await service.remove(added.sourceId);
-
-    expect(added).toMatchObject({
-      displayName: "Manual Agent",
-      dataPath: MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH,
-      builtin: false
-    });
-    await expect(service.list()).resolves.not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ sourceId: added.sourceId })])
-    );
-  });
-
-  it("imports AI-normalized history and records the 500th-turn sync boundary", async () => {
-    const repository = createRepository();
-    const ingested: ConversationMessage[] = [];
-    let memorySource: string | undefined;
-    const service = createService({
-      repository,
-      ingestionService: {
-        async ingest(messages, context) {
-          memorySource = context.memorySource;
-          for await (const message of messages) {
-            ingested.push(message);
-          }
-          return {
-            attempted: ingested.length,
-            written: ingested.length,
-            deduped: 0,
-            failed: 0,
-            writtenMemories: 1,
-            dedupedMemories: 0,
-            failedMemories: 0,
-            memoryIds: [],
-            conversations: 1,
-            completedConversationIds: ["conversation-1"],
-            incompleteConversationIds: [],
-            failedConversationIds: [],
-            errors: []
-          };
-        }
-      }
-    });
-    const source = await service.addManual({ displayName: "Aider" });
-
-    const result = await service.importManaged(source.sourceId, {
-      mode: "initial_subset",
-      dataPath: "/Users/test/.aider/history.jsonl",
-      syncBoundaryAt: "2026-07-01T10:00:00.000Z",
-      final: true,
-      messages: [
-        {
-          messageId: "user-1",
-          conversationId: "conversation-1",
-          role: "user",
-          content: "question",
-          createdAt: "2026-07-01T10:00:00.000Z"
-        },
-        {
-          messageId: "assistant-1",
-          conversationId: "conversation-1",
-          role: "assistant",
-          content: "answer",
-          createdAt: "2026-07-01T10:00:01.000Z"
-        }
-      ]
-    });
-
-    expect(ingested.map((message) => message.sourceId)).toEqual([source.sourceId, source.sourceId]);
-    expect(memorySource).toBe("Aider");
-    expect(result).toMatchObject({
-      sourceId: source.sourceId,
-      attempted: 2,
-      written: 2,
-      syncBoundaryAt: "2026-07-01T10:00:00.000Z",
-      errors: []
-    });
-    await expect(service.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        sourceId: source.sourceId,
-        dataPath: "/Users/test/.aider/history.jsonl",
-        lastScannedAt: "2026-05-28T10:00:00.000Z",
-        syncBoundaryAt: "2026-07-01T10:00:00.000Z"
-      })
-    ]));
-  });
-
-  it("persists the AI-discovered recipe and later syncs without another Agent session", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "memmy-managed-sync-"));
-    const historyPath = join(tempDir, "history.jsonl");
-    writeFileSync(historyPath, [
-      JSON.stringify({ id: "u1", conversation: "c1", role: "user", content: "old", createdAt: "2026-07-01T10:00:00.000Z" }),
-      JSON.stringify({ id: "a1", conversation: "c1", role: "assistant", content: "old answer", createdAt: "2026-07-01T10:00:01.000Z" }),
-      JSON.stringify({ id: "u2", conversation: "c1", role: "user", content: "new", createdAt: "2026-07-02T10:00:00.000Z" }),
-      JSON.stringify({ id: "a2", conversation: "c1", role: "assistant", content: "new answer", createdAt: "2026-07-02T10:00:01.000Z" })
-    ].join("\n"), "utf8");
-    const repository = createRepository();
-    const ingestionCalls: ConversationMessage[][] = [];
-    const service = createService({
-      repository,
-      ingestionService: {
-        async ingest(messages) {
-          const ingested: ConversationMessage[] = [];
-          for await (const message of messages) ingested.push(message);
-          ingestionCalls.push(ingested);
-          return {
-            attempted: ingested.length,
-            written: ingested.length,
-            deduped: 0,
-            failed: 0,
-            writtenMemories: ingested.length > 0 ? 1 : 0,
-            dedupedMemories: 0,
-            failedMemories: 0,
-            memoryIds: [],
-            conversations: ingested.length > 0 ? 1 : 0,
-            completedConversationIds: ingested.length > 0 ? ["c1"] : [],
-            incompleteConversationIds: [],
-            failedConversationIds: [],
-            errors: []
-          };
-        }
-      }
-    });
-    const source = await service.addManual({ displayName: "Example Agent" });
-    await service.importManaged(source.sourceId, {
-      mode: "initial_subset",
-      messages: [
-        {
-          messageId: "u1",
-          conversationId: "c1",
-          role: "user",
-          content: "old",
-          createdAt: "2026-07-01T10:00:00.000Z"
-        },
-        {
-          messageId: "a1",
-          conversationId: "c1",
-          role: "assistant",
-          content: "old answer",
-          createdAt: "2026-07-01T10:00:01.000Z"
-        }
-      ],
-      syncBoundaryAt: "2026-07-01T10:00:00.000Z",
-      final: true
-    });
-    const updated = await service.updateManaged(source.sourceId, {
-      dataPath: historyPath,
-      syncRecipe: {
-        version: 1,
-        format: "jsonl",
-        path: historyPath,
-        fields: {
-          messageId: "id",
-          conversationId: "conversation",
-          role: "role",
-          content: "content",
-          createdAt: "createdAt"
-        },
-        timestampFormat: "auto"
-      }
-    });
-
-    const result = await service.syncManaged(source.sourceId);
-
-    expect(updated.syncReady).toBe(true);
-    expect(ingestionCalls.at(-1)?.map((message) => message.messageId)).toEqual(["u2", "a2"]);
-    expect(result).toMatchObject({
-      attempted: 2,
-      written: 2,
-      syncBoundaryAt: "2026-07-01T10:00:00.000Z"
-    });
-  });
-
-  it("updates Skill state only for AI-managed sources", async () => {
-    const repository = createRepository();
-    repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
-      builtin: true
-    });
-    const service = createService({ repository });
-    const source = await service.addManual({ displayName: "Aider" });
-
-    await expect(service.updateManaged(source.sourceId, {
-      dataPath: "/Users/test/.aider",
-      skillInstalled: true
-    })).resolves.toMatchObject({
-      sourceId: source.sourceId,
-      dataPath: "/Users/test/.aider",
-      status: "skill_installed"
-    });
-    await expect(service.updateManaged("cursor", { skillInstalled: true })).rejects.toThrow(
-      "not managed by Memmy Agent"
-    );
-  });
-
   it("delegates skill install and uninstall then updates source status", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/tmp/cursor",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const calls: string[] = [];
@@ -981,25 +770,25 @@ describe("agent source service", () => {
       }
     });
 
-    await service.installSkill("cursor");
-    await service.uninstallSkill("cursor");
+    await service.installSkill("codex");
+    await service.uninstallSkill("codex");
 
-    expect(calls).toEqual(["install:cursor", "uninstall:cursor"]);
+    expect(calls).toEqual(["install:codex", "uninstall:codex"]);
     expect(repository.listSources()[0]?.status).toBe("not_connected");
   });
 
   it("delegates native plugin install then updates source status", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "openclaw",
-      displayName: "OpenClaw",
-      dataPath: "/tmp/openclaw",
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/tmp/codex",
       builtin: true
     });
     const calls: string[] = [];
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("openclaw")],
+      adapters: [createFakeAdapter("codex")],
       skillDistributionService: {
         async install(sourceId) {
           calls.push(`install:${sourceId}`);
@@ -1016,10 +805,10 @@ describe("agent source service", () => {
       }
     });
 
-    await service.installPlugin("openclaw");
-    await service.uninstallPlugin("openclaw");
+    await service.installPlugin("codex");
+    await service.uninstallPlugin("codex");
 
-    expect(calls).toEqual(["plugin:openclaw", "unplugin:openclaw"]);
+    expect(calls).toEqual(["plugin:codex", "unplugin:codex"]);
     expect(repository.listSources()[0]?.status).toBe("not_connected");
   });
 
@@ -1041,9 +830,9 @@ describe("agent source service", () => {
         async detectMemoryPluginConflicts() {
           return [
             {
-              sourceId: "openclaw",
-              displayName: "OpenClaw",
-              configPath: "/tmp/openclaw/openclaw.json",
+              sourceId: "codex",
+              displayName: "Codex",
+              configPath: "/tmp/codex/config.toml",
               installedPluginId: "memory-core"
             }
           ];
@@ -1053,9 +842,9 @@ describe("agent source service", () => {
 
     await expect(service.detectMemoryPluginConflicts()).resolves.toEqual([
       {
-        sourceId: "openclaw",
-        displayName: "OpenClaw",
-        configPath: "/tmp/openclaw/openclaw.json",
+        sourceId: "codex",
+        displayName: "Codex",
+        configPath: "/tmp/codex/config.toml",
         installedPluginId: "memory-core"
       }
     ]);
@@ -1091,9 +880,9 @@ describe("agent source service", () => {
         async detectMemoryPluginConflicts() {
           return [
             {
-              sourceId: "openclaw",
-              displayName: "OpenClaw",
-              configPath: "/tmp/openclaw/openclaw.json",
+              sourceId: "codex",
+              displayName: "Codex",
+              configPath: "/tmp/codex/config.toml",
               installedPluginId: "memory-core"
             }
           ];
@@ -1125,8 +914,8 @@ describe("agent source service", () => {
       success: true,
     });
     expect(analytics.events[2]?.params).toMatchObject({
-      source_id: "openclaw",
-      source_kind: "native_plugin",
+      source_id: "codex",
+      source_kind: "hook",
       permission: "scan_and_write_skill",
       installed_plugin_id: "memory-core",
     });
@@ -1135,16 +924,16 @@ describe("agent source service", () => {
   it("emits skill install analytics", async () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "workbuddy",
-      displayName: "WorkBuddy",
-      dataPath: "/tmp/workbuddy",
+      sourceId: "claude_code",
+      displayName: "Claude Code",
+      dataPath: "/tmp/claude-code",
       builtin: true,
       status: "not_connected",
     });
     const analytics = createAgentSourceAnalyticsRecorder();
     const service = createService({
       repository,
-      adapters: [createFakeAdapter("workbuddy")],
+      adapters: [createFakeAdapter("claude_code")],
       agentSourceAnalytics: analytics.recorder,
       getScanPermission: async () => "scan_only",
       skillDistributionService: {
@@ -1163,13 +952,13 @@ describe("agent source service", () => {
       },
     });
 
-    await service.installSkill("workbuddy");
+    await service.installSkill("claude_code");
 
     expect(analytics.events).toHaveLength(1);
     expect(analytics.events[0]).toMatchObject({
       eventName: AGENT_SOURCE_ANALYTICS_EVENTS.skillInstalled,
       params: {
-        source_id: "workbuddy",
+        source_id: "claude_code",
         source_kind: "skill",
         permission: "scan_only",
         status_before: "not_connected",
@@ -1239,7 +1028,7 @@ function createService(
   } = {}
 ): AgentSourceService {
   return createAgentSourceService({
-    sourceRegistry: createSourceRegistry(options.adapters ?? [createFakeAdapter("cursor")]),
+    sourceRegistry: createSourceRegistry(options.adapters ?? [createFakeAdapter("codex")]),
     agentSourceRepository: options.repository ?? createRepository(),
     ingestionService: options.ingestionService ?? createFakeIngestionService(),
     memoryClient: options.memoryClient ?? createMockMemoryClient(),
@@ -1261,8 +1050,7 @@ function createService(
           return undefined;
         }
       } satisfies SkillDistributionService),
-    now: () => "2026-05-28T10:00:00.000Z",
-    createId: () => "manual-id-1"
+    now: () => "2026-05-28T10:00:00.000Z"
   });
 }
 
@@ -1333,8 +1121,8 @@ function createFakeAdapter(
 ): SourceAdapter {
   const descriptor: SourceDescriptor = {
     sourceId,
-    displayName: sourceId === "cursor" ? "Cursor" : "Custom",
-    builtin: sourceId === "cursor",
+    displayName: sourceId === "codex" ? "Codex" : "Custom",
+    builtin: sourceId === "codex",
     dataPath: `/tmp/${sourceId}`,
     ...descriptorOverrides
   };

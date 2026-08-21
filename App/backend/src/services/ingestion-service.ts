@@ -262,8 +262,8 @@ function renderMessageContent(message: ConversationMessage): string {
     return message.content;
   }
 
-  const toolName = stringMeta(message.rawMeta, "toolName") ?? stringMeta(message.rawMeta, "hermesToolName");
-  const callId = stringMeta(message.rawMeta, "toolCallId") ?? stringMeta(message.rawMeta, "hermesToolCallId");
+  const toolName = stringMeta(message.rawMeta, "toolName");
+  const callId = stringMeta(message.rawMeta, "toolCallId");
   if (!toolName && !callId) {
     return message.content;
   }

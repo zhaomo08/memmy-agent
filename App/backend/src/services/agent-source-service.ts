@@ -1,20 +1,15 @@
 /** Agent source service module. */
-import { createHash, randomUUID } from "node:crypto";
-import { MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH } from "@memmy/local-api-contracts";
+import { createHash } from "node:crypto";
 import {
   setImmediate as yieldToEventLoop,
   setTimeout as waitForWorkerProgress
 } from "node:timers/promises";
 import type {
-  AddManualInput,
   AgentSourceMemoryPluginConflict,
   AgentSourcePluginActionInput,
   AgentSourceScanMode,
   AgentSourceStatus,
   AgentSourceView,
-  ManagedAgentSourceImportInput,
-  ManagedAgentSourceImportResult,
-  ManagedAgentSourceUpdateInput,
   ScanPermission,
   ScanResult
 } from "@memmy/local-api-contracts";
@@ -39,10 +34,6 @@ import {
   type AgentSourceLifecycleAnalytics,
 } from "../analytics/agent-source-analytics.js";
 import { errorCodeFromUnknown } from "../analytics/analytics-transport.js";
-import {
-  extractManagedAgentHistory,
-  selectIncrementalManagedMessages
-} from "./managed-agent-history.js";
 
 export type { ScanProgress } from "../adapters/outbound/agent-source/types.js";
 
@@ -65,10 +56,6 @@ export interface AgentSourceService {
   collectAll(options?: AgentSourceScanOptions): Promise<CollectedSourceScan[]>;
   ingestCollected(collected: readonly CollectedSourceScan[], options?: AgentSourceScanOptions): Promise<ScanResult[]>;
   processImportSummaries(memoryIds: readonly string[], options?: AgentSourceScanOptions): Promise<ProcessingFailure[]>;
-  addManual(input: AddManualInput): Promise<AgentSourceView>;
-  importManaged(sourceId: string, input: ManagedAgentSourceImportInput): Promise<ManagedAgentSourceImportResult>;
-  syncManaged(sourceId: string): Promise<ManagedAgentSourceImportResult>;
-  updateManaged(sourceId: string, input: ManagedAgentSourceUpdateInput): Promise<AgentSourceView>;
   remove(sourceId: string): Promise<void>;
   installSkill(sourceId: string): Promise<void>;
   uninstallSkill(sourceId: string): Promise<void>;
@@ -105,13 +92,11 @@ export interface CreateAgentSourceServiceOptions {
   agentSourceAnalytics?: AgentSourceLifecycleAnalytics;
   getScanPermission?: () => Promise<ScanPermission>;
   now?: () => string;
-  createId?: () => string;
 }
 
 /** Creates create agent source service. */
 export function createAgentSourceService(options: CreateAgentSourceServiceOptions): AgentSourceService {
   const now = options.now ?? (() => new Date().toISOString());
-  const createId = options.createId ?? randomUUID;
   const agentSourceAnalytics = options.agentSourceAnalytics ?? createAgentSourceLifecycleAnalytics();
 
   return {
@@ -169,139 +154,6 @@ export function createAgentSourceService(options: CreateAgentSourceServiceOption
       );
       appendProcessingFailures(result, failures);
       return result;
-    },
-
-    async addManual(input) {
-      const sourceId = createId();
-      options.agentSourceRepository.upsertSource({
-        sourceId,
-        displayName: input.displayName,
-        dataPath: MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH,
-        builtin: false
-      });
-
-      return toAgentSourceView(options.agentSourceRepository.listSources().find((source) => source.sourceId === sourceId));
-    },
-
-    async importManaged(sourceId, input) {
-      const source = ensureManagedSource(options, sourceId);
-      if (input.dataPath) {
-        options.agentSourceRepository.upsertSource({
-          sourceId,
-          displayName: source.displayName,
-          dataPath: input.dataPath,
-          builtin: false
-        });
-      }
-
-      const messages = sortManagedMessagesForIngestion(input.messages.map((message) => ({
-        messageId: message.messageId,
-        sourceId,
-        conversationId: message.conversationId,
-        role: message.role,
-        content: message.content,
-        createdAt: message.createdAt,
-        workspacePath: message.workspacePath ?? null,
-        gitRoot: message.gitRoot ?? null,
-        rawMeta: message.rawMeta ?? {}
-      })));
-      const stats = await options.ingestionService.ingest(toAsyncIterable(messages), {
-        sourceId,
-        memorySource: source.displayName,
-        deferProcessing: true,
-        totalMessages: messages.length
-      });
-      const processingFailures = await processPendingImportSummaries(options, stats.memoryIds, {
-        progressSourceId: sourceId
-      });
-      stats.errors.push(...processingFailures.map((failure) => ({
-        conversationId: failure.memoryId,
-        reason: failure.reason
-      })));
-
-      const existingWatermark = options.agentSourceRepository.getScanWatermark(sourceId);
-      const syncBoundaryAt = input.mode === "initial_subset"
-        ? input.syncBoundaryAt ?? existingWatermark?.baselineAt ?? earliestMessageCreatedAt(messages)
-        : existingWatermark?.baselineAt ?? input.syncBoundaryAt ?? earliestMessageCreatedAt(messages);
-      if (input.final && stats.errors.length === 0) {
-        const scannedAt = now();
-        options.agentSourceRepository.setLastScannedAt(sourceId, scannedAt);
-        options.agentSourceRepository.upsertScanWatermark({
-          sourceId,
-          mode: input.mode,
-          baselineAt: syncBoundaryAt,
-          latestSeenCreatedAt: maxIso(
-            maxIso(existingWatermark?.latestSeenCreatedAt, input.latestSeenAt),
-            latestMessageCreatedAt(messages)
-          ),
-          updatedAt: scannedAt
-        });
-      }
-
-      return {
-        sourceId,
-        attempted: stats.attempted,
-        written: stats.written,
-        deduped: stats.deduped,
-        failed: stats.failed,
-        memoryIds: stats.memoryIds,
-        syncBoundaryAt,
-        errors: stats.errors
-      };
-    },
-
-    async syncManaged(sourceId) {
-      const source = ensureManagedSource(options, sourceId);
-      if (!source.syncRecipe) {
-        throw new Error("Managed Agent source has not completed first-time format discovery");
-      }
-      const syncBoundaryAt = options.agentSourceRepository.getScanWatermark(sourceId)?.baselineAt;
-      if (!syncBoundaryAt) {
-        throw new Error("Managed Agent source has no recorded initial sync boundary");
-      }
-      const messages = selectIncrementalManagedMessages(
-        extractManagedAgentHistory(source.syncRecipe),
-        syncBoundaryAt
-      );
-      const result = await this.importManaged(sourceId, {
-        mode: "incremental",
-        messages,
-        syncBoundaryAt,
-        latestSeenAt: latestMessageCreatedAt(messages),
-        final: true
-      });
-      if (result.errors.length > 0) {
-        throw new Error(`Managed Agent automatic sync failed: ${result.errors.map((error) => error.reason).join("; ")}`);
-      }
-      return result;
-    },
-
-    async updateManaged(sourceId, input) {
-      const source = ensureManagedSource(options, sourceId);
-      if (input.syncRecipe) {
-        const messages = selectIncrementalManagedMessages(
-          extractManagedAgentHistory(input.syncRecipe),
-          "1970-01-01T00:00:00.000Z"
-        );
-        if (messages.length === 0) {
-          throw new Error("Managed Agent sync recipe found no complete user/assistant turns");
-        }
-      }
-      if (input.dataPath || input.syncRecipe) {
-        options.agentSourceRepository.upsertSource({
-          sourceId,
-          displayName: source.displayName,
-          dataPath: input.dataPath ?? source.dataPath,
-          builtin: false,
-          ...(input.syncRecipe ? { syncRecipe: input.syncRecipe } : {})
-        });
-      }
-      if (input.skillInstalled !== undefined) {
-        options.agentSourceRepository.setStatus(sourceId, input.skillInstalled ? "skill_installed" : "not_connected");
-      }
-      return toAgentSourceView(
-        options.agentSourceRepository.listSources().find((candidate) => candidate.sourceId === sourceId)
-      );
     },
 
     async remove(sourceId) {
@@ -775,8 +627,8 @@ function conversationContentHash(messages: readonly ConversationMessage[]): stri
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
-    toolName: conversationMetaString(message, "toolName") ?? conversationMetaString(message, "hermesToolName"),
-    toolCallId: conversationMetaString(message, "toolCallId") ?? conversationMetaString(message, "hermesToolCallId")
+    toolName: conversationMetaString(message, "toolName"),
+    toolCallId: conversationMetaString(message, "toolCallId")
   }));
   return createHash("sha256").update(JSON.stringify(content)).digest("hex");
 }
@@ -935,15 +787,6 @@ function latestMessageCreatedAt(messages: readonly { createdAt: string }[]): str
   return messages.reduce<string | null>((latest, message) => maxIso(latest, message.createdAt), null);
 }
 
-function earliestMessageCreatedAt(messages: readonly { createdAt: string }[]): string | null {
-  return messages.reduce<string | null>((earliest, message) => {
-    if (!earliest || Date.parse(message.createdAt) < Date.parse(earliest)) {
-      return message.createdAt;
-    }
-    return earliest;
-  }, null);
-}
-
 function maxIso(left: string | null | undefined, right: string | null | undefined): string | null {
   if (!left) {
     return right ?? null;
@@ -960,17 +803,6 @@ function sortMessagesForIngestion(messages: readonly ConversationMessage[]): Con
     Date.parse(left.createdAt) - Date.parse(right.createdAt) ||
     left.messageId.localeCompare(right.messageId)
   );
-}
-
-function sortManagedMessagesForIngestion(messages: readonly ConversationMessage[]): ConversationMessage[] {
-  return messages
-    .map((message, index) => ({ message, index }))
-    .sort((left, right) =>
-      left.message.conversationId.localeCompare(right.message.conversationId) ||
-      Date.parse(left.message.createdAt) - Date.parse(right.message.createdAt) ||
-      left.index - right.index
-    )
-    .map((entry) => entry.message);
 }
 
 function uniqueConversationIds(messages: readonly ConversationMessage[]): string[] {
@@ -1142,22 +974,8 @@ function toAgentSourceView(
     messageCount: source.messageCount,
     lastScannedAt: source.lastScannedAt,
     syncBoundaryAt,
-    syncReady: Boolean(source.syncRecipe)
+    syncReady: false
   };
-}
-
-function ensureManagedSource(
-  options: Pick<CreateAgentSourceServiceOptions, "agentSourceRepository">,
-  sourceId: string
-): AgentSourceRecord {
-  const source = options.agentSourceRepository.listSources().find((candidate) => candidate.sourceId === sourceId);
-  if (!source) {
-    throw new Error(`Unknown Agent source: ${sourceId}`);
-  }
-  if (source.builtin) {
-    throw new Error(`Agent source is not managed by Memmy Agent: ${sourceId}`);
-  }
-  return source;
 }
 
 function normalizePluginInstallType(value: string | undefined): AgentSourceInstallType {
