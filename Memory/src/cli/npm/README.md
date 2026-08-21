@@ -74,9 +74,6 @@ Supported agents:
 
 - `codex`
 - `claude`
-- `opencode`
-- `openclaw`
-- `hermes`
 
 ## Commands
 
@@ -115,4 +112,4 @@ profile's user ID and then the application user ID from the configured Memmy
 configuration. Configure the application default with
 `memmy config set app.userId <user_id>`.
 Use `--source <agent-source>` to identify the calling agent/source, such as
-`codex` or `openclaw`.
+`codex` or `claude`.

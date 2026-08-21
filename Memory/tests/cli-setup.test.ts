@@ -119,7 +119,7 @@ describe("memmy-memory CLI setup commands", () => {
     expect(output).toContain(`Config file: ${join(root, "config.yaml")}`);
     expect(output).toContain(`Database config: ${join(root, "memory.sqlite")}`);
     expect(output).toContain("Endpoint: http://127.0.0.1:18960");
-    expect(output).toContain("Target agents: codex, claude, opencode, openclaw, hermes");
+    expect(output).toContain("Target agents: codex, claude");
     expect(output).toContain("Shell completion: Skipped (disabled during init)");
     expect(output).toContain("Try running: memmy-memory health");
     expect(() => JSON.parse(output)).toThrow();
@@ -156,46 +156,19 @@ describe("memmy-memory CLI setup commands", () => {
         injectPath: join(root, ".claude", "CLAUDE.md"),
         skillPath: join(root, ".claude", "skills", "memmy-memory"),
         dryRun: false
-      },
-      {
-        agent: "opencode",
-        root: join(root, ".config", "opencode"),
-        injectPath: join(root, ".config", "opencode", "AGENTS.md"),
-        skillPath: join(root, ".config", "opencode", "skills", "memmy-memory"),
-        dryRun: false
-      },
-      {
-        agent: "openclaw",
-        root: join(root, ".openclaw"),
-        injectPath: join(root, ".openclaw", "workspace", "AGENTS.md"),
-        skillPath: join(root, ".openclaw", "skills", "memmy-memory"),
-        dryRun: false
-      },
-      {
-        agent: "hermes",
-        root: join(root, ".hermes"),
-        injectPath: join(root, ".hermes", "SOUL.md"),
-        skillPath: join(root, ".hermes", "skills", "memmy-memory"),
-        dryRun: false
       }
     ]);
 
     for (const injectPath of [
       join(root, ".codex", "AGENTS.md"),
-      join(root, ".claude", "CLAUDE.md"),
-      join(root, ".config", "opencode", "AGENTS.md"),
-      join(root, ".openclaw", "workspace", "AGENTS.md"),
-      join(root, ".hermes", "SOUL.md")
+      join(root, ".claude", "CLAUDE.md")
     ]) {
       expect(readFileSync(injectPath, "utf8")).toContain("<!-- memmy:start v=1 -->");
     }
 
     for (const skillPath of [
       join(root, ".codex", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".claude", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".config", "opencode", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".openclaw", "skills", "memmy-memory", "SKILL.md"),
-      join(root, ".hermes", "skills", "memmy-memory", "SKILL.md")
+      join(root, ".claude", "skills", "memmy-memory", "SKILL.md")
     ]) {
       expect(readFileSync(skillPath, "utf8")).toContain("name: memmy-memory");
     }
@@ -206,7 +179,7 @@ describe("memmy-memory CLI setup commands", () => {
     const assetRoot = join(root, "assets");
     createCliAssets(assetRoot);
     createAllAgentRoots(root);
-    rmSync(join(root, ".hermes"), { recursive: true, force: true });
+    rmSync(join(root, ".claude"), { recursive: true, force: true });
     setEnv("HOME", root);
 
     const result = await runCommand({
@@ -218,38 +191,35 @@ describe("memmy-memory CLI setup commands", () => {
     }) as Record<string, unknown>;
 
     expect((result.agents as Array<{ agent: string }>).map(({ agent }) => agent)).toEqual([
-      "codex",
-      "claude",
-      "opencode",
-      "openclaw"
+      "codex"
     ]);
-    expect(existsSync(join(root, ".hermes"))).toBe(false);
+    expect(existsSync(join(root, ".claude"))).toBe(false);
     expect(existsSync(join(root, ".codex", "skills", "memmy-memory", "SKILL.md"))).toBe(true);
   });
 
-  it("installs OpenCode into OPENCODE_CONFIG_DIR", async () => {
+  it("installs Claude Code into CLAUDE_CONFIG_DIR", async () => {
     const root = tempRoot();
     const assetRoot = join(root, "assets");
-    const opencodeRoot = join(root, "custom-opencode");
+    const claudeRoot = join(root, "custom-claude");
     createCliAssets(assetRoot);
-    mkdirSync(opencodeRoot, { recursive: true });
+    mkdirSync(claudeRoot, { recursive: true });
     setEnv("HOME", root);
-    setEnv("OPENCODE_CONFIG_DIR", opencodeRoot);
+    setEnv("CLAUDE_CONFIG_DIR", claudeRoot);
 
     const result = await runCommand({
       argv: [
         "init",
         "--home", join(root, "memmy-home"),
-        "--agent", "opencode",
+        "--agent", "claude",
         "--asset-root", assetRoot
       ]
     }) as Record<string, unknown>;
 
     expect(result.agents).toEqual([{
-      agent: "opencode",
-      root: opencodeRoot,
-      injectPath: join(opencodeRoot, "AGENTS.md"),
-      skillPath: join(opencodeRoot, "skills", "memmy-memory"),
+      agent: "claude",
+      root: claudeRoot,
+      injectPath: join(claudeRoot, "CLAUDE.md"),
+      skillPath: join(claudeRoot, "skills", "memmy-memory"),
       dryRun: false
     }]);
   });
@@ -395,10 +365,8 @@ describe("memmy-memory CLI setup commands", () => {
     createCliAssets(assetRoot);
 
     const cases = [
-      ["claude", "CLAUDE.md"],
-      ["opencode", "AGENTS.md"],
-      ["openclaw", join("workspace", "AGENTS.md")],
-      ["hermes", "SOUL.md"]
+      ["codex", "AGENTS.md"],
+      ["claude", "CLAUDE.md"]
     ] as const;
 
     for (const [agent, injectRelativePath] of cases) {
@@ -548,9 +516,6 @@ function createCliAssets(assetRoot: string): void {
 function createAllAgentRoots(root: string): void {
   mkdirSync(join(root, ".codex"), { recursive: true });
   mkdirSync(join(root, ".claude"), { recursive: true });
-  mkdirSync(join(root, ".config", "opencode"), { recursive: true });
-  mkdirSync(join(root, ".openclaw", "workspace"), { recursive: true });
-  mkdirSync(join(root, ".hermes"), { recursive: true });
 }
 
 function setEnv(key: string, value: string): void {

@@ -25,7 +25,7 @@ export const PLUGIN_RUNTIME_EVENTS = {
 export type PluginRuntimeEventName =
   (typeof PLUGIN_RUNTIME_EVENTS)[keyof typeof PLUGIN_RUNTIME_EVENTS];
 
-export type PluginTarget = "hook" | "native_plugin";
+export type PluginTarget = "hook";
 
 export type PluginRuntimeAttribution = {
   source?: unknown;
@@ -36,16 +36,11 @@ export type PluginRuntimeAttribution = {
 };
 
 const EXTERNAL_AGENT_SOURCE_IDS = new Set([
-  "cursor",
   "claude_code",
   "codex",
-  "opencode",
-  "openclaw",
-  "hermes",
 ]);
 
-const HOOK_AGENT_SOURCE_IDS = new Set(["cursor", "claude_code", "codex"]);
-const NATIVE_PLUGIN_AGENT_SOURCE_IDS = new Set(["opencode", "openclaw", "hermes"]);
+const HOOK_AGENT_SOURCE_IDS = new Set(["claude_code", "codex"]);
 
 const PLUGIN_RUNTIME_SOURCE = "memmy-memory";
 
@@ -108,35 +103,15 @@ export function resolveExternalAgentSource(input: PluginRuntimeAttribution): str
   return null;
 }
 
-/**
- * Tool-call analytics are reserved for local native plugins (opencode/openclaw/hermes).
- * Desktop agent-source scans and hook integrations must not emit tool_call_* events —
- * scans use source=<agent> + adapterId=agent-source:*; hooks already have hook_* events.
- */
+/** Codex 和 Claude Code 使用 hook 生命周期，不发送原生插件 tool_call 事件。 */
 export function resolveExternalPluginToolCallSource(
-  input: PluginRuntimeAttribution,
+  _input: PluginRuntimeAttribution,
 ): string | null {
-  const adapterId = stringValue(input.adapterId);
-  if (adapterId?.startsWith("agent-source:")) return null;
-
-  if (adapterId) {
-    const pluginMatch = /^memmy-(.+)-plugin$/u.exec(adapterId);
-    if (pluginMatch?.[1] && NATIVE_PLUGIN_AGENT_SOURCE_IDS.has(pluginMatch[1])) {
-      return pluginMatch[1];
-    }
-  }
-
-  const directSource = stringValue(input.source) ?? stringValue(input.namespace?.source);
-  if (directSource && NATIVE_PLUGIN_AGENT_SOURCE_IDS.has(directSource)) {
-    return directSource;
-  }
-
   return null;
 }
 
 export function resolvePluginTarget(agentSourceId: string): PluginTarget | undefined {
   if (HOOK_AGENT_SOURCE_IDS.has(agentSourceId)) return "hook";
-  if (NATIVE_PLUGIN_AGENT_SOURCE_IDS.has(agentSourceId)) return "native_plugin";
   return undefined;
 }
 

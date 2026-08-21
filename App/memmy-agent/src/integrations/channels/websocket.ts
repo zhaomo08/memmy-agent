@@ -124,7 +124,6 @@ const MCP_PRESET_ACTIONS_BY_PATH: Record<string, string> = {
   "/api/settings/mcp-presets/test": "test",
   "/api/settings/mcp-presets/custom": "custom",
   "/api/settings/mcp-presets/import": "import",
-  "/api/settings/mcp-presets/import-cursor": "import-cursor",
   "/api/settings/mcp-presets/tools": "tools",
 };
 
