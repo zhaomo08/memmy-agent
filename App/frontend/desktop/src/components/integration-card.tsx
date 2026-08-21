@@ -15,7 +15,7 @@ export function IntegrationCard(props: IntegrationCardProps) {
   const state = deriveIntegrationState(props.connection);
   const labelKey = integrationCardLabelKey(state);
   const actionKey = state === "connected" ? "tools.modal.manage" : "tools.modal.connect";
-  const variantClass = props.meta.isChannel ? "integration-card-channel" : "integration-card-integration";
+  const variantClass = "integration-card-integration";
   const statusLabel = labelKey ? t(labelKey) : "";
 
   return (

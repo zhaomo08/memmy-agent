@@ -1,14 +1,12 @@
 /** Hook command helpers. */
 import { accessSync, constants, statSync } from "node:fs";
-import { basename, isAbsolute, join } from "node:path";
-import { resolveHermesHomeDirectory } from "../agent-paths.js";
+import { basename, isAbsolute } from "node:path";
 
 /** Runtime inputs used to resolve a safe Node executable for agent hooks. */
 export interface NodeExecutableRuntime {
   platform: NodeJS.Platform;
   env: NodeJS.ProcessEnv;
   execPath: string;
-  hermesHomeDirectory: string;
   isExecutableFile(candidate: string): boolean;
 }
 
@@ -24,7 +22,6 @@ export function resolveNodeExecutable(runtime: NodeExecutableRuntime = defaultNo
     runtime.env.MEMMY_HOOK_NODE,
     runtime.env.NODE,
     runtime.execPath,
-    join(runtime.hermesHomeDirectory, "node", "bin", nodeName),
     "/opt/homebrew/bin/node",
     "/usr/local/bin/node",
     "/usr/bin/node",
@@ -41,7 +38,6 @@ function defaultNodeExecutableRuntime(): NodeExecutableRuntime {
     platform: process.platform,
     env: process.env,
     execPath: process.execPath,
-    hermesHomeDirectory: resolveHermesHomeDirectory(),
     isExecutableFile
   };
 }

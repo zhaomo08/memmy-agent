@@ -93,18 +93,18 @@ describe("startAgentSourceScan", () => {
     await startAgentSourceScan({
       clients,
       dispatch: (action) => actions.push(action),
-      sourceId: "openclaw",
+      sourceId: "codex",
       queuedMessage: "queued",
       scheduleFallback() {
         return undefined;
       }
     });
 
-    expect(clients.agentSources.startScan).toHaveBeenCalledWith({ sourceId: "openclaw" });
-    expect(actions[0]).toEqual(appActions.agentSourceScanStarted("openclaw"));
+    expect(clients.agentSources.startScan).toHaveBeenCalledWith({ sourceId: "codex" });
+    expect(actions[0]).toEqual(appActions.agentSourceScanStarted("codex"));
     expect(actions).toContainEqual(appActions.agentSourceScanProgressReceived({
       jobId: "job-source",
-      sourceId: "openclaw",
+      sourceId: "codex",
       phase: "scan",
       current: 0,
       total: 0,

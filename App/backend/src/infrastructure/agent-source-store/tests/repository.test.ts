@@ -31,61 +31,42 @@ describe("agent source repository", () => {
     const scannedAt = "2026-05-28T10:00:00.000Z";
 
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/Users/test/Library/Application Support/Cursor",
-      builtin: true,
-      syncRecipe: {
-        version: 1,
-        format: "jsonl",
-        path: "/Users/test/.cursor/history.jsonl",
-        fields: {
-          messageId: "id",
-          conversationId: "conversation_id",
-          role: "role",
-          content: "content",
-          createdAt: "created_at"
-        },
-        timestampFormat: "auto"
-      }
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/Users/test/.codex/sessions",
+      builtin: true
     });
-    repository.setStatus("cursor", "skill_installed");
-    repository.setLastScannedAt("cursor", scannedAt);
+    repository.setStatus("codex", "skill_installed");
+    repository.setLastScannedAt("codex", scannedAt);
 
     expect(repository.listSources()).toEqual([
       {
-        sourceId: "cursor",
-        displayName: "Cursor",
-        dataPath: "/Users/test/Library/Application Support/Cursor",
+        sourceId: "codex",
+        displayName: "Codex",
+        dataPath: "/Users/test/.codex/sessions",
         builtin: true,
         status: "skill_installed",
         messageCount: 0,
-        lastScannedAt: scannedAt,
-        syncRecipe: expect.objectContaining({
-          version: 1,
-          format: "jsonl",
-          path: "/Users/test/.cursor/history.jsonl"
-        })
+        lastScannedAt: scannedAt
       }
     ]);
 
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor Stable",
-      dataPath: "/Users/test/Cursor",
+      sourceId: "codex",
+      displayName: "Codex Stable",
+      dataPath: "/Users/test/.codex",
       builtin: true
     });
 
     expect(repository.listSources()[0]).toMatchObject({
-      sourceId: "cursor",
-      displayName: "Cursor Stable",
-      dataPath: "/Users/test/Cursor",
+      sourceId: "codex",
+      displayName: "Codex Stable",
+      dataPath: "/Users/test/.codex",
       status: "skill_installed",
-      lastScannedAt: scannedAt,
-      syncRecipe: expect.objectContaining({ format: "jsonl" })
+      lastScannedAt: scannedAt
     });
 
-    repository.removeSource("cursor");
+    repository.removeSource("codex");
 
     expect(repository.listSources()).toEqual([]);
   });

@@ -324,25 +324,6 @@ describe("config migrations", () => {
     await expect(onboard({ config: configPath, workspace, wizard: false })).resolves.toBeTruthy();
   });
 
-  it("onboard refresh backfills missing channel fields", async () => {
-    const configPath = tmpConfig({
-      channels: {
-        qq: {
-          enabled: false,
-          appId: "",
-          secret: "",
-          allowFrom: [],
-        },
-      },
-    });
-    const workspace = path.join(path.dirname(configPath), "workspace");
-
-    await onboard({ config: configPath, workspace, wizard: false });
-    const saved = YAML.parse(fs.readFileSync(configPath, "utf8"));
-
-    expect(saved.channels.qq.msgFormat).toBe("plain");
-  });
-
   it("resets SSRF whitelist when the next config is empty", async () => {
     const whitelisted = tmpConfig({ tools: { ssrfWhitelist: ["100.64.0.0/10"] } });
     const defaulted = tmpConfig({});

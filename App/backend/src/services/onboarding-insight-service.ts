@@ -51,7 +51,6 @@ const TOPIC_PATTERNS: ReadonlyArray<{ keyword: string; pattern: RegExp }> = [
   { keyword: "build", pattern: /\bbuild\b|构建|编译/i },
   { keyword: "test", pattern: /\btest\b|测试/i },
   { keyword: "Claude Code", pattern: /\bclaude code\b/i },
-  { keyword: "Cursor", pattern: /\bcursor\b/i },
   { keyword: "Codex", pattern: /\bcodex\b/i }
 ];
 
@@ -753,11 +752,11 @@ function renderEmptyHistoryReport(locale: "zh-CN" | "en-US"): string {
   return locale === "en-US" ? [
     "There are no records on this device that Memmy can read yet. From now on, though, Memmy will keep capturing the experience, decisions, and context that emerge from your conversations with Agents. The next time you start a new conversation or switch Agents, Memmy can inject the relevant memories directly, so you do not have to explain the background all over again.",
     "That includes project naming conventions, your preferred implementation style, pitfalls you have already encountered, and the root cause uncovered by a debugging session—things that recur in daily work but should not need to be explained repeatedly. They will become reusable long-term memory.",
-    "If you switch between Agents such as Cursor and Codex, Memmy can also connect the context scattered across them. What moves is not merely a chat log, but a working task state that can be continued. Starting with this conversation, Memmy is officially on the job."
+    "If you switch between Codex and Claude Code, Memmy can also connect the context scattered across them. What moves is not merely a chat log, but a working task state that can be continued. Starting with this conversation, Memmy is officially on the job."
   ].join("\n\n") : [
     "这台设备上还没有 Memmy 可以读取的记录，不过从现在开始，你和 Agent 对话中产生的经验、决策和上下文，Memmy 会帮你持续沉淀下来。下一次开新对话或者切换 Agent 时，Memmy 可以直接注入相关记忆，不用你每次重新解释背景。",
     "比如项目里的命名约定、你偏好的实现方式、某个问题踩过的坑、一次排查最终定位到的原因——这些在日常工作中反复出现却不该反复解释的东西，之后都会变成可复用的长期记忆。",
-    "如果你在 Cursor、Codex 等不同 Agent 之间切换工作，Memmy 也能把分散的上下文串起来——迁移的不是聊天记录，而是可以继续执行的任务现场。从这次对话开始，Memmy 就正式上班了。"
+    "如果你在 Codex 和 Claude Code 之间切换工作，Memmy 也能把分散的上下文串起来——迁移的不是聊天记录，而是可以继续执行的任务现场。从这次对话开始，Memmy 就正式上班了。"
   ].join("\n\n");
 }
 
@@ -1658,7 +1657,7 @@ function buildLlmMessages(input: OnboardingInsightGenerationInput): Array<{ role
         "正文长度是硬约束：中文 600-800 字，英文 400-600 words。低于或高于这个范围都视为失败；不要输出短卡片，也不要写成长报告。",
         "正文结构是硬约束：写 5-7 个自然段，每段 2-4 句。段落顺序依次覆盖：开场称呼与总体判断、最近最主要任务、最近 10 条任务线索如何聚类、任务分别来自哪些 Agent、用户工作偏好/协作习惯、当前最适合接续到 Memmy Agent 的事项、下一步执行计划与温和收束。",
         "每段都必须包含至少一个明确线索、偏好判断或可执行下一步。证据不足时写“我只能先按这些线索判断”，但仍然按上述结构展开。",
-        "要自然引导用户从 Claude Code、Codex、Cursor、Hermes 等 Agent 的上下文切到 Memmy Agent 里继续做事，强调任务接续、上下文整合、决策整理和下一步执行，不要贬低其他工具，不要写营销口号。",
+        "要自然引导用户在 Claude Code 与 Codex 之间接续任务，强调上下文整合、决策整理和下一步执行，不要贬低任何工具，不要写营销口号。",
         "除了报告正文，你还必须为 actionCandidates 中的 3 个行动类型分别生成按钮文案和点击后可直接发送给 Agent 的完整请求。类型和顺序必须与 actionCandidates 完全一致。",
         "三个按钮必须指向三个不同且具体的后续动作。buttonLabel 要简短；description 要说明点击后会做什么；suggestedPrompt 必须写清具体任务背景、目标和预期产出，不能只写“继续当前任务”“整理最近讨论”之类的泛化句子。",
         "suggestedPrompt 要把输入中的事实自然组织成通顺请求，不要机械罗列“项目：...；主题：...；用户偏好：...；最近任务：...”等字段，也不要编造输入中不存在的项目、结论或进度。",

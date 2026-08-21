@@ -122,14 +122,6 @@ export interface MemmyConfigWriter {
   writeActiveImageGenerationProfile?(profile: ImageGenerationProfileName): Promise<RuntimeProjectionResult>;
 
   /**
-   * Patch a single memmy-agent channel config.
-   *
-   * @param channelName the memmy-agent runtime channel name, e.g. feishu or weixin.
-   * @param patch the fields to merge into channels[channelName].
-   */
-  patchChannelConfig(channelName: string, patch: Record<string, unknown>): Promise<void>;
-
-  /**
    * Write a single memmy-agent MCP server config (tools.mcpServers[serverName]).
    *
    * @param serverName the MCP server name, e.g. composio.
@@ -176,10 +168,6 @@ export function createMemmyConfigWriter(options: CreateMemmyConfigWriterOptions 
 
     async writeActiveImageGenerationProfile(profile) {
       return writeActiveImageGenerationProfileToMemmyConfig(profile, configPath);
-    },
-
-    async patchChannelConfig(channelName, patch) {
-      await patchChannelConfigInMemmyConfig(channelName, patch, configPath);
     },
 
     async patchMcpServerConfig(serverName, serverConfig) {
@@ -638,32 +626,6 @@ export async function writeActiveImageGenerationProfileToMemmyConfig(
 }
 
 /**
- * Patch a single memmy-agent channel config.
- *
- * @param channelName the memmy-agent runtime channel name.
- * @param patch the channel fields to merge in.
- * @param configPath the Memmy main config file path.
- */
-export async function patchChannelConfigInMemmyConfig(
-  channelName: string,
-  patch: Record<string, unknown>,
-  configPath = resolveDefaultMemmyConfigPath()
-): Promise<void> {
-  const normalizedName = normalizeChannelNameForConfig(channelName);
-  const config = await readMemmyConfig(configPath);
-  const channels = isRecord(config.channels) ? { ...config.channels } : {};
-  const existingChannel = isRecord(channels[normalizedName]) ? { ...channels[normalizedName] } : {};
-
-  channels[normalizedName] = {
-    ...existingChannel,
-    ...omitUndefined(patch)
-  };
-  config.channels = channels;
-
-  await writeMemmyConfig(config, configPath);
-}
-
-/**
  * Write a single memmy-agent MCP server config (tools.mcpServers[serverName]).
  *
  * Fully replaces this server's config, so each startup can idempotently refresh it with the latest port/credentials.
@@ -677,7 +639,7 @@ export async function patchMcpServerConfigInMemmyConfig(
   serverConfig: Record<string, unknown>,
   configPath = resolveDefaultMemmyConfigPath()
 ): Promise<void> {
-  const normalizedName = normalizeChannelNameForConfig(serverName);
+  const normalizedName = normalizeConfigKey(serverName);
   const config = await readMemmyConfig(configPath);
   const tools = isRecord(config.tools) ? { ...config.tools } : {};
   const mcpServers = isRecord(tools.mcpServers) ? { ...tools.mcpServers } : {};
@@ -1297,13 +1259,13 @@ function setAppConfig(config: Record<string, unknown>, appConfig: Record<string,
   }
 }
 
-function normalizeChannelNameForConfig(value: string): string {
+function normalizeConfigKey(value: string): string {
   const normalized = value.trim().toLowerCase().replaceAll("-", "_");
   if (!normalized) {
-    throw new Error("channel name is required");
+    throw new Error("config key is required");
   }
   if (!/^[a-z][a-z0-9_]*$/.test(normalized)) {
-    throw new Error(`invalid channel name: ${value}`);
+    throw new Error(`invalid config key: ${value}`);
   }
   return normalized;
 }

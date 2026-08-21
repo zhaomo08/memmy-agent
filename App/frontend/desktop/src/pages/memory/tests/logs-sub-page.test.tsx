@@ -60,13 +60,13 @@ describe("LogsSubPage", () => {
     }));
     const client = { listMemoryLogs } as unknown as MemoryRuntimeClient;
 
-    await loadLogsData(client, 2, "memory_add", "openclaw");
+    await loadLogsData(client, 2, "memory_add", "codex");
     await loadLogsData(client, 1, "", OTHER_LOG_SOURCE_AGENT);
     await loadLogsData(client, 3, "memory_search", "claude_code");
 
     expect(listMemoryLogs).toHaveBeenNthCalledWith(1, {
       tools: ["memory_add"],
-      sourceAgent: "openclaw",
+      sourceAgent: "codex",
       limit: 20,
       offset: 20
     });
@@ -387,12 +387,12 @@ describe("LogsSubPage", () => {
     const html = renderToString(
       <I18nProvider language="zh-CN">
         <MemoryAddDetail
-          input={{ sourceAgent: "openclaw" }}
+          input={{ sourceAgent: "codex" }}
           output={{
             stored: 1,
             details: [{
               summary: "你之前推荐的科幻电影是什么",
-              sourceAgent: "openclaw",
+              sourceAgent: "codex",
               traceId: "trace_xxx",
               episodeId: "episode_xxx",
               query: "你之前推荐的科幻电影是什么",
@@ -410,9 +410,8 @@ describe("LogsSubPage", () => {
     expect(html).toContain("memory-log-text--query");
     expect(html).toContain("memory-log-text--agent");
     expect(html).toContain("来源 Agent");
-    expect(html).toContain('aria-label="来源 Agent: OpenClaw"');
-    expect(html).toContain(">OpenClaw</span>");
-    expect(html).not.toContain(">openclaw</span>");
+    expect(html).toContain('aria-label="来源 Agent: Codex"');
+    expect(html).toContain(">Codex</span>");
     expect(html).toContain("trace_xxx");
     expect(html).toContain("episode_xxx");
     expect(html).toContain("User");
@@ -426,11 +425,11 @@ describe("LogsSubPage", () => {
     const html = renderToString(
       <I18nProvider language="zh-CN">
         <MemoryAddDetail
-          input={{ source: "turn.complete", sessionId: "openclaw::web" }}
+          input={{ source: "turn.complete", sessionId: "codex::desktop" }}
           output={{
             stored: 1,
             details: [{
-              sourceAgent: "openclaw",
+              sourceAgent: "codex",
               traceId: "trace_xxx",
               episodeId: "episode_xxx",
               query: "我喜欢吃什么水果",
@@ -441,9 +440,9 @@ describe("LogsSubPage", () => {
       </I18nProvider>
     );
 
-    expect(html).toContain(">OpenClaw</span>");
+    expect(html).toContain(">Codex</span>");
     expect(html).not.toContain("turn.complete");
-    expect(html).not.toContain("openclaw::web");
+    expect(html).not.toContain("codex::desktop");
   });
 
   it("memory_add 详情优先使用日志的 source Agent 字段", () => {

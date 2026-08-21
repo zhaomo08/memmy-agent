@@ -17,7 +17,9 @@ describe("gtag config", () => {
     expect(resolveAnalyticsAppEdition("INTL")).toBe("intl");
     expect(resolveAnalyticsAppEdition("cn")).toBe("cn");
     expect(resolveAnalyticsAppEdition("")).toBe("cn");
-    expect(resolveAnalyticsAppEdition(undefined)).toBe("cn");
+    expect(resolveAnalyticsAppEdition()).toBe(
+      import.meta.env.MEMMY_APP_EDITION?.trim().toLowerCase() === "intl" ? "intl" : "cn"
+    );
   });
 
   it("enables debug_mode in dev or when explicitly requested", () => {

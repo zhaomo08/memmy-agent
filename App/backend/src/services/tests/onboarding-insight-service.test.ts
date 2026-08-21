@@ -17,9 +17,9 @@ describe("onboarding insight service", () => {
   it("generates a cross-agent report from recent user queries without writing memory", async () => {
     const service = createOnboardingInsightService({
       samplers: [
-        sampler("cursor", "Cursor", [
-          query("cursor", "1", "我的名字是 Grace，继续 Memmy 的 TypeScript React Tauri 扫描方案"),
-          query("cursor", "2", "先讨论完整 plan，不修改代码，pnpm monorepo 里 onboarding report 怎么接")
+        sampler("codex", "Codex", [
+          query("codex", "1", "我的名字是 Grace，继续 Memmy 的 TypeScript React Tauri 扫描方案"),
+          query("codex", "2", "先讨论完整 plan，不修改代码，pnpm monorepo 里 onboarding report 怎么接")
         ]),
         sampler("claude_code", "Claude Code", [
           query("claude_code", "1", "Memmy memory scan 方案里增量水位线怎么设计，必须轻量，不能榨干 token")
@@ -39,7 +39,7 @@ describe("onboarding insight service", () => {
     expect(report.reportMarkdown).not.toContain("本机账号显示");
     expect(report.reportMarkdown).not.toContain("本机用户名/路径名显示");
     expect(report.primaryAction?.type).toBe("cross_agent_synthesis");
-    expect(report.primaryAction?.relatedAgents).toEqual(expect.arrayContaining(["Cursor", "Claude Code"]));
+    expect(report.primaryAction?.relatedAgents).toEqual(expect.arrayContaining(["Codex", "Claude Code"]));
     expect(report.diagnostics).toMatchObject({
       discoveredAgentCount: 2,
       sampledQueryCount: 3,
@@ -50,8 +50,8 @@ describe("onboarding insight service", () => {
   it("does not mix Chinese and English name candidates", async () => {
     const service = createOnboardingInsightService({
       samplers: [
-        sampler("cursor", "Cursor", [
-          query("cursor", "1", "我的名字是 Grace江，帮我看 Tauri build")
+        sampler("codex", "Codex", [
+          query("codex", "1", "我的名字是 Grace江，帮我看 Tauri build")
         ])
       ],
       reportGenerator: null,
@@ -67,8 +67,8 @@ describe("onboarding insight service", () => {
   it("does not treat ordinary Chinese task phrases after 我是 as a name", async () => {
     const service = createOnboardingInsightService({
       samplers: [
-        sampler("cursor", "Cursor", [
-          query("cursor", "1", "我是部署在云服务器上使用的，帮我检查 Agent 记忆配置")
+        sampler("codex", "Codex", [
+          query("codex", "1", "我是部署在云服务器上使用的，帮我检查 Agent 记忆配置")
         ])
       ],
       reportGenerator: null,
@@ -97,7 +97,7 @@ describe("onboarding insight service", () => {
     expect(report.reportMarkdown).toBe([
       "这台设备上还没有 Memmy 可以读取的记录，不过从现在开始，你和 Agent 对话中产生的经验、决策和上下文，Memmy 会帮你持续沉淀下来。下一次开新对话或者切换 Agent 时，Memmy 可以直接注入相关记忆，不用你每次重新解释背景。",
       "比如项目里的命名约定、你偏好的实现方式、某个问题踩过的坑、一次排查最终定位到的原因——这些在日常工作中反复出现却不该反复解释的东西，之后都会变成可复用的长期记忆。",
-      "如果你在 Cursor、Codex 等不同 Agent 之间切换工作，Memmy 也能把分散的上下文串起来——迁移的不是聊天记录，而是可以继续执行的任务现场。从这次对话开始，Memmy 就正式上班了。"
+      "如果你在 Codex 和 Claude Code 之间切换工作，Memmy 也能把分散的上下文串起来——迁移的不是聊天记录，而是可以继续执行的任务现场。从这次对话开始，Memmy 就正式上班了。"
     ].join("\n\n"));
     expect(report.reportMarkdown).not.toContain("not enough recent user messages");
     expect(report.primaryAction).toBeUndefined();
@@ -132,7 +132,7 @@ describe("onboarding insight service", () => {
     expect(report.reportMarkdown).toBe([
       "There are no records on this device that Memmy can read yet. From now on, though, Memmy will keep capturing the experience, decisions, and context that emerge from your conversations with Agents. The next time you start a new conversation or switch Agents, Memmy can inject the relevant memories directly, so you do not have to explain the background all over again.",
       "That includes project naming conventions, your preferred implementation style, pitfalls you have already encountered, and the root cause uncovered by a debugging session—things that recur in daily work but should not need to be explained repeatedly. They will become reusable long-term memory.",
-      "If you switch between Agents such as Cursor and Codex, Memmy can also connect the context scattered across them. What moves is not merely a chat log, but a working task state that can be continued. Starting with this conversation, Memmy is officially on the job."
+      "If you switch between Codex and Claude Code, Memmy can also connect the context scattered across them. What moves is not merely a chat log, but a working task state that can be continued. Starting with this conversation, Memmy is officially on the job."
     ].join("\n\n"));
     expect(report.reportMarkdown).not.toContain("我没有在本机扫描到");
     expect(events).toEqual([
@@ -205,7 +205,7 @@ describe("onboarding insight service", () => {
             buttonLabel: ["整合合并任务", "继续修复按钮", "沉淀技术决策"][index],
             description: ["汇总分支合并背景并形成执行计划", "接着修复首登报告按钮生成链路", "记录模型生成与规则校验的取舍"][index],
             suggestedPrompt: [
-              "请整合 Codex 和 Cursor 中关于 dev-jiang 合并 dev 的讨论，归纳已经确认的保留方案、尚未解决的冲突以及下一步验证和提交计划。",
+              "请整合 Codex 和 Codex 中关于 dev-jiang 合并 dev 的讨论，归纳已经确认的保留方案、尚未解决的冲突以及下一步验证和提交计划。",
               "请继续修复首次登录扫描报告的三个行动按钮，让按钮内容结合最近任务由模型生成，并检查点击后发送的请求是否具体、通顺且可以直接执行。",
               "请把首次登录报告按钮采用模型生成、规则限定类型和元数据、异常时回退模板的方案整理成技术决策记录，并列出验证标准。"
             ][index]
@@ -216,7 +216,7 @@ describe("onboarding insight service", () => {
     const service = createOnboardingInsightService({
       samplers: [
         sampler("codex", "Codex", [query("codex", "1", "跨 Agent 整合 Memory 项目中 dev-jiang 和 dev 的合并任务并继续修复首登按钮")]),
-        sampler("cursor", "Cursor", [query("cursor", "1", "跨 Agent 的 Memory 首次登录报告按钮应该结合最近任务由模型生成")])
+        sampler("codex", "Codex", [query("codex", "1", "跨 Agent 的 Memory 首次登录报告按钮应该结合最近任务由模型生成")])
       ],
       reportGenerator: { generateReport },
       now: () => 100
@@ -232,7 +232,7 @@ describe("onboarding insight service", () => {
       "沉淀技术决策"
     ]);
     expect(report.primaryAction).toMatchObject({
-      relatedAgents: expect.arrayContaining(["Codex", "Cursor"]),
+      relatedAgents: expect.arrayContaining(["Codex", "Codex"]),
       suggestedPrompt: expect.stringContaining("dev-jiang 合并 dev")
     });
   });
@@ -342,7 +342,7 @@ describe("onboarding insight service", () => {
     const service = createOnboardingInsightService({
       samplers: [
         sampler("codex", "Codex", manyQueries("codex", 80)),
-        sampler("cursor", "Cursor", manyQueries("cursor", 80)),
+        sampler("codex", "Codex", manyQueries("codex", 80)),
         sampler("claude_code", "Claude Code", manyQueries("claude_code", 80))
       ],
       reportGenerator: { generateReport },
@@ -354,7 +354,7 @@ describe("onboarding insight service", () => {
     const generationInput = generateReport.mock.calls[0]?.[0];
     expect(generationInput?.sample.sampledQueryCount).toBe(96);
     expect(generationInput?.sample.queries).toHaveLength(60);
-    expect(new Set(generationInput?.sample.queries.map((item) => item.agentSource))).toEqual(new Set(["Codex", "Cursor", "Claude Code"]));
+    expect(new Set(generationInput?.sample.queries.map((item) => item.agentSource))).toEqual(new Set(["Codex", "Codex", "Claude Code"]));
   });
 
   it("puts the newest ten queries first before filling the model context with balanced samples", async () => {
@@ -362,7 +362,7 @@ describe("onboarding insight service", () => {
     const service = createOnboardingInsightService({
       samplers: [
         sampler("codex", "Codex", timedQueries("codex", 20, "2026-06-03T10:00:00.000Z")),
-        sampler("cursor", "Cursor", timedQueries("cursor", 80, "2026-06-01T10:00:00.000Z")),
+        sampler("codex", "Codex", timedQueries("codex", 80, "2026-06-01T10:00:00.000Z")),
         sampler("claude_code", "Claude Code", timedQueries("claude_code", 80, "2026-06-01T10:00:00.000Z"))
       ],
       reportGenerator: { generateReport },
@@ -376,7 +376,7 @@ describe("onboarding insight service", () => {
     expect(queries.slice(0, 10).map((item) => `${item.agentSource}:${item.text}`)).toEqual(
       Array.from({ length: 10 }, (_, index) => `Codex:codex recent ${20 - index}`)
     );
-    expect(new Set(queries.slice(10).map((item) => item.agentSource))).toEqual(new Set(["Codex", "Cursor", "Claude Code"]));
+    expect(new Set(queries.slice(10).map((item) => item.agentSource))).toEqual(new Set(["Codex", "Codex", "Claude Code"]));
   });
 
   it("strips inline image base64 before sending sampled user queries to the report model", async () => {
@@ -825,8 +825,8 @@ describe("onboarding insight service", () => {
           query("codex", "2", "Fix the first report actions so the buttons render separately from the markdown body."),
           query("codex", "3", "Keep the implementation lightweight and make sure the final prompt asks for English.")
         ]),
-        sampler("cursor", "Cursor", [
-          query("cursor", "1", "The onboarding scan needs a compact report card with scrollable content.")
+        sampler("claude_code", "Claude Code", [
+          query("claude_code", "1", "The onboarding scan needs a compact report card with scrollable content.")
         ])
       ],
       reportGenerator: null,
@@ -876,9 +876,9 @@ describe("onboarding insight service", () => {
             workspacePath: "/Users/test/jiang"
           }
         ]),
-        sampler("cursor", "Cursor", [
+        sampler("claude_code", "Claude Code", [
           {
-            ...query("cursor", "1", "继续整理当前任务上下文，给出下一步执行计划并验证。"),
+            ...query("claude_code", "1", "继续整理当前任务上下文，给出下一步执行计划并验证。"),
             workspacePath: null
           }
         ])

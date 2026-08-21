@@ -15,16 +15,12 @@ Use `grep(output_mode="count")` / `files_with_matches` for broad searches first,
 use `head_limit` / `offset` to page through large result sets,
 and `grep(glob="*.md")` to filter by file name pattern.
 
-## Attribution
-
-These skills are adapted from [OpenClaw](https://github.com/openclaw/openclaw)'s skill system.
 Runtime metadata uses memmy-agent's own `metadata.memmy` namespace.
 
 ## Available Skills
 
 | Skill                     | Description                                                                                                                         |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `agent-memory-onboarding` | Connect an explicitly named local agent, install its Memory integration, import initial history, and save an automatic-sync recipe. |
 | `cron`                    | Schedule reminders and recurring tasks.                                                                                             |
 | `github`                  | Work with issues, pull requests, CI runs, and the GitHub API through the `gh` CLI.                                                  |
 | `goal`                    | Manage sustained objectives with explicit goal state and completion.                                                                |

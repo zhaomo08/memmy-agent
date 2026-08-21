@@ -88,7 +88,7 @@ describe("prototype page structure alignment", () => {
     expect(source("pages/memory-sources-page.tsx")).toContain("h-full overflow-y-auto p-6");
     expect(source("pages/memory-sources-page.tsx")).toContain("showWipeConfirm");
     expect(source("pages/memory-sources-page.tsx")).toContain("ActionBtn");
-    expect(source("pages/memory-sources-page.tsx")).toContain("FolderSearch");
+    expect(source("pages/memory-sources-page.tsx")).toContain("FolderOpen");
     expect(source("pages/memory-sources-page.tsx")).toContain("AlertTriangle");
     expect(source("pages/memory-sources-page.tsx")).toContain("onClick={() => scanSources(source.sourceId)}");
     expect(source("pages/memory-sources-page.tsx")).not.toContain("onClick={scanSources}");
@@ -100,8 +100,8 @@ describe("prototype page structure alignment", () => {
     expect(source("pages/memory-sources-page.tsx")).toContain('className="flex items-center gap-2 mt-1"');
     expect(source("pages/memory-sources-page.tsx")).not.toContain("mt-1 flex-wrap");
     expect(source("pages/memory-sources-page.tsx")).toContain('"memory.installHook"');
-    expect(source("pages/memory-sources-page.tsx")).toContain('"memory.installSkill"');
-    expect(source("pages/memory-sources-page.tsx")).toContain('"memory.removePlugin"');
+    expect(source("pages/memory-sources-page.tsx")).not.toContain('"memory.installSkill"');
+    expect(source("pages/memory-sources-page.tsx")).not.toContain('"memory.removePlugin"');
     expect(source("pages/memory-sources-page.tsx")).toContain(
       'clients.agentSources.uninstallPlugin(source.sourceId, { installType: "manual" })'
     );

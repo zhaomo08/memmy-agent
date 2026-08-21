@@ -24,6 +24,7 @@ afterEach(async () => {
 
 describe("cloud client", () => {
   it("http client maps docs/cloud-api.md paths and response fields", async () => {
+    const expectedRegion = process.env.MEMMY_APP_EDITION === "intl" ? "intl" : "cn";
     const deviceId = "48b12e26-e2e1-4f2b-916d-7ce18fd6b1a5";
     const requests: Array<{
       path: string;
@@ -90,21 +91,21 @@ describe("cloud client", () => {
         body: { email: "hello@example.com", zhEnv: true },
         lang: "zh",
         deviceId,
-        region: "cn"
+        region: expectedRegion
       },
       {
         path: "/api/agentUser/sendPhoneVerification",
         body: { phoneNumber: "13800138000", zhEnv: false },
         lang: "en",
         deviceId,
-        region: "cn"
+        region: expectedRegion
       },
       {
         path: "/api/agentUser/login",
         body: { email: "hello@example.com", verificationCode: "654321", loginSource: "memmy" },
         lang: "zh",
         deviceId,
-        region: "cn"
+        region: expectedRegion
       }
     ]);
     expect(login).toMatchObject({
@@ -332,6 +333,7 @@ describe("cloud client", () => {
   });
 
   it("http client reads token usage from agentUser info and grants through quota update endpoint", async () => {
+    const expectedRegion = process.env.MEMMY_APP_EDITION === "intl" ? "intl" : "cn";
     const requests: Array<{
       path: string;
       method: string | undefined;
@@ -442,21 +444,21 @@ describe("cloud client", () => {
         method: "GET",
         body: {},
         authorization: "Bearer cloud.login.uuid",
-        region: "cn"
+        region: expectedRegion
       },
       {
         path: "/api/agentUser/quota/updateTokenTotal",
         method: "POST",
         body: { grantKey: "improvement_program" },
         authorization: "Bearer cloud.login.uuid",
-        region: "cn"
+        region: expectedRegion
       },
       {
         path: "/api/agentUser/info",
         method: "GET",
         body: {},
         authorization: "Bearer cloud.login.uuid",
-        region: "cn"
+        region: expectedRegion
       }
     ]);
   });

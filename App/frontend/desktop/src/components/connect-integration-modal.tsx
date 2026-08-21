@@ -5,7 +5,6 @@ import { isIntegrationSetupDiagnosticError, logHiddenIntegrationSetupDiagnosticE
 import type { IntegrationsClient } from "../api/integrations-client.js";
 import { deriveIntegrationState, type IntegrationConnection } from "../integrations/connection-state.js";
 import { IntegrationLogoBadge, type IntegrationMeta } from "../integrations/integration-meta.js";
-import type { MessageKey } from "../i18n/messages.js";
 import { useTranslation } from "../i18n/use-translation.js";
 import { openUrl as defaultOpenUrl } from "../utils/open-url.js";
 
@@ -24,7 +23,6 @@ export interface ConnectIntegrationModalProps {
   onChanged: () => void;
   forcedPhase?: ConnectIntegrationPhase;
   errorMessage?: string;
-  qrWarning?: boolean;
 }
 
 /** Contract for integration connect flow input. */
@@ -55,7 +53,6 @@ export function ConnectIntegrationModal(props: ConnectIntegrationModalProps) {
   const [activeConnection, setActiveConnection] = useState<IntegrationConnection | undefined>(props.connection);
   const [connectUrl, setConnectUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState(props.errorMessage ?? "");
-  const [qrWarning, setQrWarning] = useState(Boolean(props.qrWarning));
   const mountedRef = useRef(false);
   const flowIdRef = useRef(0);
   const flowAbortRef = useRef<AbortController | null>(null);
@@ -75,8 +72,7 @@ export function ConnectIntegrationModal(props: ConnectIntegrationModalProps) {
     setPhase(initialPhase);
     setActiveConnection(props.connection);
     setErrorMessage(props.errorMessage ?? "");
-    setQrWarning(Boolean(props.qrWarning));
-  }, [initialPhase, props.connection, props.errorMessage, props.qrWarning]);
+  }, [initialPhase, props.connection, props.errorMessage]);
 
   useEffect(() => {
     if (!props.open) {
@@ -98,10 +94,7 @@ export function ConnectIntegrationModal(props: ConnectIntegrationModalProps) {
       return;
     }
 
-    if (!canStartOAuthConnect(props.integration)) {
-      setQrWarning(true);
-      return;
-    }
+    if (!canStartOAuthConnect(props.integration)) return;
 
     flowAbortRef.current?.abort();
     const abortController = new AbortController();
@@ -225,7 +218,6 @@ export function ConnectIntegrationModal(props: ConnectIntegrationModalProps) {
             phase,
             integration: props.integration,
             errorMessage,
-            qrWarning,
             connectUrl,
             onConnect: handleConnect,
             onDisconnect: handleDisconnect,
@@ -375,7 +367,6 @@ function renderPhaseBody(input: {
   phase: ConnectIntegrationPhase;
   integration: IntegrationMeta;
   errorMessage: string;
-  qrWarning: boolean;
   connectUrl: string | null;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -466,10 +457,10 @@ function renderPhaseBody(input: {
   }
 
   const canConnectWithOAuth = canStartOAuthConnect(input.integration);
-  const showAuthPendingWarning = input.qrWarning || !canConnectWithOAuth;
+  const showAuthPendingWarning = !canConnectWithOAuth;
   const idleDescription = canConnectWithOAuth
     ? `${input.t("tools.modal.idleDescription")} ${input.integration.name} ${input.t("tools.modal.idleDescriptionSuffix")}`
-    : input.t("tools.modal.channelPendingDescription");
+    : input.t("tools.modal.authPendingDescription");
   const authProvider = input.integration.authProvider;
 
   return (
@@ -497,7 +488,7 @@ function renderPhaseBody(input: {
       )}
       {showAuthPendingWarning && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          {input.t(pendingAuthWarningKey(input.integration))}
+          {input.t("tools.modal.authBackendPending")}
         </div>
       )}
       <button
@@ -513,14 +504,10 @@ function renderPhaseBody(input: {
 }
 
 /**
- * Only OAuth integrations can enter the browser authorization flow; channel placeholders cannot access Cloud/Composio.
+ * Only OAuth integrations can enter the browser authorization flow.
  */
 export function canStartOAuthConnect(integration: Pick<IntegrationMeta, "authKind">): boolean {
   return integration.authKind === "oauth";
-}
-
-function pendingAuthWarningKey(integration: Pick<IntegrationMeta, "authKind">): MessageKey {
-  return integration.authKind === "qrCode" ? "tools.modal.qrBackendPending" : "tools.modal.channelBackendPending";
 }
 
 /**

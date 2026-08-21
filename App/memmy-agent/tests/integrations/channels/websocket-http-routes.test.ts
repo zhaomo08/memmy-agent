@@ -208,51 +208,6 @@ describe("WebSocket HTTP route helpers", () => {
     expect((channel as WebSocketChannel).runtimeModelName?.()).toBe("openai/gpt-4.1");
   });
 
-  it("routes channel admin HTTP requests to the injected admin API", async () => {
-    const channel = makeChannel();
-    const headers = withApiToken(channel);
-    const admin = {
-      definitions: vi.fn(() => ({ channels: [{ id: "wechat", runtimeChannel: "weixin" }] })),
-      status: vi.fn(() => ({ connections: [{ provider: "wechat", status: "connected" }] })),
-      configure: vi.fn(async (name: string) => ({ status: "connected", running: true, name })),
-      stop: vi.fn(async (name: string) => ({ status: "disabled", running: false, name })),
-      startWeixinLogin: vi.fn(async () => ({ status: "pendingQr", pollToken: "poll-1" })),
-      pollWeixinLogin: vi.fn(async (token: string) => ({ status: "connected", token })),
-    };
-
-    channel.setChannelAdmin(admin as any);
-    const dispatchJson = async (path: string) => {
-      const response = await channel.dispatchHttp(localConnection, { path, headers });
-      expect(response).not.toBeNull();
-      return responseJson(response!);
-    };
-
-    expect(await dispatchJson("/api/channels/definitions")).toEqual({
-      channels: [{ id: "wechat", runtimeChannel: "weixin" }],
-    });
-    expect(await dispatchJson("/api/channels/status")).toEqual({
-      connections: [{ provider: "wechat", status: "connected" }],
-    });
-    expect(await dispatchJson("/api/channels/feishu/configure")).toMatchObject({
-      status: "connected",
-      name: "feishu",
-    });
-    expect(await dispatchJson("/api/channels/weixin/login/start")).toMatchObject({
-      status: "pendingQr",
-      pollToken: "poll-1",
-    });
-    expect(await dispatchJson("/api/channels/weixin/login/poll-1")).toMatchObject({
-      status: "connected",
-      token: "poll-1",
-    });
-    expect(await dispatchJson("/api/channels/feishu/stop")).toMatchObject({
-      status: "disabled",
-      name: "feishu",
-    });
-    expect(admin.configure).toHaveBeenCalledWith("feishu");
-    expect(admin.stop).toHaveBeenCalledWith("feishu");
-  });
-
   it("serves bootstrap, session listing, and session messages behind API tokens", async ({ task }) => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), `memmy-ws-http-${task.id}-`));
     tmpDirs.push(root);

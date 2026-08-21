@@ -38,7 +38,6 @@ import {
   mergeMissingDefaults,
   modelDisplay,
   onboard,
-  pluginsListRows,
   providerLogin,
   providerLogout,
   resolveOauthProvider,
@@ -220,16 +219,6 @@ describe("CLI command helpers", () => {
     expect(findByName("openai-codex")?.name).toBe("openai_codex");
   });
 
-  it("returns plugin list rows", () => {
-    const root = tempRoot();
-    setConfigPath(writeConfig(root, {}));
-
-    const rows = pluginsListRows();
-
-    expect(Array.isArray(rows)).toBe(true);
-    if (rows.length) expect(rows[0]).toEqual(expect.objectContaining({ name: expect.any(String), source: expect.any(String) }));
-  });
-
   it("merges missing defaults without overwriting existing values", () => {
     expect(mergeMissingDefaults({ enabled: true, nested: { token: "keep" } }, { enabled: false, nested: { token: "", mode: "polling" } })).toEqual({
       enabled: true,
@@ -248,7 +237,7 @@ describe("CLI command helpers", () => {
     expect(config.agents.defaults.workspace).toBe(path.join(root, "workspace"));
   });
 
-  it("onboard creates config, channel defaults, workspace templates, and leaves legacy cron store untouched", async () => {
+  it("onboard creates config, internal WebSocket defaults, workspace templates, and leaves legacy cron store untouched", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "memmy-onboard-"));
     const configPath = path.join(root, "config.yaml");
     const workspace = path.join(root, "workspace");
@@ -267,7 +256,6 @@ describe("CLI command helpers", () => {
     expect(config.agents.defaults.maxTokens).toBe(65_536);
     expect(raw.agents.defaults.maxTokens).toBe(65_536);
     expect(raw.channels.websocket).toEqual(expect.objectContaining({ enabled: true }));
-    expect(raw.channels.slack).toEqual(expect.objectContaining({ enabled: false }));
     expect(raw.fileMemory).toEqual({ enabled: false });
     expect(config.fileMemory.enabled).toBe(false);
     expect(fs.existsSync(path.join(workspace, "memory", "history.jsonl"))).toBe(
