@@ -37,9 +37,9 @@ describe("MemoriesSubPage", () => {
       layer: "L1",
       page: 3
     });
-    expect(buildPanelItemsInput({ sourceAgent: "cursor" })).toEqual({
+    expect(buildPanelItemsInput({ sourceAgent: "claude_code" })).toEqual({
       layer: "L1",
-      sourceAgent: "cursor",
+      sourceAgent: "claude_code",
       page: 1
     });
     expect(buildPanelItemsInput({ sourceAgent: OTHER_MEMORY_SOURCE_AGENT })).toEqual({
@@ -246,7 +246,7 @@ describe("MemoriesSubPage", () => {
     const base = {
       ...memoryListItemFixture,
       metrics: undefined,
-      tags: ["agent-source", "cursor"]
+      tags: ["agent-source", "claude_code"]
     };
 
     const summaryHtml = renderMemories({

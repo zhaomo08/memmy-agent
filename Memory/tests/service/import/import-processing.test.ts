@@ -58,13 +58,13 @@ describe("MemoryService / import / processing", () => {
 
     const added = service.addMemory({
       namespace,
-      adapterId: "agent-source:cursor",
+      adapterId: "agent-source:claude_code",
       requestId: "cursor-turn-1",
       layer: "L1",
-      source: "cursor",
-      tags: ["agent-source", "cursor"],
+      source: "claude_code",
+      tags: ["agent-source", "claude_code"],
       title: "cursor turn conv-a #1",
-      turnId: "cursor:conv-a:0",
+      turnId: "claude_code:conv-a:0",
       content: [
         "## user\n\n记住这个项目使用 pnpm。",
         "## assistant\n\n我先确认项目配置。",
@@ -75,7 +75,7 @@ describe("MemoryService / import / processing", () => {
 
     expect(added.tags).toEqual(expect.arrayContaining(["npm", "read"]));
     expect(added.tags).not.toEqual(expect.arrayContaining(["摘要排队中", "摘要总结中", "索引建立中"]));
-    expect(added.tags).toEqual(expect.arrayContaining(["agent-source", "cursor"]));
+    expect(added.tags).toEqual(expect.arrayContaining(["agent-source", "claude_code"]));
     expect(added.tags).not.toContain("trace");
     expect(added.title).toBe("记住这个项目使用 pnpm。");
     const inserted = db.db.prepare(
@@ -311,7 +311,7 @@ describe("MemoryService / import / processing", () => {
       embedder: createCapturingEmbedder(embeddingTexts)
     });
     const namespace = {
-      source: "hermes",
+      source: "claude_code",
       profileId: "default",
       userId: "user-import-summary-fallback"
     };
@@ -455,7 +455,7 @@ describe("MemoryService / import / processing", () => {
       llm,
       embedder: createCapturingEmbedder([])
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "summary-retry-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "summary-retry-user" };
     const added = addAgentSourceImport(service, namespace, "retry this protected summary", "protected-summary");
 
     await service.runWorkerOnce(1);
@@ -597,7 +597,7 @@ describe("MemoryService / import / processing", () => {
       llm: createBatchReflectionLlm([]),
       embedder: createCapturingEmbedder([])
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "corrupt-trace-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "corrupt-trace-user" };
     const added = addAgentSourceImport(service, namespace, "corrupt trace should stop", "corrupt-trace");
     db.db.prepare(`
       UPDATE memories
@@ -641,7 +641,7 @@ describe("MemoryService / import / processing", () => {
       llm: createBatchReflectionLlm(llmCalls, "summary generated once"),
       embedder
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "embedding-retry-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "embedding-retry-user" };
     const added = addAgentSourceImport(service, namespace, "retry only the vector stage", "embedding-stage");
 
     await service.runWorkerOnce(1);
@@ -678,15 +678,15 @@ describe("MemoryService / import / processing", () => {
       llm: createBatchReflectionLlm([], "versioned import summary"),
       embedder: createCapturingEmbedder(embeddingTexts)
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "versioned-import-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "versioned-import-user" };
     const baseInput = {
       namespace,
-      adapterId: "agent-source:hermes",
+      adapterId: "agent-source:claude_code",
       layer: "L1" as const,
-      source: "hermes",
-      tags: ["agent-source", "hermes"],
-      turnId: "hermes:stable-turn",
-      title: "Stable Hermes turn"
+      source: "claude_code",
+      tags: ["agent-source", "claude_code"],
+      turnId: "claude_code:stable-turn",
+      title: "Stable Claude Code turn"
     };
     const first = service.addMemory({
       ...baseInput,
@@ -940,12 +940,12 @@ describe("MemoryService / import / processing", () => {
 
     const added = service.addMemory({
       namespace,
-      adapterId: "agent-source:cursor",
+      adapterId: "agent-source:claude_code",
       requestId: "cursor-turn-deferred",
       layer: "L1",
-      source: "cursor",
-      tags: ["agent-source", "cursor"],
-      turnId: "cursor:conv-deferred:0",
+      source: "claude_code",
+      tags: ["agent-source", "claude_code"],
+      turnId: "claude_code:conv-deferred:0",
       deferProcessing: true,
       content: [
         "## user\n\n先扫描完成再总结。",

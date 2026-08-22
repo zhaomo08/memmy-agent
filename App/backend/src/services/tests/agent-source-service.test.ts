@@ -121,7 +121,7 @@ describe("agent source service", () => {
     const added: Parameters<MemoryClient["addMemory"]>[0][] = [];
     const memoryClient = createMockMemoryClient();
     const service = createService({
-      adapters: [createFakeAdapter("cursor", createCompleteMemoryMessages("cursor", 1, "2026-05-28T10:00:00.000Z"))],
+      adapters: [createFakeAdapter("claude_code", createCompleteMemoryMessages("claude_code", 1, "2026-05-28T10:00:00.000Z"))],
       memoryClient: {
         ...memoryClient,
         async addMemory(input, context) {
@@ -132,7 +132,7 @@ describe("agent source service", () => {
       skillDistributionService: {
         async listSkills() {
           return [{
-            sourceAgentId: "cursor",
+            sourceAgentId: "claude_code",
             sourceSkillId: "review-code",
             sourceSkillPath: "/tmp/cursor/skills/review-code/SKILL.md",
             sourceSkillVersion: "v2",
@@ -149,17 +149,17 @@ describe("agent source service", () => {
       }
     });
 
-    await service.scanOne("cursor");
+    await service.scanOne("claude_code");
 
     expect(added).toEqual([
       expect.objectContaining({
         layer: "Skill",
-        sourceAgentId: "cursor",
+        sourceAgentId: "claude_code",
         sourceSkillId: "review-code",
         sourceSkillPath: "/tmp/cursor/skills/review-code/SKILL.md",
         sourceSkillVersion: "v2",
         sourceContentHash: "hash-v2",
-        tags: ["agent-source", "cross-agent-skill", "cursor"]
+        tags: ["agent-source", "cross-agent-skill", "claude_code"]
       })
     ]);
   });

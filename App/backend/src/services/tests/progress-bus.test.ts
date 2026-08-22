@@ -12,7 +12,7 @@ describe("progress bus", () => {
 
     bus.emit("agent_source.scan_progress", {
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "scan",
       current: 0,
       total: 1
@@ -20,7 +20,7 @@ describe("progress bus", () => {
     unsubscribe();
     bus.emit("agent_source.scan_progress", {
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "done",
       current: 1,
       total: 1

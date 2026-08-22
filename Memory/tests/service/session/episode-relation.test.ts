@@ -796,7 +796,7 @@ describe("MemoryService / session / episode relation", () => {
     const { db, service } = createTestService();
     const session = service.openSession({
       namespace: {
-        source: "openclaw",
+        source: "codex",
         profileId: "jiang",
         userId: "user-relation-book-follow-up"
       }

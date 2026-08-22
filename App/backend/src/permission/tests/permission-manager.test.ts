@@ -16,8 +16,8 @@ describe("permission manager", () => {
       runtimeToken: "runtime-token"
     });
 
-    await expect(manager.canScanAgentSource({ agentSourceId: "cursor" })).resolves.toBe(canScan);
-    await expect(manager.canWriteAgentSkill({ agentSourceId: "cursor" })).resolves.toBe(canWriteSkill);
+    await expect(manager.canScanAgentSource({ agentSourceId: "claude_code" })).resolves.toBe(canScan);
+    await expect(manager.canWriteAgentSkill({ agentSourceId: "claude_code" })).resolves.toBe(canWriteSkill);
   });
 });
 

@@ -501,9 +501,9 @@ describe("CronService", () => {
 
   it("uses sentinel semantics for channel and to updates", () => {
     const service = new CronService(storePath());
-    const job = service.addJob({ name: "sentinel", schedule: new CronSchedule({ kind: "every", everyMs: 60_000 }), message: "hello", channel: "telegram", to: "user123" });
+    const job = service.addJob({ name: "sentinel", schedule: new CronSchedule({ kind: "every", everyMs: 60_000 }), message: "hello", channel: "cli", to: "user123" });
 
-    expect((service.updateJob(job.id, { name: "renamed" }) as CronJob).payload.channel).toBe("telegram");
+    expect((service.updateJob(job.id, { name: "renamed" }) as CronJob).payload.channel).toBe("cli");
     const cleared = service.updateJob(job.id, { channel: null, to: null });
 
     expect(cleared).toBeInstanceOf(CronJob);

@@ -11,22 +11,22 @@ describe("bus event models", () => {
   });
 
   it("computes inbound sessionKey from the latest override", () => {
-    const msg = new InboundMessage({ channel: "telegram", chatId: "c1", content: "hello" });
+    const msg = new InboundMessage({ channel: "cli", chatId: "c1", content: "hello" });
 
-    expect(msg.sessionKey).toBe("telegram:c1");
+    expect(msg.sessionKey).toBe("cli:c1");
 
-    msg.sessionKeyOverride = "telegram:c1:thread";
-    expect(msg.sessionKey).toBe("telegram:c1:thread");
+    msg.sessionKeyOverride = "cli:c1:thread";
+    expect(msg.sessionKey).toBe("cli:c1:thread");
 
     msg.sessionKey = "explicit:key";
-    expect(msg.sessionKey).toBe("telegram:c1:thread");
+    expect(msg.sessionKey).toBe("cli:c1:thread");
 
     msg.sessionKeyOverride = null;
     expect(msg.sessionKey).toBe("explicit:key");
   });
 
   it("keeps sessionKey enumerable for object spread and JSON serialization", () => {
-    const msg = new InboundMessage({ channel: "telegram", chatId: "c1", content: "hello", sessionKeyOverride: "thread:key" });
+    const msg = new InboundMessage({ channel: "cli", chatId: "c1", content: "hello", sessionKeyOverride: "thread:key" });
 
     expect({ ...msg }).toMatchObject({ sessionKey: "thread:key" });
     expect(JSON.parse(JSON.stringify(msg))).toMatchObject({ sessionKey: "thread:key" });

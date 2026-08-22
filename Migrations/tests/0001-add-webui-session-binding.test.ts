@@ -124,7 +124,7 @@ describe("v1.0.4/0001-add-webui-session-binding", () => {
 
   it.each([
     ["non-WebUI", metadataRecord({ webui: false })],
-    ["non-WebSocket", metadataRecord({ webui: true }, "telegram:test-chat")],
+    ["non-WebSocket", metadataRecord({ webui: true }, "codex:test-chat")],
     [
       "valid standalone",
       metadataRecord({

@@ -175,7 +175,7 @@ describe("task cancellation", () => {
       "label",
       "do task",
       "result",
-      { channel: "telegram", chatId: "222", sessionKey: "unified:default" },
+      { channel: "cli", chatId: "222", sessionKey: "unified:default" },
       "ok",
     );
 
@@ -194,13 +194,13 @@ describe("task cancellation", () => {
       "label",
       "do task",
       "result",
-      { channel: "telegram", chatId: "222", sessionKey: "telegram:222" },
+      { channel: "cli", chatId: "222", sessionKey: "cli:222" },
       "ok",
     );
 
     const msg = await bus.consumeInbound();
-    expect(msg.sessionKey).toBe("telegram:222");
-    expect(msg.sessionKeyOverride).toBe("telegram:222");
+    expect(msg.sessionKey).toBe("cli:222");
+    expect(msg.sessionKeyOverride).toBe("cli:222");
   });
 
   it("falls back to channel and chat id when announcing without a session key", async () => {
@@ -237,7 +237,7 @@ describe("task cancellation", () => {
       "sub-4",
       "task",
       "label",
-      { channel: "telegram", chatId: "444", sessionKey: "unified:default" },
+      { channel: "cli", chatId: "444", sessionKey: "unified:default" },
       status,
     );
 

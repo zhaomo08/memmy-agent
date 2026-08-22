@@ -397,6 +397,8 @@ verify_windows_native_module() {
       exit 1
       ;;
   esac
+
+  require_packaged_runtime_glob "$RUNTIME_DIR/memory/node_modules/sqlite-vec-windows-x64/vec0.*"
 }
 
 verify_windows_onnxruntime_module() {
@@ -440,6 +442,7 @@ verify_packaged_windows_unpacked_artifacts() {
   require_packaged_runtime_file "$unpacked_runtime/memory/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime.dll"
   require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/*.dll"
   require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/@img/sharp-win32-x64/lib/libvips*.dll"
+  require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/sqlite-vec-windows-x64/vec0.*"
   require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/@memmy/migrations/dist/index.js"
   if [ -L "$unpacked_runtime/memmy-agent/node_modules/@memmy/migrations" ]; then
     echo "Packaged migrations package must not be a symbolic link." >&2

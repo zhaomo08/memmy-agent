@@ -55,7 +55,7 @@
     "parse5": "8.0.1",
     "pdfjs-dist": "^6.0.227",
     "playwright": "1.62.0-alpha-1783623505000",
-    "postcss": "8.5.15",
+    "postcss": "8.5.26",
     "proper-lockfile": "^4.1.2",
     "react": "^19.2.7",
     "smol-toml": "1.7.0",

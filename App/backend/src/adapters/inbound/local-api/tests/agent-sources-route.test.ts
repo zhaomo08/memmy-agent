@@ -470,7 +470,7 @@ describe("agent sources local api routes", () => {
         async collectAll(options) {
           collectCalls += 1;
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "scan",
             current: 2,
             total: 2,
@@ -481,7 +481,7 @@ describe("agent sources local api routes", () => {
         async ingestCollected(collected, options) {
           ingestCalls += 1;
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: ingestCalls === 1 ? 1 : 2,
             total: 2,
@@ -546,7 +546,7 @@ describe("agent sources local api routes", () => {
         },
         async ingestCollected(_collected, options) {
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: 2,
             total: 5,
@@ -581,7 +581,7 @@ describe("agent sources local api routes", () => {
       active: true,
       progress: {
         jobId: scanResponse.json().jobId,
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "add",
         current: 2,
         total: 5,
@@ -603,7 +603,7 @@ describe("agent sources local api routes", () => {
         },
         async ingestCollected(_collected, options) {
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: 2,
             total: 5,
@@ -611,7 +611,7 @@ describe("agent sources local api routes", () => {
           });
           options?.signal?.addEventListener("abort", () => {
             options.onProgress?.({
-              sourceId: "cursor",
+              sourceId: "claude_code",
               phase: "add",
               current: 4,
               total: 5,
@@ -654,7 +654,7 @@ describe("agent sources local api routes", () => {
       active: false,
       progress: expect.objectContaining({
         jobId: scanResponse.json().jobId,
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "stopped",
         current: 2,
         total: 5
@@ -671,7 +671,7 @@ describe("agent sources local api routes", () => {
         async collectAll(options) {
           for (let index = 1; index <= 120; index += 1) {
             options?.onProgress?.({
-              sourceId: "cursor",
+              sourceId: "claude_code",
               phase: index % 2 === 0 ? "emit" : "redact",
               current: index,
               total: 120
@@ -781,7 +781,7 @@ function createServer(
 function createFakeAgentSourceService(): AgentSourceService {
   async function collectAll(options?: Parameters<AgentSourceService["collectAll"]>[0]) {
     options?.onProgress?.({
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "read",
       current: 1,
       total: 1,
@@ -853,7 +853,7 @@ function createFakeAgentSourceService(): AgentSourceService {
   };
 }
 
-function createCollectedFixture(messageCount = 1, sourceId = "cursor"): CollectedSourceScan {
+function createCollectedFixture(messageCount = 1, sourceId = "claude_code"): CollectedSourceScan {
   const conversationId = `${sourceId}-conversation-1`;
   return {
     sourceId,

@@ -75,20 +75,20 @@ describe("filesystem local data store", () => {
       cloudUuid: "cloud.login.uuid"
     });
     store.repositories.agentSources.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
+      sourceId: "claude_code",
+      displayName: "Claude Code",
       dataPath: "/Users/test/Cursor",
       builtin: true
     });
-    store.repositories.agentSources.setLastScannedAt("cursor", "2026-06-01T10:00:00.000Z");
+    store.repositories.agentSources.setLastScannedAt("claude_code", "2026-06-01T10:00:00.000Z");
     store.repositories.agentSources.upsertScanWatermark({
-      sourceId: "cursor",
+      sourceId: "claude_code",
       mode: "incremental",
       baselineAt: "2026-06-01T09:00:00.000Z",
       latestSeenCreatedAt: "2026-06-01T10:00:00.000Z",
       updatedAt: "2026-06-01T10:00:00.000Z"
     });
-    store.repositories.agentSources.markSeen("dedup-key-1", "cursor");
+    store.repositories.agentSources.markSeen("dedup-key-1", "claude_code");
 
     localData.clearMemoryDatabase("2026-06-02T10:00:00.000Z");
     const settings = store.repositories.bootstrap.getAppSettings();

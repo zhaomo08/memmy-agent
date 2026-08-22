@@ -158,13 +158,13 @@ describe("GitHub release workflow", () => {
     expect(workflow.concurrency.group).toContain("pull_request.head.ref");
   });
 
-  it("embeds the repository .env required by packaged desktop runtimes", () => {
+  it("embeds the safe example environment required by packaged desktop runtimes", () => {
     for (const config of packagingConfigs) {
       const packagingSource = readFileSync(
         resolve(import.meta.dirname, `../App/shell/desktop/${config}`),
         "utf8",
       );
-      expect(packagingSource).toMatch(/from:\s+\.\.\/\.\.\/\.\.\/\.env(?:\s|$)/);
+      expect(packagingSource).toMatch(/from:\s+\.\.\/\.\.\/\.\.\/\.env\.example(?:\s|$)/);
       expect(packagingSource).toMatch(/to:\s+\.env(?:\s|$)/);
     }
   });

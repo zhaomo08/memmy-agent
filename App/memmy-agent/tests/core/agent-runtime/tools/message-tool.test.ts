@@ -37,7 +37,7 @@ describe("MessageTool", () => {
     const tool = new MessageTool();
 
     await expect(
-      tool.execute({ content: "hi", channel: "telegram", chat_id: "1", buttons: bad as any }),
+      tool.execute({ content: "hi", channel: "cli", chat_id: "1", buttons: bad as any }),
     ).resolves.toBe("Error: buttons must be a list of list of strings");
   });
 
@@ -45,10 +45,10 @@ describe("MessageTool", () => {
     const sent: OutboundMessage[] = [];
     const tool = new MessageTool({ sendCallback: async (msg) => { sent.push(msg); } });
 
-    await tool.execute({ content: "normal", channel: "telegram", chat_id: "1" });
+    await tool.execute({ content: "normal", channel: "cli", chat_id: "1" });
     const token = tool.setRecordChannelDelivery(true);
     try {
-      await tool.execute({ content: "cron", channel: "telegram", chat_id: "1" });
+      await tool.execute({ content: "cron", channel: "cli", chat_id: "1" });
     } finally {
       tool.resetRecordChannelDelivery(token);
     }
@@ -121,7 +121,7 @@ describe("MessageTool", () => {
 
     await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: ["output/image.png"],
     });
@@ -136,7 +136,7 @@ describe("MessageTool", () => {
 
     await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: ["output/image.png"],
     });
@@ -158,7 +158,7 @@ describe("MessageTool", () => {
 
     const result = await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: [outside],
     });
@@ -181,12 +181,12 @@ describe("MessageTool", () => {
 
     const result = await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: [image],
     });
 
-    expect(result).toBe("Message sent to telegram:1 with 1 attachments");
+    expect(result).toBe("Message sent to cli:1 with 1 attachments");
     expect(sent[0].media).toEqual([path.resolve(image)]);
   });
 
@@ -197,7 +197,7 @@ describe("MessageTool", () => {
 
     await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: [absPath],
     });
@@ -212,7 +212,7 @@ describe("MessageTool", () => {
 
     await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: [url],
     });
@@ -227,7 +227,7 @@ describe("MessageTool", () => {
 
     await tool.execute({
       content: "see attached",
-      channel: "telegram",
+      channel: "cli",
       chat_id: "1",
       media: ["output/relative.png", absPath, "https://example.com/url.png", "http://example.com/http.png"],
     });
@@ -274,7 +274,7 @@ describe("MessageTool", () => {
     const tool = new MessageTool({ sendCallback: async () => undefined });
     tool.setContext(new RequestContext({ channel: "websocket", chatId: "chat-1", metadata: {} }));
 
-    await tool.execute({ content: "see file", channel: "telegram", chat_id: "tg-other", media: [file] });
+    await tool.execute({ content: "see file", channel: "cli", chat_id: "tg-other", media: [file] });
 
     expect(tool.turnDeliveredMediaPaths()).toEqual([]);
   });

@@ -41,33 +41,33 @@ describe("ingestion service", () => {
         createMessage("conv-b", 5),
         createMessage("conv-b", 6)
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(added).toEqual([
       expect.objectContaining({
-        adapterId: "agent-source:cursor",
+        adapterId: "agent-source:claude_code",
         content: "## user\n\nmessage 1\n\n## assistant\n\nmessage 2",
         layer: "L1",
         title: "message 1",
-        source: "cursor",
-        tags: ["agent-source", "cursor"],
+        source: "claude_code",
+        tags: ["agent-source", "claude_code"],
         createdAt: "2026-05-28T10:00:01.000Z"
       }),
       expect.objectContaining({
-        adapterId: "agent-source:cursor",
+        adapterId: "agent-source:claude_code",
         content: "## user\n\nmessage 5\n\n## assistant\n\nmessage 6",
         layer: "L1",
         title: "message 5",
-        source: "cursor",
-        tags: ["agent-source", "cursor"],
+        source: "claude_code",
+        tags: ["agent-source", "claude_code"],
         createdAt: "2026-05-28T10:00:05.000Z"
       })
     ]);
     expect(added.every((input) => typeof input.requestId === "string" && input.requestId.length > 0)).toBe(true);
     expect(added.map((input) => input.turnId)).toEqual([
-      expect.stringMatching(/^cursor:[a-f0-9]{24}$/),
-      expect.stringMatching(/^cursor:[a-f0-9]{24}$/)
+      expect.stringMatching(/^claude_code:[a-f0-9]{24}$/),
+      expect.stringMatching(/^claude_code:[a-f0-9]{24}$/)
     ]);
     expect(stats).toEqual({
       attempted: 6,
@@ -110,11 +110,11 @@ describe("ingestion service", () => {
         createMessage("conv-a", 1),
         createMessage("conv-a", 2)
       ]),
-      { sourceId: "cursor", deferProcessing: true }
+      { sourceId: "claude_code", deferProcessing: true }
     );
 
     expect(added[0]).toEqual(expect.objectContaining({
-      adapterId: "agent-source:cursor",
+      adapterId: "agent-source:claude_code",
       deferProcessing: true
     }));
   });
@@ -171,8 +171,8 @@ describe("ingestion service", () => {
     const first = [createMessage("conv-a", 1), createMessage("conv-a", 2)];
     const revised = [first[0]!, { ...first[1]!, content: "revised assistant response" }];
 
-    await service.ingest(toAsyncIterable(first), { sourceId: "cursor" });
-    await service.ingest(toAsyncIterable(revised), { sourceId: "cursor" });
+    await service.ingest(toAsyncIterable(first), { sourceId: "claude_code" });
+    await service.ingest(toAsyncIterable(revised), { sourceId: "claude_code" });
 
     expect(added[0]?.turnId).toBe(added[1]?.turnId);
     expect(added[0]?.requestId).not.toBe(added[1]?.requestId);
@@ -212,12 +212,12 @@ describe("ingestion service", () => {
         createMessage("conv-b", 5),
         createMessage("conv-b", 6)
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(addedConversationIds).toEqual([
-      expect.stringMatching(/^cursor:[a-f0-9]{24}$/),
-      expect.stringMatching(/^cursor:[a-f0-9]{24}$/)
+      expect.stringMatching(/^claude_code:[a-f0-9]{24}$/),
+      expect.stringMatching(/^claude_code:[a-f0-9]{24}$/)
     ]);
     expect(stats).toMatchObject({
       attempted: 6,
@@ -265,7 +265,7 @@ describe("ingestion service", () => {
         createMessage("conv-b", 3),
         createMessage("conv-b", 4)
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(added).toHaveLength(1);
@@ -274,9 +274,9 @@ describe("ingestion service", () => {
     expect(warnings).toEqual([
       expect.objectContaining({
         code: "memory_add_request_too_large",
-        sourceId: "cursor",
+        sourceId: "claude_code",
         conversationId: "conv-a",
-        turnId: expect.stringMatching(/^cursor:[a-f0-9]{24}$/),
+        turnId: expect.stringMatching(/^claude_code:[a-f0-9]{24}$/),
         bodyBytes: expect.any(Number),
         limitBytes: MEMORY_ADD_REQUEST_MAX_BYTES
       })
@@ -315,7 +315,7 @@ describe("ingestion service", () => {
         { ...createMessage("conv-a", 1), content: "界".repeat(MEMORY_ADD_REQUEST_MAX_BYTES) },
         createMessage("conv-a", 2)
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(addMemory).not.toHaveBeenCalled();
@@ -360,11 +360,11 @@ describe("ingestion service", () => {
     });
 
     const stats = await service.ingest(toAbortAfterFirstConversation(controller), {
-      sourceId: "cursor",
+      sourceId: "claude_code",
       signal: controller.signal
     });
 
-    expect(calls).toEqual([expect.stringMatching(/^add:cursor:[a-f0-9]{24}$/)]);
+    expect(calls).toEqual([expect.stringMatching(/^add:claude_code:[a-f0-9]{24}$/)]);
     expect(stats).toMatchObject({
       attempted: 4,
       written: 2,
@@ -400,7 +400,7 @@ describe("ingestion service", () => {
 
     const stats = await service.ingest(
       toAsyncIterable([createMessage("conv-a", 1), createMessage("conv-a", 2), createMessage("conv-a", 3)]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(calls).toEqual(["add"]);
@@ -440,7 +440,7 @@ describe("ingestion service", () => {
         { ...createMessage("conv-a", 1), role: "user" },
         { ...createMessage("conv-b", 2), role: "assistant" }
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(calls).toEqual([]);
@@ -501,7 +501,7 @@ describe("ingestion service", () => {
         message("complete", "complete-tool", "tool"),
         message("complete", "complete-assistant", "assistant")
       ]),
-      { sourceId: "cursor" }
+      { sourceId: "claude_code" }
     );
 
     expect(added).toEqual([
@@ -536,7 +536,7 @@ describe("ingestion service", () => {
           createMessage("conv-b", 2),
           createMessage("conv-a", 3)
         ]),
-        { sourceId: "cursor" }
+        { sourceId: "claude_code" }
       )
     ).rejects.toBeInstanceOf(IngestionAssertionError);
   });
@@ -592,7 +592,7 @@ async function* toAbortAfterFirstConversation(controller: AbortController): Asyn
 function createMessage(conversationId: string, index: number): ConversationMessage {
   return {
     messageId: `msg-${index}`,
-    sourceId: "cursor",
+    sourceId: "claude_code",
     conversationId,
     role: index % 2 === 0 ? "assistant" : "user",
     content: `message ${index}`,

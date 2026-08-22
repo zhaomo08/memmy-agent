@@ -5,8 +5,8 @@ import { appActions, type AppAction } from "../../state/app-actions.js";
 import { startAgentSourceScan } from "../memory-source-scan.js";
 
 const source = AgentSourceViewSchema.parse({
-  sourceId: "cursor",
-  displayName: "Cursor",
+  sourceId: "claude_code",
+  displayName: "Claude Code",
   dataPath: "/Users/test/.cursor",
   builtin: true,
   available: true,
@@ -181,7 +181,7 @@ describe("startAgentSourceScan", () => {
           active: true,
           progress: {
             jobId: "job-resume",
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add" as const,
             current: 12,
             total: 20,
@@ -203,7 +203,7 @@ describe("startAgentSourceScan", () => {
 
     expect(actions).toContainEqual(appActions.agentSourceScanProgressReceived({
       jobId: "job-resume",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "add",
       current: 12,
       total: 20,

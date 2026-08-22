@@ -84,7 +84,7 @@ describe("CronTool list formatting", () => {
 
   it("parses naive at datetimes in the tool timezone", () => {
     const tool = makeTool("Asia/Shanghai");
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-1" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-1" }));
 
     expect(tool.addJob(null, "morning", null, null, null, "2026-03-25T08:00:00")).toMatch(/^Created job/);
     expect(tool.cron.listJobs()[0].schedule.atMs).toBe(Date.UTC(2026, 2, 25, 0, 0, 0));
@@ -267,14 +267,14 @@ describe("CronTool memmy list parity cases", () => {
 
   it("delivers added jobs by default", () => {
     const tool = makeTool();
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-1" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-1" }));
     expect(tool.addJob(null, "Morning standup", 60, null, null, null)).toMatch(/^Created job/);
     expect(tool.cron.listJobs()[0].payload.deliver).toBe(true);
   });
 
   it("can disable delivery for added jobs", () => {
     const tool = makeTool();
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-1" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-1" }));
     expect(tool.addJob(null, "Background refresh", 60, null, null, null, false)).toMatch(/^Created job/);
     expect(tool.cron.listJobs()[0].payload.deliver).toBe(false);
   });
@@ -298,7 +298,7 @@ describe("CronTool memmy list parity cases", () => {
 
   it("returns an actionable error for an empty add message", () => {
     const tool = makeTool();
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-1" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-1" }));
     const result = tool.addJob(null, "", 60, null, null, null);
     expect(result).toContain("action='add' requires a non-empty 'message'");
     expect(result).toContain("Retry including message=");
@@ -325,7 +325,7 @@ describe("CronTool memmy list parity cases", () => {
 
   it("defaults cron jobs to the tool timezone", () => {
     const tool = makeTool("Asia/Shanghai");
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-1" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-1" }));
     expect(tool.addJob(null, "Morning standup", null, "0 8 * * *", null, null)).toMatch(/^Created job/);
     expect(tool.cron.listJobs()[0].schedule.tz).toBe("Asia/Shanghai");
   });

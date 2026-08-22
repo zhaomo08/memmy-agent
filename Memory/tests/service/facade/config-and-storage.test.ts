@@ -241,7 +241,7 @@ describe("MemoryService / facade / config and storage", () => {
       llm: createFailingLlm(),
       embedder: createCapturingEmbedder([])
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "reload-failure-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "reload-failure-user" };
     const added = addAgentSourceImport(service, namespace, "retry after config reload", "reload-failure");
     await runWorkerRounds(service, 3, 1);
     const failed = service.memoryProcessingStatus([added.id], { namespace }).items[0];

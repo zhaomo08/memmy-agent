@@ -360,7 +360,7 @@ describe("repository sqlite schema contract", () => {
       const tags = migrated.db.prepare(`SELECT tags_json FROM memories WHERE id = 'legacy-embedding'`).get() as {
         tags_json: string;
       };
-      expect(JSON.parse(tags.tags_json)).toEqual(["agent-source", "hermes", "legacy-user-tag"]);
+      expect(JSON.parse(tags.tags_json)).toEqual(["agent-source", "claude_code", "legacy-user-tag"]);
       expect(existsSync(`${dbPath}.pre-v${SCHEMA_VERSION}.bak`)).toBe(true);
       migrated.close();
     } finally {
@@ -471,16 +471,16 @@ function schemaTraceMemory(id: string, summary: string, withVector: boolean): Me
     id,
     timeline: at,
     userId: "old-user",
-    agentId: "hermes",
+    agentId: "claude_code",
     memoryType: "LongTermMemory",
     status: "activated",
     visibility: "private",
-    memoryKey: `memory.add:agent-source:hermes:${id}`,
+    memoryKey: `memory.add:agent-source:claude_code:${id}`,
     memoryValue: `Summary: ${summary}\n\nUser:\nlegacy searchable content`,
-    tags: ["agent-source", "hermes", "legacy-user-tag", "摘要总结中", "索引建立中"],
+    tags: ["agent-source", "claude_code", "legacy-user-tag", "摘要总结中", "索引建立中"],
     info: {
       summary,
-      source: "hermes",
+      source: "claude_code",
       import_pipeline: { status: "indexing" }
     },
     properties: {

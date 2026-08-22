@@ -53,8 +53,8 @@ describe("environment variable interpolation", () => {
   it("walks nested objects", () => {
     setEnv("TOKEN", "abc123");
 
-    expect(resolveEnvVars({ channels: { telegram: { token: "${TOKEN}" } } })).toEqual({
-      channels: { telegram: { token: "abc123" } },
+    expect(resolveEnvVars({ channels: { cli: { token: "${TOKEN}" } } })).toEqual({
+      channels: { cli: { token: "abc123" } },
     });
   });
 
@@ -94,12 +94,12 @@ describe("environment variable interpolation", () => {
 
   it("saveConfig preserves env templates", () => {
     setEnv("MY_TOKEN", "real-token");
-    const configPath = tmpConfig({ channels: { telegram: { token: "${MY_TOKEN}" } } });
+    const configPath = tmpConfig({ channels: { cli: { token: "${MY_TOKEN}" } } });
 
     const raw = loadConfig(configPath);
     saveConfig(raw, configPath);
 
-    expect(YAML.parse(fs.readFileSync(configPath, "utf8")).channels.telegram.token).toBe("${MY_TOKEN}");
+    expect(YAML.parse(fs.readFileSync(configPath, "utf8")).channels.cli.token).toBe("${MY_TOKEN}");
   });
 
   it("preserves excluded DreamConfig fields without env refs", () => {

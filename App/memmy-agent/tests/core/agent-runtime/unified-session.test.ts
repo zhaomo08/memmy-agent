@@ -33,7 +33,7 @@ function makeLoop(unifiedSession = false): AgentLoop {
   });
 }
 
-function makeMessage(channel = "telegram", chatId = "111", sessionKeyOverride: string | null = null): InboundMessage {
+function makeMessage(channel = "cli", chatId = "111", sessionKeyOverride: string | null = null): InboundMessage {
   return new InboundMessage({
     channel,
     chatId,
@@ -88,7 +88,7 @@ describe("unified session dispatch", () => {
       return null;
     });
 
-    await loop.dispatchMessage(makeMessage("telegram", "111"));
+    await loop.dispatchMessage(makeMessage("cli", "111"));
 
     expect(captured).toEqual([UNIFIED_SESSION_KEY]);
   });
@@ -101,7 +101,7 @@ describe("unified session dispatch", () => {
       return null;
     });
 
-    await loop.dispatchMessage(makeMessage("telegram", "111"));
+    await loop.dispatchMessage(makeMessage("cli", "111"));
     await loop.dispatchMessage(makeMessage("discord", "222"));
     await loop.dispatchMessage(makeMessage("cli", "direct"));
 
@@ -116,9 +116,9 @@ describe("unified session dispatch", () => {
       return null;
     });
 
-    await loop.dispatchMessage(makeMessage("telegram", "999"));
+    await loop.dispatchMessage(makeMessage("cli", "999"));
 
-    expect(captured).toEqual(["telegram:999"]);
+    expect(captured).toEqual(["cli:999"]);
   });
 
   it("respects an existing session override in unified mode", async () => {
@@ -129,9 +129,9 @@ describe("unified session dispatch", () => {
       return null;
     });
 
-    await loop.dispatchMessage(makeMessage("telegram", "111", "telegram:thread:42"));
+    await loop.dispatchMessage(makeMessage("cli", "111", "cli:thread:42"));
 
-    expect(captured).toEqual(["telegram:thread:42"]);
+    expect(captured).toEqual(["cli:thread:42"]);
   });
 
   it("defaults unified sessions to false on AgentLoop", () => {
@@ -199,7 +199,7 @@ describe("unified session /new command", () => {
       scheduleBackground: vi.fn(),
     };
     const msg = new InboundMessage({
-      channel: "telegram",
+      channel: "cli",
       senderId: "user1",
       chatId: "111",
       content: "/new",
@@ -211,7 +211,7 @@ describe("unified session /new command", () => {
     expect(loop.cancelActiveTasks).toHaveBeenCalledWith(UNIFIED_SESSION_KEY, { excludeSignal: signal });
     expect(loop.closeBrowserSession).toHaveBeenCalledWith(
       UNIFIED_SESSION_KEY,
-      "telegram",
+      "cli",
       "111",
     );
     expect(loop.cancelActiveTasks.mock.invocationCallOrder[0]).toBeLessThan(
@@ -222,7 +222,7 @@ describe("unified session /new command", () => {
   it("clears the shared unified session", async () => {
     const sessions = new SessionManager(workspace());
     const shared = sessions.getOrCreate(UNIFIED_SESSION_KEY);
-    shared.addMessage("user", "hello from telegram");
+    shared.addMessage("user", "hello from cli");
     shared.addMessage("assistant", "hi there");
     sessions.save(shared);
     const scheduled: Promise<any>[] = [];
@@ -233,7 +233,7 @@ describe("unified session /new command", () => {
       scheduleBackground: (promise: Promise<any>) => scheduled.push(Promise.resolve(promise)),
     };
     const msg = new InboundMessage({
-      channel: "telegram",
+      channel: "cli",
       senderId: "user1",
       chatId: "111",
       content: "/new",
@@ -265,7 +265,7 @@ describe("unified session /new command", () => {
       scheduleBackground: (promise: Promise<any>) => scheduled.push(Promise.resolve(promise)),
     };
     const msg = new InboundMessage({
-      channel: "telegram",
+      channel: "cli",
       senderId: "user1",
       chatId: "111",
       content: "/new",
@@ -296,7 +296,7 @@ describe("unified session consolidation", () => {
   it("has identical empty-session consolidation behavior for any key", async () => {
     const archiveCalls: Record<string, number> = {};
 
-    for (const key of ["telegram:123", UNIFIED_SESSION_KEY]) {
+    for (const key of ["cli:123", UNIFIED_SESSION_KEY]) {
       const session = new Session({ key });
       const { consolidator } = makeConsolidator(session);
       const archive = vi.spyOn(consolidator, "archive").mockResolvedValue("summary");
@@ -304,7 +304,7 @@ describe("unified session consolidation", () => {
       archiveCalls[key] = archive.mock.calls.length;
     }
 
-    expect(archiveCalls["telegram:123"]).toBe(0);
+    expect(archiveCalls["cli:123"]).toBe(0);
     expect(archiveCalls[UNIFIED_SESSION_KEY]).toBe(0);
   });
 
@@ -327,7 +327,7 @@ describe("unified session consolidation", () => {
 describe("unified session /stop command", () => {
   it("stores active tasks under the effective unified key", () => {
     const loop = makeLoop(true);
-    const msg = makeMessage("telegram", "123456");
+    const msg = makeMessage("cli", "123456");
     const task = fakeCancelableTask();
     const effectiveKey = loop.sessionKey(msg);
 
@@ -335,7 +335,7 @@ describe("unified session /stop command", () => {
 
     expect(effectiveKey).toBe(UNIFIED_SESSION_KEY);
     expect(loop.activeTasks.has(UNIFIED_SESSION_KEY)).toBe(true);
-    expect(loop.activeTasks.has("telegram:123456")).toBe(false);
+    expect(loop.activeTasks.has("cli:123456")).toBe(false);
   });
 
   it("finds and cancels a task in unified mode", async () => {
@@ -343,7 +343,7 @@ describe("unified session /stop command", () => {
     const task = fakeCancelableTask();
     loop.activeTasks.set(UNIFIED_SESSION_KEY, [task]);
     const msg = new InboundMessage({
-      channel: "telegram",
+      channel: "cli",
       chatId: "123456",
       senderId: "user1",
       content: "/stop",

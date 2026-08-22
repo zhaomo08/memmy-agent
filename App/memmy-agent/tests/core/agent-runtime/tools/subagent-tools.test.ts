@@ -92,10 +92,10 @@ describe("subagent tools", () => {
   it("passes origin context into the subagent manager", async () => {
     const calls: any[] = [];
     const tool = new SpawnTool({ manager: { getRunningCount: () => 0, maxConcurrentSubagents: 2, spawn: async (args: any) => { calls.push(args); return "started"; } } });
-    tool.setContext({ channel: "telegram", chatId: "chat-1", sessionKey: "s1", messageId: "m1" });
+    tool.setContext({ channel: "cli", chatId: "chat-1", sessionKey: "s1", messageId: "m1" });
 
     expect(await tool.execute({ task: "do work", label: "work", temperature: 0.2 })).toBe("started");
-    expect(calls[0]).toMatchObject({ originChannel: "telegram", originChatId: "chat-1", sessionKey: "s1", originMessageId: "m1" });
+    expect(calls[0]).toMatchObject({ originChannel: "cli", originChatId: "chat-1", sessionKey: "s1", originMessageId: "m1" });
   });
 
   it("rejects spawn when the concurrency limit is reached", async () => {

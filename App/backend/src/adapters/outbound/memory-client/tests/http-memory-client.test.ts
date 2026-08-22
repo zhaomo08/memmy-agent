@@ -146,20 +146,20 @@ describe("HttpMemoryClient", () => {
 
     await client.memoryApiLogs({
       tools: ["memory_search"],
-      sourceAgent: "cursor",
+      sourceAgent: "claude_code",
       limit: 20,
       offset: 0
     });
     await client.memoryApiLogs({
       tools: ["memory_search"],
-      excludedSourceAgents: ["memmy-agent", "cursor"],
+      excludedSourceAgents: ["memmy-agent", "claude_code"],
       limit: 20,
       offset: 0
     });
 
     expect(requestUrls[0]?.searchParams.get("tools")).toBe("memory_search");
-    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("cursor");
-    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("claude_code");
+    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 
   it("forwards L1 panel item Agent filters to the Memory service", async () => {
@@ -170,13 +170,13 @@ describe("HttpMemoryClient", () => {
     });
     const client = createHttpMemoryClient({ baseUrl, token: "", timeoutMs: 500, maxRetries: 0 });
 
-    await client.panelItems({ layer: "L1", sourceAgent: "cursor", page: 2 });
-    await client.panelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "cursor"], page: 1 });
+    await client.panelItems({ layer: "L1", sourceAgent: "claude_code", page: 2 });
+    await client.panelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "claude_code"], page: 1 });
 
     expect(requestUrls[0]?.searchParams.get("layer")).toBe("L1");
-    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("cursor");
+    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("claude_code");
     expect(requestUrls[0]?.searchParams.get("page")).toBe("2");
-    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 
   it("limits worker requests to the scan's imported memories", async () => {

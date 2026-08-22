@@ -406,7 +406,7 @@ describe("User Memory", () => {
 
     const completed = service.completeTurn("turn-history-preference-question", {
       sessionId: session.sessionId,
-      query: "我喜欢吃什么水果？从workbuddy的历史记忆里找",
+      query: "我喜欢吃什么水果？从codex的历史记忆里找",
       answer: "从历史记忆来看，你喜欢吃苹果。",
       toolCalls: [{ id: "memory-search-1", name: "memmy_memory_search", input: { query: "水果偏好" } }],
       toolResults: [{ toolCallId: "memory-search-1", memories: ["用户喜欢吃苹果"] }],

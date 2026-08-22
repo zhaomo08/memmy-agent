@@ -334,7 +334,7 @@ function traceMemory(
     timeline: at,
     userId: "user_test",
     sessionId: "session_test",
-    agentId: "openclaw",
+    agentId: "codex",
     appId: "workspace_test",
     memoryType: "LongTermMemory",
     status: "activated",

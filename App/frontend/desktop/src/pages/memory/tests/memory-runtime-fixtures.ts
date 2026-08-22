@@ -217,9 +217,8 @@ export const mockPanelOverview: PanelOverviewOutput = {
     worldModels: 3
   },
   sourceDistribution: [
-    { source: "Cursor", count: 6, percentage: 33.3 },
+    { source: "Claude Code", count: 10, percentage: 55.5 },
     { source: "Codex", count: 5, percentage: 27.8 },
-    { source: "Claude Code", count: 4, percentage: 22.2 },
     { source: "Manual", count: 3, percentage: 16.7 }
   ],
   dailyActivity: mockDailyActivity

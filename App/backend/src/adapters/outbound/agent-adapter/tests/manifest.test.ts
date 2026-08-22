@@ -6,9 +6,9 @@ import type { AgentAdapterPluginManifest } from "../types/index.js";
 describe("agent adapter plugin manifest", () => {
   it("parses a manifest with default enabled and priority values", () => {
     const manifest = parseAgentAdapterPluginManifest({
-      id: "cursor",
-      kind: "cursor",
-      displayName: "Cursor",
+      id: "claude_code",
+      kind: "claude_code",
+      displayName: "Claude Code",
       version: "1.0.0",
       modulePath: "./cursor.js",
       capabilities: {
@@ -20,9 +20,9 @@ describe("agent adapter plugin manifest", () => {
     });
 
     expect(manifest).toEqual({
-      id: "cursor",
-      kind: "cursor",
-      displayName: "Cursor",
+      id: "claude_code",
+      kind: "claude_code",
+      displayName: "Claude Code",
       version: "1.0.0",
       modulePath: "./cursor.js",
       enabled: true,

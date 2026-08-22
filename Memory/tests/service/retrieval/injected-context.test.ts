@@ -23,7 +23,7 @@ describe("MemoryService / retrieval / injected context", () => {
   it("injects only the latest complete Memmy first report for bilingual handoff queries", async () => {
     const { db, service } = createTestService();
     const namespace = {
-      source: "hermes",
+      source: "claude_code",
       profileId: "jiang",
       userId: "user-first-report-handoff"
     };

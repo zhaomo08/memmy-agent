@@ -208,7 +208,7 @@ describe("app reducer", () => {
       createInitialAppState(),
       appActions.agentSourceScanProgressReceived({
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "stopped",
         current: 2,
         total: 5
@@ -218,7 +218,7 @@ describe("app reducer", () => {
       progressState,
       appActions.agentSourceScanProgressReceived({
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "add",
         current: 4,
         total: 5
@@ -228,7 +228,7 @@ describe("app reducer", () => {
     expect(staleState.agentSources.isScanning).toBe(false);
     expect(staleState.agentSources.scanProgress).toEqual({
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "stopped",
       current: 2,
       total: 5
