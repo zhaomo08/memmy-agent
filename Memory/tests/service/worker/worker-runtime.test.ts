@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Repositories } from "../../../src/storage/repositories.js";
-import { createMemoryServiceFixture } from "../../fixtures/memory-service-fixture.js";
+import {
+  createCapturingEmbedder,
+  createMemoryServiceFixture
+} from "../../fixtures/memory-service-fixture.js";
 
 const {
   cleanup: cleanupMemoryServiceFixture,
@@ -12,6 +15,141 @@ afterEach(() => {
 });
 
 describe("MemoryService / worker / runtime", () => {
+  it("settles queued embedding work when its memory was deliberately deleted", async () => {
+    const seenTexts: string[] = [];
+    const { db, service } = createTestService({
+      embedder: createCapturingEmbedder(seenTexts)
+    });
+    const repos = new Repositories(db.db);
+    const at = new Date().toISOString();
+    const memoryId = "policy-deleted-before-embedding";
+    const jobId = "job-deleted-before-embedding";
+    const retryId = "retry-deleted-before-embedding";
+
+    repos.memories.insert({
+      id: memoryId,
+      timeline: at,
+      userId: "deleted-target-user",
+      memoryType: "LongTermMemory",
+      status: "activated",
+      visibility: "private",
+      memoryKey: "policy:deleted-before-embedding",
+      memoryValue: "Deleted memories must not leave failing embedding jobs.",
+      tags: ["worker", "deletion"],
+      info: {},
+      properties: {
+        internal_info: {
+          memory_layer: "L2",
+          memory_kind: "policy"
+        }
+      },
+      memoryLayer: "L2",
+      version: 1,
+      createdAt: at,
+      updatedAt: at
+    });
+    repos.runtime.enqueueJob({
+      id: jobId,
+      jobType: "embedding",
+      status: "queued",
+      userId: "deleted-target-user",
+      targetMemoryId: memoryId,
+      payload: {},
+      attempts: 0,
+      maxAttempts: 3,
+      createdAt: at,
+      updatedAt: at
+    });
+    repos.runtime.enqueueEmbeddingRetry({
+      id: retryId,
+      targetKind: "policy",
+      targetId: memoryId,
+      vectorField: "vec",
+      sourceText: "Deleted memories must not leave failing embedding retries."
+    });
+
+    service.deleteMemory(memoryId, {
+      namespace: { source: "codex", userId: "deleted-target-user", profileId: "default" }
+    });
+    expect(repos.processing.get(memoryId)).toBeUndefined();
+    const run = await service.runWorkerOnce(10, { targetMemoryIds: [memoryId] });
+
+    expect(run.jobs).toEqual([
+      expect.objectContaining({ jobId, status: "succeeded" })
+    ]);
+    expect(run.embeddingRetries).toMatchObject({
+      leased: 1,
+      succeeded: 1,
+      failed: 0
+    });
+    expect(seenTexts).toEqual([]);
+    expect(db.db.prepare(
+      `SELECT status, last_error FROM evolution_jobs WHERE id = ?`
+    ).get(jobId)).toEqual({ status: "succeeded", last_error: null });
+    expect(db.db.prepare(
+      `SELECT status, last_error FROM embedding_retry_queue WHERE id = ?`
+    ).get(retryId)).toEqual({ status: "succeeded", last_error: null });
+
+    db.db.prepare(
+      `UPDATE evolution_jobs
+       SET status = 'dead_letter', last_error = 'legacy deleted-target failure'
+       WHERE id = ?`
+    ).run(jobId);
+    service.reconcileWorkerStartup();
+    expect(db.db.prepare(
+      `SELECT status, last_error FROM evolution_jobs WHERE id = ?`
+    ).get(jobId)).toEqual({ status: "succeeded", last_error: null });
+
+    db.close();
+  });
+
+  it("settles a queued user-memory embedding after the user memory is deleted", async () => {
+    const { db, service } = createTestService();
+    const repos = new Repositories(db.db);
+    const at = new Date().toISOString();
+    const memoryId = "user-memory-deleted-before-embedding";
+    const jobId = "job-user-memory-deleted-before-embedding";
+
+    repos.userMemories.insert({
+      id: memoryId,
+      sourceTurnId: "turn-deleted-before-embedding",
+      userId: "deleted-user-memory-owner",
+      memoryTypes: ["User Preference"],
+      content: "Prefer concise implementations.",
+      normalizedUserTextHash: "deleted-user-memory-hash",
+      sourceTurnRefs: ["turn-deleted-before-embedding"],
+      status: "active",
+      createdAt: at,
+      updatedAt: at
+    });
+    repos.runtime.enqueueJob({
+      id: jobId,
+      jobType: "user_memory_embedding",
+      status: "queued",
+      userId: "deleted-user-memory-owner",
+      targetMemoryId: memoryId,
+      payload: {},
+      attempts: 0,
+      maxAttempts: 3,
+      createdAt: at,
+      updatedAt: at
+    });
+
+    service.deleteMemory(memoryId, {
+      namespace: { source: "claude-code", userId: "deleted-user-memory-owner", profileId: "default" }
+    });
+    const run = await service.runWorkerOnce(1, { targetMemoryIds: [memoryId] });
+
+    expect(run.jobs).toEqual([
+      expect.objectContaining({ jobId, status: "succeeded" })
+    ]);
+    expect(db.db.prepare(
+      `SELECT status, last_error FROM evolution_jobs WHERE id = ?`
+    ).get(jobId)).toEqual({ status: "succeeded", last_error: null });
+
+    db.close();
+  });
+
   it("selects the earliest worker wake across evolution and embedding queues", () => {
     const { db, service } = createTestService();
     const repos = new Repositories(db.db);

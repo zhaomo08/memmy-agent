@@ -2661,6 +2661,7 @@ export class RuntimeRepository {
         `UPDATE evolution_jobs
          SET status = 'succeeded',
              leased_until = NULL,
+             last_error = NULL,
              updated_at = ?
          WHERE id = ?`
       )
