@@ -546,7 +546,11 @@ cp -R "$MEMORY_DIR/dist/src" "$RUNTIME_DIR/memory/src"
 cp -R "$AGENT_DIR/dist" "$RUNTIME_DIR/memmy-agent/dist"
 create_memory_runtime_manifest "$RUNTIME_DIR/memory"
 npm ci --prefix "$RUNTIME_DIR/memory" --omit=dev --os=darwin --cpu="$TARGET_CPU"
-ELECTRON_VERSION="$(node -p "require('./App/shell/desktop/node_modules/electron/package.json').version")"
+ELECTRON_VERSION="$(MEMMY_DESKTOP_PACKAGE_PATH="$DESKTOP_DIR/package.json" node -e '
+  const { createRequire } = require("node:module");
+  const requireFromDesktop = createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH);
+  process.stdout.write(requireFromDesktop("electron/package.json").version);
+')"
 node_modules/.bin/electron-rebuild \
   -f \
   -v "$ELECTRON_VERSION" \

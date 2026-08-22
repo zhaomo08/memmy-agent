@@ -458,7 +458,13 @@ npm_ci_win_x64() {
 
 install_better_sqlite3_win_x64() {
   local electron_version
-  electron_version="${MEMMY_ELECTRON_VERSION:-$(read_package_version "$DESKTOP_DIR/node_modules/electron/package.json")}"
+  local desktop_package_path
+  desktop_package_path="$(to_node_readable_path "$DESKTOP_DIR/package.json")"
+  electron_version="${MEMMY_ELECTRON_VERSION:-$(MEMMY_DESKTOP_PACKAGE_PATH="$desktop_package_path" node -e '
+    const { createRequire } = require("node:module");
+    const requireFromDesktop = createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH);
+    process.stdout.write(requireFromDesktop("electron/package.json").version);
+  ')}"
 
   (
     cd "$RUNTIME_DIR/memory/node_modules/better-sqlite3"
