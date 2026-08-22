@@ -965,6 +965,7 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).toContain('cp -R "$MEMORY_DIR/dist/src" "$RUNTIME_DIR/memory/src"');
     expect(source).toContain('npm ci --prefix "$RUNTIME_DIR/memory" --omit=dev --os=darwin --cpu="$TARGET_CPU"');
     expect(source).toContain("node_modules/.bin/electron-rebuild");
+    expect(source).toContain('createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH)');
     expect(source).toContain('-m "$RUNTIME_DIR/memory"');
     expect(source).not.toContain('cp -R "$ROOT_DIR/dist/src" "$RUNTIME_DIR/memory/src"');
   });
@@ -1065,9 +1066,8 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).toContain("to_node_readable_path");
     expect(source).toContain("cygpath -w");
     expect(source).toContain('DESKTOP_VERSION="${MEMMY_DESKTOP_VERSION:-$(read_package_version "$DESKTOP_DIR/package.json")}"');
-    expect(source).toContain(
-      'electron_version="${MEMMY_ELECTRON_VERSION:-$(read_package_version "$DESKTOP_DIR/node_modules/electron/package.json")}"'
-    );
+    expect(source).toContain('desktop_package_path="$(to_node_readable_path "$DESKTOP_DIR/package.json")"');
+    expect(source).toContain('createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH)');
     expect(source).not.toContain("require('$DESKTOP_DIR/package.json')");
     expect(source).not.toContain("require('$DESKTOP_DIR/node_modules/electron/package.json')");
   });
