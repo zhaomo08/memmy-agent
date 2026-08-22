@@ -1297,6 +1297,7 @@ export class MemoryService {
     if (!deleted) {
       throw new MemoryServiceError("not_found", `memory not found: ${id}`);
     }
+    this.repos.processing.delete(memory.id);
     const changeSeq = this.repos.runtime.appendChange({
       memoryId: deleted.id,
       namespaceId: namespaceIdFromMemory(deleted),
