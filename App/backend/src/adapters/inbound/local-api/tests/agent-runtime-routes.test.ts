@@ -137,12 +137,12 @@ describe("agent runtime local api routes", () => {
 
     const exactResponse = await app.inject({
       method: "GET",
-      url: "/api/v1/memory/logs?tools=memory_search&sourceAgent=cursor&limit=20&offset=0",
+      url: "/api/v1/memory/logs?tools=memory_search&sourceAgent=claude_code&limit=20&offset=0",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const otherResponse = await app.inject({
       method: "GET",
-      url: "/api/v1/memory/logs?tools=memory_add&excludedSourceAgents=memmy-agent&excludedSourceAgents=cursor&limit=20&offset=0",
+      url: "/api/v1/memory/logs?tools=memory_add&excludedSourceAgents=memmy-agent&excludedSourceAgents=claude_code&limit=20&offset=0",
       headers: { "x-memmy-local-token": "test-token" }
     });
 
@@ -151,13 +151,13 @@ describe("agent runtime local api routes", () => {
     expect(receivedInputs).toEqual([
       {
         tools: ["memory_search"],
-        sourceAgent: "cursor",
+        sourceAgent: "claude_code",
         limit: 20,
         offset: 0
       },
       {
         tools: ["memory_add"],
-        excludedSourceAgents: ["memmy-agent", "cursor"],
+        excludedSourceAgents: ["memmy-agent", "claude_code"],
         limit: 20,
         offset: 0
       }
@@ -177,20 +177,20 @@ describe("agent runtime local api routes", () => {
 
     const exactResponse = await app.inject({
       method: "GET",
-      url: "/api/v1/panel/items?layer=L1&sourceAgent=cursor&page=2",
+      url: "/api/v1/panel/items?layer=L1&sourceAgent=claude_code&page=2",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const otherResponse = await app.inject({
       method: "GET",
-      url: "/api/v1/panel/items?layer=L1&excludedSourceAgents=memmy-agent&excludedSourceAgents=cursor&page=1",
+      url: "/api/v1/panel/items?layer=L1&excludedSourceAgents=memmy-agent&excludedSourceAgents=claude_code&page=1",
       headers: { "x-memmy-local-token": "test-token" }
     });
 
     expect(exactResponse.statusCode).toBe(200);
     expect(otherResponse.statusCode).toBe(200);
     expect(receivedInputs).toEqual([
-      { layer: "L1", sourceAgent: "cursor", page: 2 },
-      { layer: "L1", excludedSourceAgents: ["memmy-agent", "cursor"], page: 1 }
+      { layer: "L1", sourceAgent: "claude_code", page: 2 },
+      { layer: "L1", excludedSourceAgents: ["memmy-agent", "claude_code"], page: 1 }
     ]);
   });
 

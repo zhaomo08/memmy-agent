@@ -377,7 +377,7 @@ describe("MemoryService / retrieval / query and filtering", () => {
         id: `trace-time-filter-${index}`,
         at: new Date(Date.UTC(2026, 7, 4, 0, index)).toISOString(),
         value: 25 - index,
-        agentId: index % 2 === 0 ? "codex" : "cursor",
+        agentId: index % 2 === 0 ? "codex" : "claude_code",
         summary: `time-filtered activity ${index}`
       }));
     }
@@ -385,7 +385,7 @@ describe("MemoryService / retrieval / query and filtering", () => {
       id: "trace-time-filter-outside",
       at: "2026-08-03T23:59:59.000Z",
       value: 100,
-      agentId: "cursor",
+      agentId: "claude_code",
       summary: "outside the requested range"
     }));
 
@@ -415,7 +415,7 @@ describe("MemoryService / retrieval / query and filtering", () => {
     expect(recall.sourceMemoryIds).toEqual(recall.hits.map((hit) => hit.id));
     const lines = recall.injectedContext.markdown.split("\n");
     expect(lines).toHaveLength(20);
-    expect(lines[0]).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] \[Cursor\] time-filtered activity 5$/);
+    expect(lines[0]).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] \[Claude_code\] time-filtered activity 5$/);
     expect(recall.injectedContext.markdown).not.toContain("Time-filtered L1 traces");
     expect(recall.injectedContext.markdown).not.toContain("Range:");
     expect(recall.injectedContext.markdown).not.toContain("value=");

@@ -66,7 +66,7 @@ describe("webui turn helpers", () => {
   it("does not mutate the websocket timing registry for non-websocket channels", async () => {
     const bus = new MessageBus();
 
-    await publishTurnRunStatus(bus, inbound("telegram", "1"), "running");
+    await publishTurnRunStatus(bus, inbound("cli", "1"), "running");
 
     expect(websocketTurnWallStartTimes.size).toBe(0);
   });
@@ -75,7 +75,7 @@ describe("webui turn helpers", () => {
     expect(shouldPublishWebuiRunStatus(inbound("websocket", "chat-a", { webui: true }))).toBe(true);
     expect(shouldPublishWebuiRunStatus(inbound("websocket", "chat-a", { webui: true, webui_ephemeral_command: "status" }))).toBe(false);
     expect(shouldPublishWebuiRunStatus(inbound("websocket", "chat-a"))).toBe(false);
-    expect(shouldPublishWebuiRunStatus(inbound("telegram", "chat-a", { webui: true }))).toBe(false);
+    expect(shouldPublishWebuiRunStatus(inbound("cli", "chat-a", { webui: true }))).toBe(false);
   });
 
   it("publishes thread-scoped session updates only for real WebUI turns", async () => {
@@ -84,7 +84,7 @@ describe("webui turn helpers", () => {
 
     expect(shouldPublishWebuiThreadSessionUpdated(msg)).toBe(true);
     expect(shouldPublishWebuiThreadSessionUpdated(inbound("websocket", "chat-a", { webui: true, webui_ephemeral_command: "status" }))).toBe(false);
-    expect(shouldPublishWebuiThreadSessionUpdated(inbound("telegram", "chat-a", { webui: true }))).toBe(false);
+    expect(shouldPublishWebuiThreadSessionUpdated(inbound("cli", "chat-a", { webui: true }))).toBe(false);
 
     await publishWebuiThreadSessionUpdated(bus, msg);
 

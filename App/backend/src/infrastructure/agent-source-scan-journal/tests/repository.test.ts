@@ -29,7 +29,7 @@ describe("agent source scan journal repository", () => {
         phase: "add",
         collected: [
           {
-            sourceId: "cursor",
+            sourceId: "claude_code",
             scanMode: "initial_subset",
             scanStartedAt: "2026-07-07T01:00:00.000Z",
             watermarkedSince: undefined,
@@ -37,7 +37,7 @@ describe("agent source scan journal repository", () => {
             messages: [
               {
                 messageId: "message-1",
-                sourceId: "cursor",
+                sourceId: "claude_code",
                 conversationId: "conversation-1",
                 role: "user",
                 content: "hello",
@@ -58,7 +58,7 @@ describe("agent source scan journal repository", () => {
       phase: "add",
       collected: [
         {
-          sourceId: "cursor",
+          sourceId: "claude_code",
           scanMode: "initial_subset",
           scanStartedAt: "2026-07-07T01:00:00.000Z",
           watermarkedSince: undefined,
@@ -66,7 +66,7 @@ describe("agent source scan journal repository", () => {
           messages: [
             {
               messageId: "message-1",
-              sourceId: "cursor",
+              sourceId: "claude_code",
               conversationId: "conversation-1",
               role: "user",
               content: "hello",
@@ -92,7 +92,7 @@ describe("agent source scan journal repository", () => {
         phase: "summarize",
         results: [
           {
-            sourceId: "cursor",
+            sourceId: "claude_code",
             discoveredConversations: 1,
             emittedMessages: 2,
             skipped: 0,
@@ -107,7 +107,7 @@ describe("agent source scan journal repository", () => {
       phase: "summarize",
       results: [
         {
-          sourceId: "cursor",
+          sourceId: "claude_code",
           discoveredConversations: 1,
           emittedMessages: 2,
           skipped: 0,
@@ -137,12 +137,12 @@ describe("agent source scan journal repository", () => {
         phase: "add",
         collected: [
           {
-            sourceId: "cursor",
+            sourceId: "claude_code",
             conversationIds: ["conversation-1"],
             messages: [
               {
                 messageId: "message-1",
-                sourceId: "cursor",
+                sourceId: "claude_code",
                 conversationId: "conversation-1",
                 role: "assistant",
                 content: "answer",

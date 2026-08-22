@@ -25,9 +25,9 @@ describe("skill distribution service", () => {
         ])
       });
 
-      await expect(service.listSkills?.("cursor")).resolves.toEqual([
+      await expect(service.listSkills?.("claude_code")).resolves.toEqual([
         expect.objectContaining({
-          sourceAgentId: "cursor",
+          sourceAgentId: "claude_code",
           sourceSkillId: "review-code",
           sourceSkillVersion: "2",
           title: "review-code",
@@ -46,21 +46,21 @@ describe("skill distribution service", () => {
       targetRegistry: createSkillTargetRegistry([createFakeTarget({ install: (manifest) => (installed = manifest) })])
     });
 
-    await service.install("cursor");
+    await service.install("claude_code");
 
     expect(installed).toMatchObject({
-      targetId: "cursor",
+      targetId: "claude_code",
       marker: "<!-- memmy:start v=1 -->"
     });
     expect(installed?.content).toContain("# Memmy Memory CLI Skill");
     expect(installed?.content).toContain("memmy-memory turn start");
     expect(installed?.content).toContain("memmy-memory turn complete");
     expect(installed?.content).toContain('memmy-memory search "query text"');
-    expect(installed?.content).toContain("memmy-memory session open --source cursor");
-    expect(installed?.content).toContain("memmy-memory turn start --source cursor");
-    expect(installed?.content).toContain('memmy-memory turn complete "$TURN_ID" --source cursor');
-    expect(installed?.content).toContain('memmy-memory search "query text" --source cursor');
-    expect(installed?.content).toContain('memmy-memory add "The user prefers concise Chinese status updates." --title "User preference: status style" --tags user-preference --source cursor');
+    expect(installed?.content).toContain("memmy-memory session open --source claude_code");
+    expect(installed?.content).toContain("memmy-memory turn start --source claude_code");
+    expect(installed?.content).toContain('memmy-memory turn complete "$TURN_ID" --source claude_code');
+    expect(installed?.content).toContain('memmy-memory search "query text" --source claude_code');
+    expect(installed?.content).toContain('memmy-memory add "The user prefers concise Chinese status updates." --title "User preference: status style" --tags user-preference --source claude_code');
     expect(installed?.content).not.toContain("--layer");
     expect(installed?.content).not.toContain("/panel/");
     expect(installed?.content).not.toContain("Panel Debugging");
@@ -79,9 +79,9 @@ describe("skill distribution service", () => {
       ])
     });
 
-    await expect(service.install("cursor")).rejects.toMatchObject({
+    await expect(service.install("claude_code")).rejects.toMatchObject({
       code: "agent_source_unavailable",
-      message: "Cursor is not installed or its directory is unavailable"
+      message: "Claude Code is not installed or its directory is unavailable"
     });
     expect(installCalled).toBe(false);
   });
@@ -92,9 +92,9 @@ describe("skill distribution service", () => {
       targetRegistry: createSkillTargetRegistry([createFakeTarget({ uninstall: (targetId) => calls.push(targetId) })])
     });
 
-    await service.uninstall("cursor");
+    await service.uninstall("claude_code");
 
-    expect(calls).toEqual(["cursor"]);
+    expect(calls).toEqual(["claude_code"]);
   });
 
   it("delegates native plugin installation to plugin-capable targets", async () => {
@@ -108,9 +108,9 @@ describe("skill distribution service", () => {
       ])
     });
 
-    await service.installPlugin("cursor");
+    await service.installPlugin("claude_code");
 
-    expect(calls).toEqual(["plugin:cursor"]);
+    expect(calls).toEqual(["plugin:claude_code"]);
   });
 
   it("rejects native plugin install when the target root directory is unavailable", async () => {
@@ -126,9 +126,9 @@ describe("skill distribution service", () => {
       ])
     });
 
-    await expect(service.installPlugin("cursor")).rejects.toMatchObject({
+    await expect(service.installPlugin("claude_code")).rejects.toMatchObject({
       code: "agent_source_unavailable",
-      message: "Cursor is not installed or its directory is unavailable"
+      message: "Claude Code is not installed or its directory is unavailable"
     });
     expect(installPluginCalled).toBe(false);
   });
@@ -144,9 +144,9 @@ describe("skill distribution service", () => {
       ])
     });
 
-    await service.uninstallPlugin("cursor");
+    await service.uninstallPlugin("claude_code");
 
-    expect(calls).toEqual(["plugin:cursor", "skill:cursor"]);
+    expect(calls).toEqual(["plugin:claude_code", "skill:claude_code"]);
   });
 
   it("rejects native plugin install for targets without plugin support", async () => {
@@ -154,7 +154,7 @@ describe("skill distribution service", () => {
       targetRegistry: createSkillTargetRegistry([createFakeTarget({})])
     });
 
-    await expect(service.installPlugin("cursor")).rejects.toThrow("Native plugin installation is not supported");
+    await expect(service.installPlugin("claude_code")).rejects.toThrow("Native plugin installation is not supported");
   });
 
   it("rejects native plugin uninstall for targets without plugin support", async () => {
@@ -162,7 +162,7 @@ describe("skill distribution service", () => {
       targetRegistry: createSkillTargetRegistry([createFakeTarget({})])
     });
 
-    await expect(service.uninstallPlugin("cursor")).rejects.toThrow("Native plugin uninstallation is not supported");
+    await expect(service.uninstallPlugin("claude_code")).rejects.toThrow("Native plugin uninstallation is not supported");
   });
 
   it("collects memory plugin conflicts from plugin-aware targets", async () => {
@@ -170,8 +170,8 @@ describe("skill distribution service", () => {
       targetRegistry: createSkillTargetRegistry([
         createFakeTarget({
           detectMemoryPluginConflict: () => ({
-            sourceId: "cursor",
-            displayName: "Cursor",
+            sourceId: "claude_code",
+            displayName: "Claude Code",
             configPath: "/tmp/cursor/config.json",
             installedPluginId: "other-memory"
           })
@@ -181,8 +181,8 @@ describe("skill distribution service", () => {
 
     await expect(service.detectMemoryPluginConflicts?.()).resolves.toEqual([
       {
-        sourceId: "cursor",
-        displayName: "Cursor",
+        sourceId: "claude_code",
+        displayName: "Claude Code",
         configPath: "/tmp/cursor/config.json",
         installedPluginId: "other-memory"
       }
@@ -199,8 +199,8 @@ function createFakeTarget(overrides: {
   detectMemoryPluginConflict?: () => MemoryPluginConflict | null;
 }): SkillTarget {
   return {
-    targetId: "cursor",
-    displayName: "Cursor",
+    targetId: "claude_code",
+    displayName: "Claude Code",
     async resolveRootDirectory() {
       return "resolveRootDirectory" in overrides ? overrides.resolveRootDirectory?.() ?? null : "/tmp/cursor/rules";
     },

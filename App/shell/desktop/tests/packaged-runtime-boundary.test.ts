@@ -1012,22 +1012,17 @@ describe("desktop packaged runtime boundaries", () => {
     const winSource = readFileSync(packageWinX64Path, "utf8");
 
     expect(macSource).toContain("verify_mac_memory_native_artifacts");
-    expect(macSource).toContain("verify_mac_agent_native_artifacts");
     expect(macSource).toContain("verify_packaged_mac_unpacked_artifacts");
     expect(macSource).toContain("libonnxruntime*.dylib");
     expect(macSource).toContain("sharp-libvips-darwin-$target_cpu/lib/libvips*.dylib");
-    expect(macSource).toContain("node-pty-darwin-$target_cpu/prebuilds/darwin-$target_cpu");
     expect(macSource).toContain("app.asar.unpacked/dist/runtime");
-    expect(macSource).toContain("spawn-helper");
     expect(winSource).toContain("verify_windows_onnxruntime_module");
     expect(winSource).toContain("verify_windows_sharp_module");
-    expect(winSource).toContain("verify_windows_agent_native_artifacts");
     expect(winSource).toContain("verify_packaged_windows_unpacked_artifacts");
     expect(winSource).toContain('onnxruntime_dir="$(dirname "$onnxruntime_node")"');
     expect(winSource).toContain("onnxruntime.dll");
     expect(winSource).toContain("sharp-win32-x64/lib");
     expect(winSource).toContain("win-unpacked/resources/app.asar.unpacked/dist/runtime");
-    expect(winSource).toContain("conpty/OpenConsole.exe");
     expect(winSource).toContain("sqlite-vec-windows-x64/vec0.*");
   });
 

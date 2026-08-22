@@ -49,18 +49,18 @@ describe("agent adapter registry", () => {
       `
     );
     const manifest = {
-      ...createManifest("cursor", true),
+      ...createManifest("claude_code", true),
       modulePath: pathToFileURL(modulePath).href
     };
     const registry = createAgentAdapterRegistry({
       pluginSource: createInMemoryAgentAdapterPluginSource([manifest])
     });
 
-    await expect(registry.get("cursor")).resolves.toMatchObject({ kind: "cursor" });
+    await expect(registry.get("claude_code")).resolves.toMatchObject({ kind: "claude_code" });
   });
 
   it("loads plugin adapters lazily and exposes descriptors", async () => {
-    const cursor = createManifest("cursor", true);
+    const cursor = createManifest("claude_code", true);
     const codex = createManifest("codex", false);
     const loader = createCountingLoader([cursor, codex]);
     const registry = createAgentAdapterRegistry({
@@ -71,14 +71,14 @@ describe("agent adapter registry", () => {
     expect(loader.loadCount).toBe(0);
     await expect(registry.list()).resolves.toEqual([
       expect.objectContaining({ id: "codex", capabilities: expect.objectContaining({ detect: false }) }),
-      expect.objectContaining({ id: "cursor", capabilities: expect.objectContaining({ detect: true }) })
+      expect.objectContaining({ id: "claude_code", capabilities: expect.objectContaining({ detect: true }) })
     ]);
-    await expect(registry.get("cursor")).resolves.toMatchObject({ kind: "cursor" });
+    await expect(registry.get("claude_code")).resolves.toMatchObject({ kind: "claude_code" });
     expect(loader.loadCount).toBe(2);
   });
 
   it("runs detect on detectable adapters only", async () => {
-    const cursor = createManifest("cursor", true);
+    const cursor = createManifest("claude_code", true);
     const codex = createManifest("codex", false);
     const registry = createAgentAdapterRegistry({
       pluginSource: createInMemoryAgentAdapterPluginSource([cursor, codex]),
@@ -87,15 +87,15 @@ describe("agent adapter registry", () => {
 
     await expect(registry.detectAll({ homeDir: "/home/user" })).resolves.toEqual([
       {
-        kind: "cursor",
-        displayName: "cursor",
-        rootPath: "/home/user/cursor"
+        kind: "claude_code",
+        displayName: "claude_code",
+        rootPath: "/home/user/claude_code"
       }
     ]);
   });
 
   it("reloads manifests and adapters", async () => {
-    const cursor = createManifest("cursor", true);
+    const cursor = createManifest("claude_code", true);
     const codex = createManifest("codex", true);
     const pluginSource = createMutablePluginSource([cursor]);
     const loader = createCountingLoader([cursor, codex]);
@@ -117,13 +117,13 @@ describe("agent adapter registry", () => {
       pluginLoader: createCountingLoader([])
     });
 
-    await expect(registry.get("cursor")).rejects.toThrow("Agent adapter is not registered: cursor");
+    await expect(registry.get("claude_code")).rejects.toThrow("Agent adapter is not registered: claude_code");
   });
 
   it("rejects enabled duplicate plugin ids", async () => {
     const registry = createAgentAdapterRegistry({
       pluginSource: createInMemoryAgentAdapterPluginSource([
-        createManifest("cursor", true, "duplicate"),
+        createManifest("claude_code", true, "duplicate"),
         createManifest("codex", true, "duplicate")
       ]),
       pluginLoader: createCountingLoader([])
@@ -135,32 +135,32 @@ describe("agent adapter registry", () => {
   it("rejects enabled duplicate plugin kinds", async () => {
     const registry = createAgentAdapterRegistry({
       pluginSource: createInMemoryAgentAdapterPluginSource([
-        createManifest("cursor", true, "cursor-a"),
-        createManifest("cursor", true, "cursor-b")
+        createManifest("claude_code", true, "cursor-a"),
+        createManifest("claude_code", true, "cursor-b")
       ]),
       pluginLoader: createCountingLoader([])
     });
 
-    await expect(registry.list()).rejects.toThrow("Duplicate Agent Adapter plugin kind: cursor");
+    await expect(registry.list()).rejects.toThrow("Duplicate Agent Adapter plugin kind: claude_code");
   });
 
   it("ignores disabled plugins during loading and duplicate checks", async () => {
-    const enabled = createManifest("cursor", true, "cursor");
-    const disabled = { ...createManifest("cursor", true, "cursor-disabled"), enabled: false };
+    const enabled = createManifest("claude_code", true, "claude_code");
+    const disabled = { ...createManifest("claude_code", true, "cursor-disabled"), enabled: false };
     const loader = createCountingLoader([enabled]);
     const registry = createAgentAdapterRegistry({
       pluginSource: createInMemoryAgentAdapterPluginSource([enabled, disabled]),
       pluginLoader: loader
     });
 
-    await expect(registry.list()).resolves.toEqual([expect.objectContaining({ id: "cursor" })]);
+    await expect(registry.list()).resolves.toEqual([expect.objectContaining({ id: "claude_code" })]);
     expect(loader.loadCount).toBe(1);
   });
 });
 
 /** Creates create manifest. */
 function createManifest(
-  kind: "cursor" | "codex",
+  kind: "claude_code" | "codex",
   canDetect: boolean,
   id: string = kind
 ): AgentAdapterPluginManifest {

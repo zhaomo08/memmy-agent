@@ -247,7 +247,7 @@ describe("web_search providers", () => {
         expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tavily-key");
         expect((init.headers as Record<string, string>)["User-Agent"]).toBe("memmy-search-test");
         return jsonResponse({
-          results: [{ title: "OpenClaw", url: "https://openclaw.io", content: "Framework" }],
+          results: [{ title: "Codex", url: "https://codex.io", content: "Framework" }],
         });
       }),
     );
@@ -257,11 +257,11 @@ describe("web_search providers", () => {
       apiKey: "tavily-key",
       userAgent: "memmy-search-test",
     }).execute({
-      query: "openclaw",
+      query: "codex",
     });
 
-    expect(result).toContain("OpenClaw");
-    expect(result).toContain("https://openclaw.io");
+    expect(result).toContain("Codex");
+    expect(result).toContain("https://codex.io");
   });
 
   it("formats SearXNG search results", async () => {

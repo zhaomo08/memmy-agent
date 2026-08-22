@@ -84,7 +84,7 @@ describe("tool task-local request context", () => {
 
     async function taskTwo(): Promise<string> {
       await entered;
-      tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-b" }));
+      tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-b" }));
       markRelease();
       return tool.execute({ task: "two" });
     }
@@ -92,9 +92,9 @@ describe("tool task-local request context", () => {
     const [resultOne, resultTwo] = await Promise.all([taskOne(), taskTwo()]);
 
     expect(resultOne).toBe("whatsapp:chat-a:one");
-    expect(resultTwo).toBe("telegram:chat-b:two");
+    expect(resultTwo).toBe("cli:chat-b:two");
     expect(seen).toContainEqual(["whatsapp", "chat-a", "whatsapp:chat-a"]);
-    expect(seen).toContainEqual(["telegram", "chat-b", "telegram:chat-b"]);
+    expect(seen).toContainEqual(["cli", "chat-b", "cli:chat-b"]);
   });
 
   it("keeps CronTool context local to each async task", async () => {
@@ -134,12 +134,12 @@ describe("tool request context single-task regressions", () => {
         seen.push([msg.channel, msg.chatId, msg.content]);
       },
     });
-    tool.setContext(new RequestContext({ channel: "telegram", chatId: "chat-123", messageId: "msg-456" }));
+    tool.setContext(new RequestContext({ channel: "cli", chatId: "chat-123", messageId: "msg-456" }));
 
     const result = await tool.execute({ content: "hello" });
 
-    expect(result).toBe("Message sent to telegram:chat-123");
-    expect(seen).toEqual([["telegram", "chat-123", "hello"]]);
+    expect(result).toBe("Message sent to cli:chat-123");
+    expect(seen).toEqual([["cli", "chat-123", "hello"]]);
   });
 
   it("uses MessageTool constructor defaults without setContext", async () => {

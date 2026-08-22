@@ -247,7 +247,7 @@ describe("SkillsLoader listSkills", () => {
     fs.writeFileSync(
       skillPath,
       `---\nmetadata: ${JSON.stringify({
-        openclaw: { requires: { bins: ["missing_openclaw_bin"] } },
+        codex: { requires: { bins: ["missing_codex_bin"] } },
         memmy_agent: { requires: { bins: ["missing_memmy_agent_bin"] } },
         memmyAgent: { requires: { bins: ["missing_memmy_agent_camel_bin"] } },
       })}\n---\n\n# Legacy namespace`,
@@ -309,7 +309,7 @@ describe("SkillsLoader disabled skills", () => {
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(
       path.join(skillDir, "SKILL.md"),
-      `---\nmetadata: ${JSON.stringify({ openclaw: { always: true }, memmy_agent: { always: true }, memmyAgent: { always: true } })}\n---\n\n# Legacy always`,
+      `---\nmetadata: ${JSON.stringify({ codex: { always: true }, memmy_agent: { always: true }, memmyAgent: { always: true } })}\n---\n\n# Legacy always`,
       "utf8",
     );
 

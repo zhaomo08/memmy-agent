@@ -120,7 +120,7 @@ describe("memory runtime client", () => {
         logs: [{
           id: 1,
           toolName: "memory_search",
-          sourceAgent: "cursor",
+          sourceAgent: "claude_code",
           inputJson: "{}",
           outputJson: "{}",
           durationMs: 1,
@@ -139,23 +139,23 @@ describe("memory runtime client", () => {
     const client = createHttpMemoryRuntimeClient(runtimeConfig);
     const exactLogs = await client.listMemoryLogs({
       tools: ["memory_search"],
-      sourceAgent: "cursor",
+      sourceAgent: "claude_code",
       limit: 20,
       offset: 0
     });
     await client.listMemoryLogs({
       tools: ["memory_search"],
-      excludedSourceAgents: ["memmy-agent", "cursor"],
+      excludedSourceAgents: ["memmy-agent", "claude_code"],
       limit: 20,
       offset: 0
     });
 
     const exactUrl = fetchMock.mock.calls[0]?.[0] as URL;
-    expect(exactLogs.logs[0]?.sourceAgent).toBe("cursor");
+    expect(exactLogs.logs[0]?.sourceAgent).toBe("claude_code");
     expect(exactUrl.searchParams.getAll("tools")).toEqual(["memory_search"]);
-    expect(exactUrl.searchParams.get("sourceAgent")).toBe("cursor");
+    expect(exactUrl.searchParams.get("sourceAgent")).toBe("claude_code");
     const otherUrl = fetchMock.mock.calls[1]?.[0] as URL;
-    expect(otherUrl.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(otherUrl.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 
   it("serializes exact and other Agent filters for L1 panel items", async () => {
@@ -175,14 +175,14 @@ describe("memory runtime client", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const client = createHttpMemoryRuntimeClient(runtimeConfig);
-    await client.listPanelItems({ layer: "L1", sourceAgent: "cursor", page: 2 });
-    await client.listPanelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "cursor"], page: 1 });
+    await client.listPanelItems({ layer: "L1", sourceAgent: "claude_code", page: 2 });
+    await client.listPanelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "claude_code"], page: 1 });
 
     const exactUrl = fetchMock.mock.calls[0]?.[0] as URL;
     expect(exactUrl.searchParams.get("layer")).toBe("L1");
-    expect(exactUrl.searchParams.get("sourceAgent")).toBe("cursor");
+    expect(exactUrl.searchParams.get("sourceAgent")).toBe("claude_code");
     expect(exactUrl.searchParams.get("page")).toBe("2");
     const otherUrl = fetchMock.mock.calls[1]?.[0] as URL;
-    expect(otherUrl.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(otherUrl.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 });

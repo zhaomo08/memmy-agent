@@ -51,7 +51,7 @@ describe("OverviewSubPage", () => {
     expect(html).not.toContain("1px solid transparent");
     expect(html).not.toContain("border:1px solid color-mix(in srgb, var(--color-border-stone) 44%, transparent)");
     expect(html).toContain("来源分布");
-    expect(html).toContain("Cursor");
+    expect(html).toContain("Claude Code");
     expect(html).toContain("Codex");
     expect(html).toContain("grid-template-columns:96px minmax(0, 1fr) 96px");
     expect(html.match(/data-source-distribution-row=/g)).toHaveLength(panelOverviewFixture.sourceDistribution.length);

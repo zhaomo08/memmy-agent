@@ -219,7 +219,7 @@ describe("/restart command", () => {
     const [loop, bus] = makeLoop();
     stubRestartRuntime();
     const dispatch = vi.spyOn(loop as any, "dispatchMessage");
-    await bus.publishInbound(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/restart" }));
+    await bus.publishInbound(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/restart" }));
 
     const runTask = loop.run();
     const out = await withTimeout(bus.consumeOutbound());
@@ -233,7 +233,7 @@ describe("/restart command", () => {
   it("handles status at the run-loop priority layer", async () => {
     const [loop, bus] = makeLoop();
     const dispatch = vi.spyOn(loop as any, "dispatchMessage");
-    await bus.publishInbound(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/status" }));
+    await bus.publishInbound(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/status" }));
 
     const runTask = loop.run();
     const out = await withTimeout(bus.consumeOutbound());
@@ -256,7 +256,7 @@ describe("/restart command", () => {
 
   it("status reports model, usage, context, session, uptime and tasks", async () => {
     const [loop] = makeLoop();
-    const session = new Session({ key: "telegram:c1" });
+    const session = new Session({ key: "cli:c1" });
     session.messages = [{ role: "user", content: "a" }, { role: "user", content: "b" }, { role: "user", content: "c" }];
     loop.sessions.getOrCreate = vi.fn(() => session) as any;
     loop.startTime = Date.now() / 1000 - 125;
@@ -264,7 +264,7 @@ describe("/restart command", () => {
     loop.consolidator.estimateSessionPromptTokens = vi.fn(() => [20_500, "tiktoken"]) as any;
     loop.subagents.getRunningCountBySession = vi.fn(() => 0) as any;
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/status" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/status" }));
 
     expect(response?.content).toContain("Model: test-model");
     expect(response?.content).toContain("Tokens: 0 in / 0 out");
@@ -277,13 +277,13 @@ describe("/restart command", () => {
 
   it("status counts the default history window for long sessions", async () => {
     const [loop] = makeLoop();
-    const session = new Session({ key: "telegram:c1" });
+    const session = new Session({ key: "cli:c1" });
     session.messages = [...Array(131).keys()].map((i) => ({ role: "user", content: `message ${i}` }));
     loop.sessions.getOrCreate = vi.fn(() => session) as any;
     loop.consolidator.estimateSessionPromptTokens = vi.fn(() => [1000, "tiktoken"]) as any;
     loop.subagents.getRunningCountBySession = vi.fn(() => 0) as any;
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/status" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/status" }));
 
     expect(response?.content).toContain("Session: 120 messages");
     expect(response?.content).not.toContain("Session: 131 messages");
@@ -291,14 +291,14 @@ describe("/restart command", () => {
 
   it("status counts running dispatch and subagent tasks", async () => {
     const [loop] = makeLoop();
-    const session = new Session({ key: "telegram:c1" });
+    const session = new Session({ key: "cli:c1" });
     session.getHistory = vi.fn(() => [{ role: "user" }]) as any;
     loop.sessions.getOrCreate = vi.fn(() => session) as any;
     loop.consolidator.estimateSessionPromptTokens = vi.fn(() => [1000, "tiktoken"]) as any;
     loop.subagents.getRunningCountBySession = vi.fn(() => 2) as any;
-    loop.activeTasks.set("telegram:c1", [{ done: () => false }, { done: () => true }] as any);
+    loop.activeTasks.set("cli:c1", [{ done: () => false }, { done: () => true }] as any);
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/status" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/status" }));
 
     expect(response?.content).toContain("Tasks: 3 active");
   });
@@ -319,14 +319,14 @@ describe("/restart command", () => {
 
   it("status falls back to last usage when context estimate is missing", async () => {
     const [loop] = makeLoop();
-    const session = new Session({ key: "telegram:c1" });
+    const session = new Session({ key: "cli:c1" });
     session.getHistory = vi.fn(() => [{ role: "user" }]) as any;
     loop.sessions.getOrCreate = vi.fn(() => session) as any;
     loop.lastUsage = { prompt_tokens: 1200, completion_tokens: 34 };
     loop.consolidator.estimateSessionPromptTokens = vi.fn(() => [0, "none"]) as any;
     loop.subagents.getRunningCountBySession = vi.fn(() => 0) as any;
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/status" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/status" }));
 
     expect(response?.content).toContain("Tokens: 1200 in / 34 out");
     expect(response?.content).toContain("Context: 1k/200k (0% of input budget)");
@@ -335,7 +335,7 @@ describe("/restart command", () => {
 
   it("history shows recent user and assistant messages", async () => {
     const [loop] = makeLoop();
-    const session = loop.sessions.getOrCreate("telegram:c1");
+    const session = loop.sessions.getOrCreate("cli:c1");
     session.messages = [
       { role: "user", content: "Hello" },
       { role: "assistant", content: "Hi there!" },
@@ -344,7 +344,7 @@ describe("/restart command", () => {
       { role: "assistant", content: "I am doing well." },
     ];
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history" }));
 
     expect(response?.content).toContain("👤 You: Hello");
     expect(response?.content).toContain("🤖 Bot: Hi there!");
@@ -354,10 +354,10 @@ describe("/restart command", () => {
 
   it("history respects the count argument", async () => {
     const [loop] = makeLoop();
-    const session = loop.sessions.getOrCreate("telegram:c1");
+    const session = loop.sessions.getOrCreate("cli:c1");
     session.messages = [...Array(20).keys()].map((i) => ({ role: "user", content: `message ${i}` }));
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history 3" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history 3" }));
 
     expect(response?.content).toContain("Last 3 message(s)");
     expect(response?.content).toContain("message 19");
@@ -366,13 +366,13 @@ describe("/restart command", () => {
 
   it("history clamps negative count arguments to one message", async () => {
     const [loop] = makeLoop();
-    const session = loop.sessions.getOrCreate("telegram:c1");
+    const session = loop.sessions.getOrCreate("cli:c1");
     session.messages = [
       { role: "user", content: "older message" },
       { role: "user", content: "newer message" },
     ];
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history -5" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history -5" }));
 
     expect(response?.content).toContain("Last 1 message(s)");
     expect(response?.content).toContain("newer message");
@@ -381,13 +381,13 @@ describe("/restart command", () => {
 
   it("history clamps count and extracts text blocks", async () => {
     const [loop] = makeLoop();
-    const session = loop.sessions.getOrCreate("telegram:c1");
+    const session = loop.sessions.getOrCreate("cli:c1");
     session.messages = [
       { role: "user", content: [{ type: "text", text: "visible text" }, { type: "image_url", image_url: { url: "data:image/png;base64,..." } }] },
       ...[...Array(60).keys()].map((i) => ({ role: "assistant", content: `reply ${i}` })),
     ];
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history 999" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history 999" }));
 
     expect(response?.content).toContain("Last 50 message(s)");
     expect(response?.content).not.toContain("visible text");
@@ -397,13 +397,13 @@ describe("/restart command", () => {
 
   it("history uses the default session window before selecting visible messages", async () => {
     const [loop] = makeLoop();
-    const session = loop.sessions.getOrCreate("telegram:c1");
+    const session = loop.sessions.getOrCreate("cli:c1");
     session.messages = [
       ...[...Array(60).keys()].map((i) => ({ role: "user", content: `old visible ${i}` })),
       ...[...Array(130).keys()].map((i) => ({ role: "system", content: `hidden filler ${i}` })),
     ];
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history 50" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history 50" }));
 
     expect(response?.content).toContain("No conversation history yet.");
     expect(response?.content).not.toContain("old visible");
@@ -412,7 +412,7 @@ describe("/restart command", () => {
   it("history rejects invalid counts", async () => {
     const [loop] = makeLoop();
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history nope" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history nope" }));
 
     expect(response?.content).toMatch(/^Usage: \/history \[count]/);
   });
@@ -420,7 +420,7 @@ describe("/restart command", () => {
   it("history reports empty sessions", async () => {
     const [loop] = makeLoop();
 
-    const response = await loop.processMessage(new InboundMessage({ channel: "telegram", senderId: "u1", chatId: "c1", content: "/history" }));
+    const response = await loop.processMessage(new InboundMessage({ channel: "cli", senderId: "u1", chatId: "c1", content: "/history" }));
 
     expect(response?.content).toContain("No conversation history yet.");
   });

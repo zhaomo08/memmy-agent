@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe("agent adapter plugin sources", () => {
   it("returns sorted copies from the in-memory plugin source", async () => {
-    const lowPriority = createManifest("cursor", 1);
+    const lowPriority = createManifest("claude_code", 1);
     const highPriority = createManifest("codex", 10);
     const custom = { ...createManifest("custom", 10), id: "alpha", kind: "custom" as const };
     const source = createInMemoryAgentAdapterPluginSource([lowPriority, highPriority, custom]);
@@ -32,19 +32,19 @@ describe("agent adapter plugin sources", () => {
     manifests.pop();
 
     expect(manifests.map((manifest) => manifest.id)).toEqual(["alpha", "codex"]);
-    expect((await source.loadManifests()).map((manifest) => manifest.id)).toEqual(["alpha", "codex", "cursor"]);
+    expect((await source.loadManifests()).map((manifest) => manifest.id)).toEqual(["alpha", "codex", "claude_code"]);
   });
 
   it("loads nested and file-based manifests from plugin directories", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "memmy-agent-adapters-"));
-    const cursorDir = join(tempDir, "cursor");
+    const cursorDir = join(tempDir, "claude_code");
     const pluginModuleDir = join(tempDir, "modules");
     mkdirSync(cursorDir);
     mkdirSync(pluginModuleDir);
     writeFileSync(join(tempDir, "ignored.txt"), "not a manifest");
     writeFileSync(
       join(cursorDir, AGENT_ADAPTER_PLUGIN_MANIFEST),
-      JSON.stringify(createManifest("cursor", 1, "./cursor.js"))
+      JSON.stringify(createManifest("claude_code", 1, "./cursor.js"))
     );
     writeFileSync(
       join(tempDir, "codex.agent-adapter.json"),
@@ -58,7 +58,7 @@ describe("agent adapter plugin sources", () => {
     await expect(nodePluginFileSystem.readText(join(tempDir, "ignored.txt"))).resolves.toBe("not a manifest");
     await expect(nodePluginFileSystem.readDirectory(tempDir)).resolves.toEqual(
       expect.arrayContaining([
-        { name: "cursor", isDirectory: true },
+        { name: "claude_code", isDirectory: true },
         { name: "codex.agent-adapter.json", isDirectory: false }
       ])
     );
@@ -68,7 +68,7 @@ describe("agent adapter plugin sources", () => {
         modulePath: resolve(tempDir, "modules/codex.js")
       },
       {
-        id: "cursor",
+        id: "claude_code",
         modulePath: resolve(cursorDir, "cursor.js")
       }
     ]);
@@ -132,7 +132,7 @@ describe("agent adapter plugin sources", () => {
 
 /** Creates create manifest. */
 function createManifest(
-  id: "cursor" | "codex" | "custom",
+  id: "claude_code" | "codex" | "custom",
   priority: number,
   modulePath = "./plugin.js"
 ): AgentAdapterPluginManifest {

@@ -60,16 +60,16 @@ describe("default agent adapter registry", () => {
 
   it("initializes with a valid plugin", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "memmy-agent-adapter-valid-"));
-    writePlugin(tempDir, createManifest("cursor"));
+    writePlugin(tempDir, createManifest("claude_code"));
     const registry = createDefaultAgentAdapterRegistry({
       pluginDirectories: [tempDir]
     });
 
     await expect(registry.list()).resolves.toEqual([
       {
-        id: "cursor",
-        kind: "cursor",
-        displayName: "cursor",
+        id: "claude_code",
+        kind: "claude_code",
+        displayName: "claude_code",
         version: "1.0.0",
         capabilities: {
           detect: true,
@@ -84,7 +84,7 @@ describe("default agent adapter registry", () => {
   it("ignores disabled plugins during initialization", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "memmy-agent-adapter-disabled-"));
     writeManifestOnly(tempDir, {
-      ...createManifest("cursor"),
+      ...createManifest("claude_code"),
       enabled: false,
       modulePath: "./missing-plugin.mjs"
     });
@@ -97,7 +97,7 @@ describe("default agent adapter registry", () => {
 
   it("rejects duplicate plugin ids", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "memmy-agent-adapter-duplicate-id-"));
-    writeTopLevelManifest(tempDir, "duplicate-a.agent-adapter.json", createManifest("cursor", "duplicate"));
+    writeTopLevelManifest(tempDir, "duplicate-a.agent-adapter.json", createManifest("claude_code", "duplicate"));
     writeTopLevelManifest(tempDir, "duplicate-b.agent-adapter.json", createManifest("codex", "duplicate"));
     const registry = createDefaultAgentAdapterRegistry({
       pluginDirectories: [tempDir]
@@ -108,13 +108,13 @@ describe("default agent adapter registry", () => {
 
   it("rejects duplicate plugin kinds", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "memmy-agent-adapter-duplicate-kind-"));
-    writeManifestOnly(tempDir, createManifest("cursor", "cursor-a"));
-    writeManifestOnly(tempDir, createManifest("cursor", "cursor-b"));
+    writeManifestOnly(tempDir, createManifest("claude_code", "cursor-a"));
+    writeManifestOnly(tempDir, createManifest("claude_code", "cursor-b"));
     const registry = createDefaultAgentAdapterRegistry({
       pluginDirectories: [tempDir]
     });
 
-    await expect(registry.list()).rejects.toThrow("Duplicate Agent Adapter plugin kind: cursor");
+    await expect(registry.list()).rejects.toThrow("Duplicate Agent Adapter plugin kind: claude_code");
   });
 });
 
@@ -170,7 +170,7 @@ function writeTopLevelManifest(
 /**
  * Builds a plugin manifest for the initialization tests.
  */
-function createManifest(kind: "cursor" | "codex", id = kind): AgentAdapterPluginManifest {
+function createManifest(kind: "claude_code" | "codex", id = kind): AgentAdapterPluginManifest {
   return {
     id,
     kind,

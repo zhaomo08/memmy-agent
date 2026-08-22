@@ -2225,7 +2225,15 @@ function memoryIdPrefix(layer: MemoryLayer, kind: MemoryKind): string {
 
 
 function normalizeRequestTags(tags: readonly string[] | undefined): string[] {
-  const reserved = new Set(["trace", "turn", "memmy"]);
+  const reserved = new Set([
+    "trace",
+    "turn",
+    "memmy",
+    "codex",
+    "claude",
+    "claude-code",
+    "claude_code",
+  ]);
   const out: string[] = [];
   const seen = new Set<string>();
   for (const tag of tags ?? []) {

@@ -219,7 +219,7 @@ describe("WebSocket HTTP route helpers", () => {
     session.addMessage("user", "hi");
     session.addMessage("assistant", "hello back");
     manager.save(session);
-    const other = new Session({ key: "telegram:abc" });
+    const other = new Session({ key: "cli:abc" });
     other.addMessage("user", "outside");
     manager.save(other);
 

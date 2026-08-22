@@ -33,13 +33,13 @@ describe("AgentLoop tool context", () => {
     const probe = new ProbeTool();
     loop.tools.register(probe);
 
-    loop.setToolContext("telegram", "chat-1", "m1", { x: 1 }, "telegram:chat-1");
+    loop.setToolContext("cli", "chat-1", "m1", { x: 1 }, "cli:chat-1");
 
     expect(probe.seen).toMatchObject({
-      channel: "telegram",
+      channel: "cli",
       chatId: "chat-1",
       messageId: "m1",
-      sessionKey: "telegram:chat-1",
+      sessionKey: "cli:chat-1",
       metadata: { x: 1 },
     });
   });
