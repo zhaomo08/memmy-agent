@@ -664,6 +664,7 @@ async function startLocalApi(services: PackagedRuntimeServices | null): Promise<
     desktopInstallFingerprint,
     memmyConfigPath: process.env.MEMMY_CONFIG,
     memoryBaseUrl: memoryControl.baseUrl,
+    memoryReady: services?.memory.ready,
     runtimeConfigPath: process.env.MEMMY_HOME ? join(process.env.MEMMY_HOME, "runtime.json") : undefined
   });
   const agentGateway: NonNullable<DesktopRuntimeConfig["agentGateway"]> =

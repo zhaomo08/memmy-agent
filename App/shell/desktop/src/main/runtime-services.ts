@@ -28,6 +28,7 @@ export interface PackagedRuntimeServices {
     token: string;
     databasePath: string;
     configPath: string;
+    ready: Promise<void>;
   };
   agentGateway: {
     baseUrl: string;
@@ -153,18 +154,19 @@ export async function startPackagedRuntimeServices(
       spawn,
       browserPreparationAttemptId
     );
-    memoryStartup = ensureMemoryService(entries, runtimeConfig, children, options);
-    const [agentGatewayStartupIssue] = await Promise.all([
-      startAgentGatewayWithRecovery(gatewaySupervisor),
-      memoryStartup
-    ]);
+    const memoryReady = ensureMemoryService(entries, runtimeConfig, children, options);
+    memoryStartup = memoryReady.catch((error) => {
+      console.warn(`Memory service unavailable during desktop startup: ${errorMessage(error)}`);
+    });
+    const agentGatewayStartupIssue = await startAgentGatewayWithRecovery(gatewaySupervisor);
 
     return {
       memory: {
         baseUrl: runtimeConfig.memoryBaseUrl,
         token: runtimeConfig.memoryToken,
         databasePath: runtimeConfig.memoryDatabasePath,
-        configPath: runtimeConfig.configPath
+        configPath: runtimeConfig.configPath,
+        ready: memoryReady
       },
       agentGateway: {
         baseUrl: runtimeConfig.agentGatewayBaseUrl,
@@ -192,7 +194,6 @@ export async function startPackagedRuntimeServices(
       async close() {
         closing = true;
         browserPreparation?.stop();
-        await memoryStartup;
         await memoryRestart?.catch(() => undefined);
         await gatewaySupervisor.close();
         await stopManagedChildren(children);
@@ -205,7 +206,6 @@ export async function startPackagedRuntimeServices(
     };
   } catch (error) {
     browserPreparation?.stop();
-    await memoryStartup?.catch(() => undefined);
     await gatewaySupervisor.close();
     await stopManagedChildren(children);
     throw error;
