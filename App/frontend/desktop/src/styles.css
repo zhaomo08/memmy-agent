@@ -825,80 +825,6 @@ body:has(.memory-drawer) .window-drag-region {
   padding-top: var(--codex-toolbar-height);
 }
 
-.community-popover-grid {
-  align-items: center;
-  grid-template-columns: 118px auto;
-}
-
-.community-popover-wechat {
-  display: flex;
-  align-self: center;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 9px;
-  border: 1px solid var(--border-content-panel);
-  border-radius: calc(var(--radius-card) / 2);
-  background: color-mix(in srgb, var(--color-canvas-oat) 30%, transparent);
-  box-shadow: none;
-}
-
-.community-popover-wechat-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: color-mix(in srgb, var(--color-text-ink) 65%, transparent);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-}
-
-.community-popover-qr {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-}
-
-.community-popover-wechat-hint {
-  color: color-mix(in srgb, var(--color-text-ink) 40%, transparent);
-  font-size: 10px;
-  line-height: 12px;
-}
-
-.community-popover-links {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.community-link {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 32px;
-  padding: 5px 10px;
-  border: 1px solid var(--border-content-panel);
-  background: color-mix(in srgb, var(--color-background-paper) 76%, transparent);
-  box-shadow: none;
-  line-height: 1.15;
-}
-
-.community-link:hover {
-  background: color-mix(in srgb, var(--color-canvas-oat) 32%, transparent);
-  color: var(--color-action-sky);
-}
-
-.community-link-title {
-  font-size: 11px;
-  line-height: 14px;
-}
-
-.community-link-detail {
-  font-size: 9px;
-  line-height: 11px;
-  white-space: nowrap;
-}
-
 ::selection {
   background: var(--color-action-sky);
   color: white;
@@ -6045,20 +5971,6 @@ input[type="checkbox"].check-sky:checked::after {
 }
 
 .provider-pills,
-.community-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.community-row {
-  justify-content: center;
-  padding: 14px 0 0;
-  color: color-mix(in srgb, var(--color-text-ink) 55%, transparent);
-  font-size: 12px;
-}
-
 .provider-pills span,
 .provider-pills button {
   border: 1px solid color-mix(in srgb, var(--color-border-stone) 40%, transparent);
@@ -8555,48 +8467,6 @@ input[type="checkbox"].check-sky:checked::after {
 .sidebar-resize-handle--disabled::after {
   background: transparent;
   box-shadow: none;
-}
-
-.community-popover {
-  left: 20px;
-  right: auto;
-  z-index: 60;
-  width: max-content;
-  max-width: min(340px, calc(100vw - 48px));
-}
-
-.community-wechat-preview-modal {
-  width: min(360px, calc(100vw - 48px));
-}
-
-.community-wechat-preview-modal .modal-title-row {
-  display: none;
-}
-
-.community-wechat-preview-modal .modal-header {
-  justify-content: flex-end;
-  padding-bottom: 0;
-}
-
-.community-wechat-preview-body {
-  justify-items: center;
-  padding: 0 20px 20px;
-}
-
-.community-wechat-preview-frame {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--color-border-stone) 24%, transparent);
-  border-radius: var(--radius-card);
-  background: white;
-}
-
-.community-wechat-preview-image {
-  width: min(240px, calc(100vw - 112px));
-  aspect-ratio: 1;
-  object-fit: contain;
 }
 
 .auth-code-form-terms {
