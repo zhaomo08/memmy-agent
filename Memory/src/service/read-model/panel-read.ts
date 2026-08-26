@@ -420,6 +420,8 @@ export class PanelReadModel {
     tags?: string[];
     sourceAgent?: string;
     excludedSourceAgents?: string[];
+    /** Workspace id of a project; scopes the list to memories captured in it. */
+    projectId?: string;
     page?: number;
     limit?: number;
     cursor?: string | number;
@@ -480,7 +482,8 @@ export class PanelReadModel {
       status: input.status,
       tags: input.tags,
       agentId: input.sourceAgent,
-      excludedAgentIds: input.excludedSourceAgents
+      excludedAgentIds: input.excludedSourceAgents,
+      appId: input.projectId
     };
     const total = input.q?.trim()
       ? this.deps.repos.memories.searchCount(input.q, { ...filter, status: filter.status ?? ["activated", "resolving"] })
