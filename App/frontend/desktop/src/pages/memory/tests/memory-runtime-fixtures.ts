@@ -523,6 +523,9 @@ export function createMockMemoryRuntimeClient(): MemoryRuntimeClient {
     async listPanelItems(input): Promise<PanelItemsOutput> {
       return filterMemoryItems(input);
     },
+    async listPanelProjects() {
+      return { projects: [], serverTime: new Date().toISOString() };
+    },
     async listPanelTasks(input) {
       const page = Math.max(1, Math.floor(input.page ?? 1));
       return {

@@ -20,6 +20,7 @@ import {
   OpenSessionOutputSchema,
   PanelAnalysisOutputSchema,
   PanelItemsInputSchema,
+  PanelProjectsOutputSchema,
   PanelItemsOutputSchema,
   PanelOverviewOutputSchema,
   PanelTasksInputSchema,
@@ -49,6 +50,7 @@ import {
   type OpenSessionOutput,
   type PanelAnalysisOutput,
   type PanelItemsInput,
+  type PanelProjectsOutput,
   type PanelItemsOutput,
   type PanelOverviewOutput,
   type PanelTasksInput,
@@ -102,6 +104,7 @@ export interface MemoryRuntimeClient {
   getPanelOverview(): Promise<PanelOverviewOutput>;
   getPanelAnalysis(): Promise<PanelAnalysisOutput>;
   listPanelItems(input: PanelItemsInput): Promise<PanelItemsOutput>;
+  listPanelProjects(): Promise<PanelProjectsOutput>;
   listPanelTasks(input: PanelTasksInput): Promise<PanelTasksOutput>;
   deletePanelTask(id: string): Promise<DeletePanelTaskOutput>;
 }
@@ -219,6 +222,10 @@ export function createHttpMemoryRuntimeClient(config: RuntimeConfig): MemoryRunt
       return requestJson({ config, path: withQuery("/api/v1/panel/items", PanelItemsInputSchema.parse(input)), schema: PanelItemsOutputSchema });
     },
 
+    async listPanelProjects() {
+      return requestJson({ config, path: "/api/v1/panel/projects", schema: PanelProjectsOutputSchema });
+    },
+
     async listPanelTasks(input) {
       return requestJson({ config, path: withQuery("/api/v1/panel/tasks", PanelTasksInputSchema.parse(input)), schema: PanelTasksOutputSchema });
     },
@@ -310,6 +317,9 @@ export function createUnavailableMemoryRuntimeClient(): MemoryRuntimeClient {
       throw unavailable();
     },
     async listPanelItems() {
+      throw unavailable();
+    },
+    async listPanelProjects() {
       throw unavailable();
     },
     async listPanelTasks() {
