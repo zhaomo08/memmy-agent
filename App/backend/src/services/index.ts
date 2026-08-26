@@ -7,6 +7,7 @@ import {
 import type { AgentAdapterRegistry } from "../adapters/outbound/agent-adapter/index.js";
 import { createBuiltinOnboardingInsightSamplers } from "../adapters/outbound/agent-source/onboarding-insight-samplers.js";
 import type { SourceRegistry } from "../adapters/outbound/agent-source/source-registry.js";
+import { agentInstructionsTargetsFrom, createAgentRuleWriter, type AgentRuleWriter } from "../adapters/outbound/agent-rules/index.js";
 import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
 import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
 import { createSkillTargetRegistry, type SkillTargetRegistry } from "../adapters/outbound/skill-writer/target-registry.js";
@@ -61,6 +62,8 @@ export interface BackendServices {
   /** Integrations. */
   integrations: IntegrationService;
   localData: LocalDataService;
+  /** Keeps every agent's instructions file in step with ~/.memmy/agent-rules. */
+  agentRules: AgentRuleWriter;
   agentSources: AgentSourceService;
   agentSourceAutoInject: AgentSourceAutoInjectService;
   onboardingInsight: OnboardingInsightService;
@@ -167,6 +170,7 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
       localDataStore: options.appStateStore.localDataStore
     }),
     agentSources,
+    agentRules: createAgentRuleWriter({ targets: agentInstructionsTargetsFrom(skillTargetRegistry.list()) }),
     agentSourceAutoInject: createAgentSourceAutoInjectService({
       agentSources,
       permissionManager: options.permissionManager,

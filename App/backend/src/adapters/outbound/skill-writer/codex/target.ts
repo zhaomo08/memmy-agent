@@ -44,6 +44,7 @@ export function createCodexSkillTarget(deps: CreateCodexSkillTargetDeps = {}): S
   return {
     targetId: CODEX_TARGET_ID,
     displayName: CODEX_DISPLAY_NAME,
+    agentInstructionsFileName: TARGET_FILE_NAME,
 
     async resolveRootDirectory() {
       return resolveExistingDirectory(rootDirectory);

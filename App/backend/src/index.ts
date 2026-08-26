@@ -166,6 +166,21 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
     });
     autoScan.start();
 
+    // Rules are opt-in by gesture: an absent or empty ~/.memmy/agent-rules is a no-op,
+    // so a user who never creates it never has CLAUDE.md or AGENTS.md touched. A failure
+    // here must not take the backend down -- the agents work fine without the blocks.
+    try {
+      const applied = await services.agentRules.apply();
+      if (applied.written.length > 0 || applied.removed.length > 0) {
+        console.info(`[agent-rules] wrote ${applied.written.length}, removed ${applied.removed.length}`);
+      }
+      for (const ruleError of applied.errors) {
+        console.warn(`[agent-rules] ${ruleError.sourcePath}: ${ruleError.message}`);
+      }
+    } catch (error) {
+      console.warn(`[agent-rules] apply failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     const boundServer = server;
     const boundAutoScan = autoScan;
     return {

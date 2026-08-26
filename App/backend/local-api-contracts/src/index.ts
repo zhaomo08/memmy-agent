@@ -1087,3 +1087,42 @@ export const TokenQuotaEligibilitySchema = z.object({
     latestReviewNote: z.string().nullable()
 });
 export type TokenQuotaEligibility = z.infer<typeof TokenQuotaEligibilitySchema>;
+
+/** One rule's standing in one agent's instructions file. */
+export const AgentRuleBlockStateSchema = z.enum(["in_sync", "stale", "missing", "orphaned"]);
+export type AgentRuleBlockState = z.infer<typeof AgentRuleBlockStateSchema>;
+
+/** Schema for an agent rule status row. */
+export const AgentRuleStatusEntrySchema = z.object({
+    ruleId: z.string(),
+    targetId: z.string(),
+    targetDisplayName: z.string(),
+    filePath: z.string().nullable(),
+    state: AgentRuleBlockStateSchema
+});
+export type AgentRuleStatusEntry = z.infer<typeof AgentRuleStatusEntrySchema>;
+
+/** Schema for a rule file that could not be read. */
+export const AgentRuleSourceErrorSchema = z.object({
+    sourcePath: z.string(),
+    message: z.string()
+});
+export type AgentRuleSourceError = z.infer<typeof AgentRuleSourceErrorSchema>;
+
+/** Schema for the agent rule status response. */
+export const AgentRuleStatusDtoSchema = z.object({
+    rulesDirectory: z.string(),
+    entries: z.array(AgentRuleStatusEntrySchema),
+    errors: z.array(AgentRuleSourceErrorSchema),
+    unavailableTargetIds: z.array(z.string())
+});
+export type AgentRuleStatusDto = z.infer<typeof AgentRuleStatusDtoSchema>;
+
+/** Schema for the agent rule apply response. */
+export const AgentRuleApplyDtoSchema = z.object({
+    written: z.array(AgentRuleStatusEntrySchema),
+    removed: z.array(AgentRuleStatusEntrySchema),
+    errors: z.array(AgentRuleSourceErrorSchema),
+    unavailableTargetIds: z.array(z.string())
+});
+export type AgentRuleApplyDto = z.infer<typeof AgentRuleApplyDtoSchema>;
