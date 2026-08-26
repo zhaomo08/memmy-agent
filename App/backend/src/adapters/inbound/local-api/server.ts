@@ -7,6 +7,7 @@ import type { BackendServices } from "../../../services/index.js";
 import { registerAccountRoutes } from "./routes/account.js";
 import { registerTokenQuotaRoutes } from "./routes/token-quota.js";
 import { registerAppConfigRoutes } from "./routes/app-config.js";
+import { registerAgentRuleRoutes } from "./routes/agent-rules.js";
 import { registerAgentSourceRoutes } from "./routes/agent-sources.js";
 import { registerAgentRuntimeRoutes } from "./routes/agent-runtime/index.js";
 import { registerAsrRoutes } from "./routes/asr.js";
@@ -86,6 +87,10 @@ export function createLocalApiServer(options: CreateLocalApiServerOptions): Fast
     permissionManager: options.permissionManager,
     authenticateRuntimeToken,
     scanWorker: options.scanWorker
+  });
+  registerAgentRuleRoutes(app, {
+    agentRules: options.services.agentRules,
+    authenticateRuntimeToken
   });
   registerAppConfigRoutes(app, {
     appConfig: options.services.appConfig,

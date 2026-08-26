@@ -19,6 +19,8 @@ export interface MemoryPluginConflict {
 export interface SkillTarget {
   readonly targetId: string;
   readonly displayName: string;
+  /** File this agent reads its standing instructions from, e.g. CLAUDE.md. Optional so test doubles need not supply it. */
+  readonly agentInstructionsFileName?: string;
   resolveRootDirectory(): Promise<string | null>;
   install(manifest: SkillManifest): Promise<void>;
   uninstall(targetId: string): Promise<void>;

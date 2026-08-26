@@ -43,6 +43,7 @@ export function createClaudeCodeSkillTarget(deps: CreateClaudeCodeSkillTargetDep
   return {
     targetId: CLAUDE_CODE_TARGET_ID,
     displayName: CLAUDE_CODE_DISPLAY_NAME,
+    agentInstructionsFileName: TARGET_FILE_NAME,
 
     async resolveRootDirectory() {
       return resolveExistingDirectory(rootDirectory);
