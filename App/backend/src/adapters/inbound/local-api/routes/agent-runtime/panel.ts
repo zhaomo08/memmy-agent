@@ -24,6 +24,14 @@ export function registerPanelRoutes(app: FastifyInstance, deps: AgentRuntimeRout
   );
 
   app.get(
+    "/api/v1/panel/projects",
+    { preHandler: deps.authenticateRuntimeToken },
+    withErrorEnvelope(async (_request, reply) => {
+      return reply.send(await deps.services.panel.projects(runtimeContext()));
+    })
+  );
+
+  app.get(
     "/api/v1/panel/items",
     { preHandler: deps.authenticateRuntimeToken },
     withErrorEnvelope(async (request, reply) => {

@@ -21,6 +21,7 @@ import type {
   PanelAnalysisOutput,
   PanelItemsInput,
   PanelItemsOutput,
+  PanelProjectsOutput,
   PanelOverviewOutput,
   PanelTasksInput,
   PanelTasksOutput,
@@ -70,6 +71,7 @@ export interface MemoryClient {
   panelOverview(): Promise<PanelOverviewOutput>;
   panelAnalysis(): Promise<PanelAnalysisOutput>;
   panelItems(input: PanelItemsInput): Promise<PanelItemsOutput>;
+  panelProjects(): Promise<PanelProjectsOutput>;
   panelTasks(input: PanelTasksInput): Promise<PanelTasksOutput>;
   deletePanelTask(taskId: string): Promise<DeletePanelTaskOutput>;
   memoryApiLogs(input: MemoryApiLogsInput): Promise<MemoryApiLogsOutput>;

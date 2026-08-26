@@ -1,5 +1,6 @@
 /** Http memory client module. */
 import {
+  PanelProjectsOutputSchema,
   AddMemoryOutputSchema,
   ApiErrorBodySchema,
   CloseSessionOutputSchema,
@@ -218,6 +219,10 @@ export function createHttpMemoryClient(
 
     async panelAnalysis() {
       return request("GET", "panelAnalysis", PanelAnalysisOutputSchema);
+    },
+
+    async panelProjects() {
+      return request("GET", "panelProjects", PanelProjectsOutputSchema, {});
     },
 
     async panelItems(input) {

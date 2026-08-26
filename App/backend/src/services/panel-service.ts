@@ -3,6 +3,7 @@ import type {
   PanelAnalysisOutput,
   PanelItemsInput,
   PanelItemsOutput,
+  PanelProjectsOutput,
   PanelTasksInput,
   PanelTasksOutput,
   DeletePanelTaskOutput,
@@ -19,6 +20,7 @@ export interface PanelService {
   overview(ctx: RuntimeContext): Promise<PanelOverviewOutput>;
   analysis(ctx: RuntimeContext): Promise<PanelAnalysisOutput>;
   items(input: PanelItemsInput, ctx: RuntimeContext): Promise<PanelItemsOutput>;
+  projects(ctx: RuntimeContext): Promise<PanelProjectsOutput>;
   tasks(input: PanelTasksInput, ctx: RuntimeContext): Promise<PanelTasksOutput>;
   deleteTask(id: string, ctx: RuntimeContext): Promise<DeletePanelTaskOutput>;
   memoryApiLogs(input: MemoryApiLogsInput, ctx: RuntimeContext): Promise<MemoryApiLogsOutput>;
@@ -37,6 +39,10 @@ export function createPanelService(deps: { memoryClient: MemoryClient }): PanelS
 
     async items(input, _ctx) {
       return deps.memoryClient.panelItems(input);
+    },
+
+    async projects(_ctx) {
+      return deps.memoryClient.panelProjects();
     },
 
     async tasks(input, _ctx) {
