@@ -592,9 +592,26 @@ export const PanelItemsInputSchema = z.object({
   q: z.string().optional(),
   sourceAgent: z.string().trim().min(1).optional(),
   excludedSourceAgents: z.array(z.string().trim().min(1)).optional(),
+  projectId: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().positive().optional()
 });
 export type PanelItemsInput = z.infer<typeof PanelItemsInputSchema>;
+
+/** Schema for one project memories have been captured for. */
+export const PanelProjectSchema = z.object({
+  projectId: z.string(),
+  label: z.string(),
+  memoryCount: z.number().int().nonnegative(),
+  lastSeenAt: IsoTimeSchema
+});
+export type PanelProject = z.infer<typeof PanelProjectSchema>;
+
+/** Schema for the project list backing the memories page filter. */
+export const PanelProjectsOutputSchema = z.object({
+  projects: z.array(PanelProjectSchema),
+  serverTime: IsoTimeSchema
+});
+export type PanelProjectsOutput = z.infer<typeof PanelProjectsOutputSchema>;
 
 /** Schema for panel task list input. */
 export const PanelTasksInputSchema = z.object({

@@ -719,6 +719,9 @@ function renderMemories(
         sourceAgent=""
         onQueryChange={vi.fn()}
         onSourceAgentChange={vi.fn()}
+        projectId=""
+        projects={[]}
+        onProjectChange={vi.fn()}
         onSearch={vi.fn()}
         onPageChange={vi.fn()}
         onRefresh={vi.fn()}
