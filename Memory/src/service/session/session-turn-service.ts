@@ -68,7 +68,8 @@ import {
   namespaceForRawTurn,
   namespaceForSession,
   normalizeNamespace,
-  sessionScopeForOpenRequest
+  sessionScopeForOpenRequest,
+  workspaceIdentityForOpenRequest
 } from "../namespace/namespace-scope.js";
 import {
   detailSummaryForMemory,
@@ -567,19 +568,24 @@ export class SessionTurnService {
         return body;
       }
     }
+    const workspaceIdentity = workspaceIdentityForOpenRequest(request, namespace);
     const session: SessionRecord = {
       id: request.sessionId ?? newId("session"),
       userId: namespace.userId,
       source: request.source ?? namespace.source,
       profileId: request.profileId ?? namespace.profileId,
       profileLabel: namespace.profileLabel,
-      projectId: request.projectId ?? namespace.projectId ?? namespace.workspaceId,
-      workspaceId: request.workspaceId ?? namespace.workspaceId,
-      workspacePath: request.workspacePath ?? namespace.workspacePath,
+      projectId: request.projectId ?? namespace.projectId ?? namespace.workspaceId ?? workspaceIdentity.workspaceId,
+      workspaceId: request.workspaceId ?? namespace.workspaceId ?? workspaceIdentity.workspaceId,
+      workspacePath: workspaceIdentity.workspacePath ?? request.workspacePath ?? namespace.workspacePath,
       hostSessionKey,
       conversationId: this.deps.stringFromMeta(request.meta, "conversationId"),
       status: "open" as const,
-      meta: request.meta ?? {},
+      // Readable project name ("repo" / "repo/worktree") rides along in meta so recall
+      // and the viewer can show something better than the 16-hex workspace id.
+      meta: workspaceIdentity.projectLabel
+        ? { ...(request.meta ?? {}), projectLabel: workspaceIdentity.projectLabel }
+        : request.meta ?? {},
       openedAt: at,
       lastSeenAt: at,
       updatedAt: at

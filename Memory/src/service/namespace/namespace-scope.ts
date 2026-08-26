@@ -1,6 +1,7 @@
 import type { MemoryRow, RuntimeNamespace, SessionOpenRequest } from "../../types.js";
 import { DEFAULT_NAMESPACE_SOURCE } from "../../types.js";
 import type { RawTurnRecord, SessionRecord } from "../../storage/repositories.js";
+import { resolveWorkspaceIdentity, type WorkspaceIdentity } from "../../utils/workspace.js";
 
 export function normalizeNamespace(namespace?: RuntimeNamespace): RuntimeNamespace & { userId: string; source: string; profileId: string } {
   return {
@@ -17,13 +18,28 @@ export function normalizeNamespace(namespace?: RuntimeNamespace): RuntimeNamespa
 }
 
 export function sessionScopeForOpenRequest(request: SessionOpenRequest, namespace: RuntimeNamespace): Partial<Pick<SessionRecord, "source" | "profileId" | "projectId" | "workspaceId" | "workspacePath">> {
+  const reportedPath = request.workspacePath ?? request.namespace?.workspacePath ?? namespace.workspacePath;
+  const identity = workspaceIdentityForOpenRequest(request, namespace);
+  const workspaceId = request.workspaceId ?? request.namespace?.workspaceId ?? identity.workspaceId;
   return {
     source: request.source ?? request.namespace?.source,
     profileId: request.profileId ?? request.namespace?.profileId,
-    projectId: request.projectId ?? request.namespace?.projectId ?? request.namespace?.workspaceId,
-    workspaceId: request.workspaceId ?? request.namespace?.workspaceId,
-    workspacePath: request.workspacePath ?? request.namespace?.workspacePath ?? namespace.workspacePath
+    projectId: request.projectId ?? request.namespace?.projectId ?? workspaceId,
+    workspaceId,
+    workspacePath: identity.workspacePath ?? reportedPath
   };
+}
+
+/**
+ * Resolves the project a session belongs to from whatever the client reported.
+ *
+ * Clients that only send a workspace path (the Codex / Claude Code hooks) still get a
+ * namespace: the path is canonicalised to its repository and the id derived from that.
+ */
+export function workspaceIdentityForOpenRequest(request: SessionOpenRequest, namespace: RuntimeNamespace): WorkspaceIdentity {
+  return resolveWorkspaceIdentity(
+    request.workspacePath ?? request.namespace?.workspacePath ?? namespace.workspacePath
+  );
 }
 
 export function namespaceForSession(session: SessionRecord): RuntimeNamespace {
