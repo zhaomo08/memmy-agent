@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { resolveTimeZone } from "../utils/time.js";
 
 export type LlmProviderName =
   | ""
@@ -153,6 +154,7 @@ export interface AlgorithmConfig {
   l2Induction: {
     useLlm: boolean;
     minEpisodesForInduction: number;
+    minEpisodesForActivation: number;
     minSimilarity: number;
     candidateTtlDays: number;
     minTraceValue: number;
@@ -207,6 +209,7 @@ export interface AlgorithmConfig {
     mmrLambda: number;
     rrfConstant: number;
     relativeThresholdFloor: number;
+    minRecallScore: number;
     minSkillEta: number;
     minTraceSim: number;
     episodeGoalMinSim: number;
@@ -233,6 +236,7 @@ export interface MemmyConfig {
   domain: MemoryDomainName;
   activeProfile: MemoryProfileName;
   userId?: string;
+  timeZone?: string;
   storage: StorageConfig;
   summary: LlmConfig;
   evolution: LlmConfig;
@@ -364,6 +368,7 @@ export const DEFAULT_MEMMY_CONFIG: MemmyConfig = {
     l2Induction: {
       useLlm: true,
       minEpisodesForInduction: 1,
+      minEpisodesForActivation: 3,
       minSimilarity: 0.65,
       candidateTtlDays: 30,
       minTraceValue: 0.005,
@@ -418,6 +423,7 @@ export const DEFAULT_MEMMY_CONFIG: MemmyConfig = {
       mmrLambda: 0.7,
       rrfConstant: 60,
       relativeThresholdFloor: 0.2,
+      minRecallScore: 0.12,
       minSkillEta: 0.1,
       minTraceSim: 0.25,
       episodeGoalMinSim: 0.45,
@@ -457,6 +463,7 @@ export function loadMemmyConfig(configPath?: string): {
   const rootConfig = selectedPath && existsSync(selectedPath)
     ? parseConfigFile(selectedPath)
     : {};
+  const configuredTimeZone = optionalString(asRecord(asRecord(rootConfig.agents).defaults).timezone);
   const memmyMemoryConfig = asRecord(rootConfig.memmyMemory);
   const fileConfig = resolveRuntimeMemmyMemoryConfig(memmyMemoryConfig);
   const envConfig = configFromEnv();
@@ -466,7 +473,10 @@ export function loadMemmyConfig(configPath?: string): {
     envConfig
   ));
   return {
-    config: merged,
+    config: {
+      ...merged,
+      ...(configuredTimeZone ? { timeZone: resolveTimeZone(configuredTimeZone) } : {})
+    },
     path: selectedPath
   };
 }
@@ -771,6 +781,7 @@ function normalizeAlgorithm(input: Record<string, unknown>): AlgorithmConfig {
     l2Induction: {
       useLlm: booleanValue(l2.useLlm, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.useLlm),
       minEpisodesForInduction: numberValue(l2.minEpisodesForInduction, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.minEpisodesForInduction),
+      minEpisodesForActivation: numberValue(l2.minEpisodesForActivation, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.minEpisodesForActivation),
       minSimilarity: numberValue(l2.minSimilarity, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.minSimilarity),
       candidateTtlDays: numberValue(l2.candidateTtlDays, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.candidateTtlDays),
       minTraceValue: numberValue(l2.minTraceValue, DEFAULT_MEMMY_CONFIG.algorithm.l2Induction.minTraceValue),
@@ -825,6 +836,7 @@ function normalizeAlgorithm(input: Record<string, unknown>): AlgorithmConfig {
       mmrLambda: numberValue(retrieval.mmrLambda, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.mmrLambda),
       rrfConstant: numberValue(retrieval.rrfConstant, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.rrfConstant),
       relativeThresholdFloor: numberValue(retrieval.relativeThresholdFloor, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.relativeThresholdFloor),
+      minRecallScore: numberValue(retrieval.minRecallScore, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.minRecallScore),
       minSkillEta: numberValue(retrieval.minSkillEta, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.minSkillEta),
       minTraceSim: numberValue(retrieval.minTraceSim, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.minTraceSim),
       episodeGoalMinSim: numberValue(retrieval.episodeGoalMinSim, DEFAULT_MEMMY_CONFIG.algorithm.retrieval.episodeGoalMinSim),

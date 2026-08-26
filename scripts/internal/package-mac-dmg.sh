@@ -460,15 +460,6 @@ verify_mac_memory_native_artifacts() {
   require_packaged_runtime_glob "$RUNTIME_DIR/memory/node_modules/@img/sharp-libvips-darwin-$target_cpu/lib/libvips*.dylib"
 }
 
-verify_mac_agent_native_artifacts() {
-  local target_cpu="$1"
-  local node_pty_dir="$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-darwin-$target_cpu/prebuilds/darwin-$target_cpu"
-
-  require_packaged_runtime_file "$node_pty_dir/pty.node"
-  require_packaged_runtime_file "$node_pty_dir/spawn-helper"
-  require_packaged_runtime_glob "$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/sqlite-vec-darwin-$target_cpu/vec0.*"
-}
-
 resolve_packaged_mac_app_path() {
   local target_cpu="$1"
   local app_path="$DESKTOP_DIR/release/mac-$target_cpu/Memmy.app"
@@ -494,7 +485,6 @@ verify_packaged_mac_unpacked_artifacts() {
     echo "Packaged migrations package must not be a symbolic link." >&2
     exit 1
   fi
-  require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-darwin-$target_cpu/prebuilds/darwin-$target_cpu/spawn-helper"
 }
 
 prune_mac_runtime_artifacts() {
@@ -556,7 +546,11 @@ cp -R "$MEMORY_DIR/dist/src" "$RUNTIME_DIR/memory/src"
 cp -R "$AGENT_DIR/dist" "$RUNTIME_DIR/memmy-agent/dist"
 create_memory_runtime_manifest "$RUNTIME_DIR/memory"
 npm ci --prefix "$RUNTIME_DIR/memory" --omit=dev --os=darwin --cpu="$TARGET_CPU"
-ELECTRON_VERSION="$(node -p "require('./App/shell/desktop/node_modules/electron/package.json').version")"
+ELECTRON_VERSION="$(MEMMY_DESKTOP_PACKAGE_PATH="$DESKTOP_DIR/package.json" node -e '
+  const { createRequire } = require("node:module");
+  const requireFromDesktop = createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH);
+  process.stdout.write(requireFromDesktop("electron/package.json").version);
+')"
 node_modules/.bin/electron-rebuild \
   -f \
   -v "$ELECTRON_VERSION" \
@@ -622,7 +616,6 @@ create_cli_installer "$CLI_BIN_DIR/install-cli"
 create_dmg_cli_installer_command "$DMG_HELPER_DIR/Install CLI.command"
 prune_mac_runtime_artifacts "$TARGET_CPU"
 verify_mac_memory_native_artifacts "$TARGET_CPU"
-verify_mac_agent_native_artifacts "$TARGET_CPU"
 
 if [ "${MEMMY_PACKAGE_PREPARE_ONLY:-}" = "1" ]; then
   echo "Prepared desktop runtime resources at $RUNTIME_DIR"

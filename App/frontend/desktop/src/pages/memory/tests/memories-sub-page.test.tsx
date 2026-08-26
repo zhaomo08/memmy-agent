@@ -37,9 +37,9 @@ describe("MemoriesSubPage", () => {
       layer: "L1",
       page: 3
     });
-    expect(buildPanelItemsInput({ sourceAgent: "cursor" })).toEqual({
+    expect(buildPanelItemsInput({ sourceAgent: "claude_code" })).toEqual({
       layer: "L1",
-      sourceAgent: "cursor",
+      sourceAgent: "claude_code",
       page: 1
     });
     expect(buildPanelItemsInput({ sourceAgent: OTHER_MEMORY_SOURCE_AGENT })).toEqual({
@@ -66,19 +66,15 @@ describe("MemoriesSubPage", () => {
     expect(MEMORY_AGENT_SOURCE_VALUES.map(agentSourceDisplayName)).toEqual([
       "Memmy",
       "Claude Code",
-      "Codex",
-      "OpenCode",
-      "OpenClaw",
-      "Hermes",
-      "WorkBuddy"
+      "Codex"
     ]);
     expect(agentSourceDisplayName("MEMMY_AGENT")).toBe("Memmy");
     expect(agentSourceDisplayName("claude-code")).toBe("Claude Code");
-    expect(agentSourceDisplayName("OPENCLAW")).toBe("OpenClaw");
+    expect(agentSourceDisplayName("UNSUPPORTED_AGENT")).toBe("UNSUPPORTED_AGENT");
   });
 
   it("从导入 trace 的 tags 中识别来源 agent", () => {
-    expect(memoryDisplaySource({ tags: ["trace", "opencode", "agent-source", "摘要排队中"] })).toBe("opencode");
+    expect(memoryDisplaySource({ tags: ["trace", "codex", "agent-source", "摘要排队中"] })).toBe("codex");
   });
 
   it("优先使用列表项 metadata.source 展示来源 agent", () => {
@@ -250,7 +246,7 @@ describe("MemoriesSubPage", () => {
     const base = {
       ...memoryListItemFixture,
       metrics: undefined,
-      tags: ["agent-source", "cursor"]
+      tags: ["agent-source", "claude_code"]
     };
 
     const summaryHtml = renderMemories({
@@ -543,10 +539,10 @@ describe("MemoriesSubPage", () => {
         ...memoryDetailFixture.item,
         title: "trace:memmy-agent::cli:memory-e2e:cb643e2f-b21c-4750-b162-b5f4f90135cd:0",
         summary: "Summary: Memmy 记忆管理模块执行规范",
-        tags: ["hermes", ...memoryDetailFixture.item.tags],
+        tags: ["claude-code", ...memoryDetailFixture.item.tags],
         metadata: {
           ...memoryDetailFixture.item.metadata,
-          source: "hermes",
+          source: "claude-code",
           status: "succeeded",
           traceDetail: {
             ...(memoryDetailFixture.item.metadata.traceDetail as Record<string, unknown>),
@@ -571,7 +567,7 @@ describe("MemoriesSubPage", () => {
           ...memoryListItemFixture,
           title: "trace:memmy-agent::cli:memory-e2e:cb643e2f-b21c-4750-b162-b5f4f90135cd:0",
           summary: "Summary: Memmy 记忆管理模块执行规范",
-          tags: ["hermes", ...memoryListItemFixture.tags, "debug-tag-hidden"],
+          tags: ["claude-code", ...memoryListItemFixture.tags, "debug-tag-hidden"],
           version: 7
         }
       ]),
@@ -589,8 +585,8 @@ describe("MemoriesSubPage", () => {
     expect(html).not.toContain('aria-label="来源"');
     expect(html).not.toContain("<select");
     expect(html).toContain("Memmy 记忆管理模块执行规范");
-    expect(html.match(/aria-label="来源: Hermes"/g)?.length).toBe(2);
-    expect(html).toContain(">Hermes</span>");
+    expect(html.match(/aria-label="来源: Claude Code"/g)?.length).toBe(2);
+    expect(html).toContain(">Claude Code</span>");
     expect(html).toContain("V 0.74");
     expect(html).toContain("α 0.50");
     expect(html).toContain("memory-pill--reflection-done");
@@ -723,6 +719,9 @@ function renderMemories(
         sourceAgent=""
         onQueryChange={vi.fn()}
         onSourceAgentChange={vi.fn()}
+        projectId=""
+        projects={[]}
+        onProjectChange={vi.fn()}
         onSearch={vi.fn()}
         onPageChange={vi.fn()}
         onRefresh={vi.fn()}

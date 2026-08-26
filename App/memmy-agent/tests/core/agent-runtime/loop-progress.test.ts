@@ -347,7 +347,7 @@ describe("AgentLoop progress integration", () => {
 
     await loop.dispatchMessage(
       new InboundMessage({
-        channel: "telegram",
+        channel: "cli",
         senderId: "u1",
         chatId: "chat1",
         content: "run ls",
@@ -398,16 +398,16 @@ describe("AgentLoop progress integration", () => {
     await websocketProgress("", { fileEditEvents: editEvents });
     expect((await bus.consumeOutbound()).metadata.fileEditEvents).toEqual(editEvents);
 
-    const telegramProgress = await loop.buildBusProgressCallback(
+    const cliProgress = await loop.buildBusProgressCallback(
       new InboundMessage({
-        channel: "telegram",
+        channel: "cli",
         senderId: "u1",
         chatId: "chat2",
         content: "edit",
       }),
     );
-    expect(onProgressAcceptsFileEditEvents(telegramProgress)).toBe(false);
-    await invokeFileEditProgress(telegramProgress, editEvents);
+    expect(onProgressAcceptsFileEditEvents(cliProgress)).toBe(false);
+    await invokeFileEditProgress(cliProgress, editEvents);
     expect(bus.outboundSize).toBe(0);
   });
 

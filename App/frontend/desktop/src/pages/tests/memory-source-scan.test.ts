@@ -5,8 +5,8 @@ import { appActions, type AppAction } from "../../state/app-actions.js";
 import { startAgentSourceScan } from "../memory-source-scan.js";
 
 const source = AgentSourceViewSchema.parse({
-  sourceId: "cursor",
-  displayName: "Cursor",
+  sourceId: "claude_code",
+  displayName: "Claude Code",
   dataPath: "/Users/test/.cursor",
   builtin: true,
   available: true,
@@ -93,18 +93,18 @@ describe("startAgentSourceScan", () => {
     await startAgentSourceScan({
       clients,
       dispatch: (action) => actions.push(action),
-      sourceId: "openclaw",
+      sourceId: "codex",
       queuedMessage: "queued",
       scheduleFallback() {
         return undefined;
       }
     });
 
-    expect(clients.agentSources.startScan).toHaveBeenCalledWith({ sourceId: "openclaw" });
-    expect(actions[0]).toEqual(appActions.agentSourceScanStarted("openclaw"));
+    expect(clients.agentSources.startScan).toHaveBeenCalledWith({ sourceId: "codex" });
+    expect(actions[0]).toEqual(appActions.agentSourceScanStarted("codex"));
     expect(actions).toContainEqual(appActions.agentSourceScanProgressReceived({
       jobId: "job-source",
-      sourceId: "openclaw",
+      sourceId: "codex",
       phase: "scan",
       current: 0,
       total: 0,
@@ -181,7 +181,7 @@ describe("startAgentSourceScan", () => {
           active: true,
           progress: {
             jobId: "job-resume",
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add" as const,
             current: 12,
             total: 20,
@@ -203,7 +203,7 @@ describe("startAgentSourceScan", () => {
 
     expect(actions).toContainEqual(appActions.agentSourceScanProgressReceived({
       jobId: "job-resume",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "add",
       current: 12,
       total: 20,

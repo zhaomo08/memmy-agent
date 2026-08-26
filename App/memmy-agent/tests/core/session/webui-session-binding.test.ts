@@ -93,7 +93,7 @@ describe("WebUI Session binding", () => {
     const sessions = new SessionManager(path.join(workspace, "sessions"), {
       legacyWebuiWorkspaceCwd: workspace,
     });
-    const session = sessions.getOrCreate("telegram:mislabelled");
+    const session = sessions.getOrCreate("cli:mislabelled");
     session.metadata.webui = true;
     sessions.save(session);
     sessions.invalidate(session.key);

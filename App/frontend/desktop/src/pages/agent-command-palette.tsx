@@ -102,10 +102,6 @@ const localizedBuiltinCommandKeys: Record<string, { title: MessageKey; descripti
   "/help": {
     title: "home.command.helpTitle",
     description: "home.command.helpDescription"
-  },
-  "/pairing": {
-    title: "home.command.pairingTitle",
-    description: "home.command.pairingDescription"
   }
 };
 

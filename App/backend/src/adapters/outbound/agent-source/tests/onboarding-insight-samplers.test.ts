@@ -4,8 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createBuiltinOnboardingInsightSamplers,
-  createCodexInsightSampler,
-  createWorkbuddyInsightSampler
+  createCodexInsightSampler
 } from "../onboarding-insight-samplers.js";
 
 const roots: string[] = [];
@@ -18,14 +17,10 @@ afterEach(() => {
 });
 
 describe("onboarding insight samplers", () => {
-  it("keeps all six built-in Agents in the first-login scan", () => {
+  it("keeps only Claude Code and Codex in the first-login scan", () => {
     expect(createBuiltinOnboardingInsightSamplers().map((sampler) => sampler.sourceId)).toEqual([
       "claude_code",
-      "codex",
-      "opencode",
-      "openclaw",
-      "hermes",
-      "workbuddy"
+      "codex"
     ]);
   });
 
@@ -81,36 +76,4 @@ describe("onboarding insight samplers", () => {
     });
   });
 
-  it("samples only recent WorkBuddy user messages across current and migrated history shapes", async () => {
-    const root = mkdtempSync(join(tmpdir(), "memmy-workbuddy-onboarding-sampler-"));
-    roots.push(root);
-    const currentFile = join(root, "current.jsonl");
-    const migratedFile = join(root, "migrated.jsonl");
-    writeFileSync(currentFile, [
-      JSON.stringify({ type: "function_call_result", role: "tool", output: { text: "large tool output" } }),
-      JSON.stringify({ type: "message", role: "user", id: "current-user", sessionId: "current-session", timestamp: 1_784_170_100_000, cwd: "/current", content: [{ type: "input_text", text: "Current WorkBuddy question" }] }),
-      JSON.stringify({ type: "message", role: "assistant", content: [{ type: "output_text", text: "answer" }] })
-    ].join("\n"), "utf8");
-    writeFileSync(migratedFile, JSON.stringify({
-      role: "human",
-      uuid: "migrated-user",
-      conversationId: "migrated-session",
-      createdAt: "2026-07-15T10:00:00.000Z",
-      message: JSON.stringify({ content: [{ type: "text", text: "Migrated WorkBuddy question" }] })
-    }), "utf8");
-
-    const result = await createWorkbuddyInsightSampler({ root }).sampleRecentUserQueries({
-      maxSessionFiles: 10,
-      maxQueries: 10,
-      maxQueryChars: 500,
-      maxBytesPerFile: 64 * 1024,
-      deadlineMs: 5_000
-    });
-
-    expect(result.sourceId).toBe("workbuddy");
-    expect(result.queries.map((query) => query.text).sort()).toEqual([
-      "Current WorkBuddy question",
-      "Migrated WorkBuddy question"
-    ]);
-  });
 });

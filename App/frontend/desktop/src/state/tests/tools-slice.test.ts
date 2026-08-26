@@ -19,8 +19,7 @@ const github: IntegrationMeta = {
   permissionLabel: "Repos and system data",
   authKind: "oauth",
   surface: "integration",
-  identity: "integration:github",
-  isChannel: false
+  identity: "integration:github"
 };
 
 const slack: IntegrationMeta = {
@@ -55,38 +54,22 @@ describe("tools-slice", () => {
     expect(closed.modal).toEqual({ kind: "closed" });
   });
 
-  it("同名 Discord 渠道和 Composio 集成按 surface 分开匹配连接态", () => {
-    const channelDiscord: IntegrationMeta = {
+  it("按 integration surface 匹配连接态", () => {
+    const integrationDiscord: IntegrationMeta = {
       ...github,
       slug: "discord",
       name: "Discord",
       category: "Chat",
-      surface: "channel",
-      identity: "channel:discord",
-      isChannel: true
-    };
-    const integrationDiscord: IntegrationMeta = {
-      ...channelDiscord,
-      surface: "integration",
-      identity: "integration:discord",
-      isChannel: false
+      identity: "integration:discord"
     };
     const state = toolsReducer(initialToolsState, {
       type: "tools/loadSuccess",
-      connections: [
-        { id: "conn-discord", toolkit: "discord", status: "ACTIVE", surface: "integration" },
-        { id: "channel-discord-local", toolkit: "discord", status: "connected", surface: "channel" }
-      ]
+      connections: [{ id: "conn-discord", toolkit: "discord", status: "ACTIVE", surface: "integration" }]
     });
 
     expect(selectConnectionForIntegration(state, integrationDiscord)?.id).toBe("conn-discord");
-    expect(selectConnectionForIntegration(state, channelDiscord)?.id).toBe("channel-discord-local");
     expect(toolsReducer(initialToolsState, { type: "tools/openToolModal", surface: "integration", slug: "discord" }).modal).toEqual({
       kind: "integration",
-      slug: "discord"
-    });
-    expect(toolsReducer(initialToolsState, { type: "tools/openToolModal", surface: "channel", slug: "discord" }).modal).toEqual({
-      kind: "channel",
       slug: "discord"
     });
   });

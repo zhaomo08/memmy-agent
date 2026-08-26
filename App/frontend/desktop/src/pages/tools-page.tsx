@@ -3,10 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useApiClients } from "../app/providers.js";
 import { PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR } from "../app/product-tour-layout.js";
-import type { ChannelsClient } from "../api/channels-client.js";
 import type { IntegrationsClient } from "../api/integrations-client.js";
 import { Banner } from "../components/banner.js";
-import { ConnectChannelModal } from "../components/connect-channel-modal.js";
 import { ConnectIntegrationModal } from "../components/connect-integration-modal.js";
 import { IntegrationCard } from "../components/integration-card.js";
 import { Memmy } from "../components/mascot/memmy.js";
@@ -23,7 +21,6 @@ const CONNECTION_REFRESH_INTERVAL_MS = 5_000;
 export interface ToolsPageViewProps {
   tools: ToolsState;
   client?: IntegrationsClient;
-  channelsClient?: ChannelsClient;
   search?: string;
   activeCategory?: IntegrationCategoryTab;
   onSearchChange: (value: string) => void;
@@ -45,7 +42,7 @@ export function ToolsPage() {
       return;
     }
 
-    void toolsActions.loadConnections(clients.integrations, clients.channels, dispatch);
+    void toolsActions.loadConnections(clients.integrations, dispatch);
   }, [clients, dispatch, state.tools.status]);
 
   useEffect(() => {
@@ -54,7 +51,7 @@ export function ToolsPage() {
     }
 
     const interval = window.setInterval(() => {
-      void toolsActions.refreshConnections(clients.integrations, clients.channels, dispatch);
+      void toolsActions.refreshConnections(clients.integrations, dispatch);
     }, CONNECTION_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
@@ -76,14 +73,13 @@ export function ToolsPage() {
       return;
     }
 
-    void toolsActions.refreshConnections(clients.integrations, clients.channels, dispatch);
+    void toolsActions.refreshConnections(clients.integrations, dispatch);
   }, [clients, dispatch]);
 
   return (
     <ToolsPageView
       tools={state.tools}
       client={clients?.integrations}
-      channelsClient={clients?.channels}
       search={search}
       activeCategory={activeCategory}
       onSearchChange={setSearch}
@@ -96,8 +92,8 @@ export function ToolsPage() {
 }
 
 /** Reads load connections for page. */
-export async function loadConnectionsForPage(client: IntegrationsClient, channelsClient: ChannelsClient) {
-  return loadToolConnectionRecords(client, channelsClient);
+export async function loadConnectionsForPage(client: IntegrationsClient) {
+  return loadToolConnectionRecords(client);
 }
 
 /** Checks should load connections for page. */
@@ -115,15 +111,7 @@ export function ToolsPageView(props: ToolsPageViewProps) {
     () => createUnavailableIntegrationsClient(t("tools.error.initializing")),
     [t]
   );
-  const unavailableChannelsClient = useMemo(
-    () => createUnavailableChannelsClient(t("tools.error.initializing")),
-    [t]
-  );
-  const channels = selectStatusPrioritizedIntegrations(
-    allIntegrations.filter((item) => item.isChannel),
-    props.tools
-  );
-  const integrations = allIntegrations.filter((item) => !item.isChannel);
+  const integrations = allIntegrations;
   const filtered = selectStatusPrioritizedIntegrations(
     selectVisibleIntegrations(integrations, search, activeCategory),
     props.tools
@@ -144,22 +132,6 @@ export function ToolsPageView(props: ToolsPageViewProps) {
 
         <div data-tour-anchor={PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR}>
           {props.tools.loadError && <Banner tone="danger">{props.tools.loadError}</Banner>}
-
-          <section className="mb-8">
-            <div className="mb-4 flex items-center gap-2.5">
-              <span className="text-base font-semibold text-text-ink">{t("tools.channels")}</span>
-            </div>
-            <div className="tools-icon-grid">
-              {channels.map((channel) => (
-                <IntegrationCard
-                  key={channel.identity}
-                  meta={channel}
-                  connection={selectConnectionForIntegration(props.tools, channel)}
-                  onClick={props.onOpenIntegration}
-                />
-              ))}
-            </div>
-          </section>
 
           <section>
             <div className="mb-4 flex items-center gap-2.5">
@@ -212,26 +184,16 @@ export function ToolsPageView(props: ToolsPageViewProps) {
         </div>
       </div>
 
-      {props.tools.modal.kind !== "closed" &&
-        (modalIntegration?.surface === "channel" ? (
-          <ConnectChannelModal
-            open={true}
-            channel={modalIntegration}
-            connection={modalConnection}
-            client={props.channelsClient ?? unavailableChannelsClient}
-            onClose={props.onModalClose}
-            onChanged={props.onConnectionsChanged}
-          />
-        ) : (
-          <ConnectIntegrationModal
-            open={true}
-            integration={modalIntegration}
-            connection={modalConnection}
-            client={props.client ?? unavailableIntegrationsClient}
-            onClose={props.onModalClose}
-            onChanged={props.onConnectionsChanged}
-          />
-        ))}
+      {props.tools.modal.kind !== "closed" && (
+        <ConnectIntegrationModal
+          open={true}
+          integration={modalIntegration}
+          connection={modalConnection}
+          client={props.client ?? unavailableIntegrationsClient}
+          onClose={props.onModalClose}
+          onChanged={props.onConnectionsChanged}
+        />
+      )}
     </AppFrame>
   );
 }
@@ -268,25 +230,5 @@ function createUnavailableIntegrationsClient(message: string): IntegrationsClien
     authorize: async () => unavailable(),
     listConnections: async () => unavailable(),
     deleteConnection: async () => unavailable()
-  };
-}
-
-/**
- * Creates a placeholder channels client for use before the client is initialized.
- *
- * @param message The initialization error text.
- * @returns A ChannelsClient that only throws an initialization error.
- */
-function createUnavailableChannelsClient(message: string): ChannelsClient {
-  const unavailable = () => {
-    throw Object.assign(new Error(message), { code: "internal" as const });
-  };
-
-  return {
-    listDefinitions: async () => unavailable(),
-    listConnections: async () => unavailable(),
-    connect: async () => unavailable(),
-    pollConnect: async () => unavailable(),
-    disconnect: async () => unavailable()
   };
 }

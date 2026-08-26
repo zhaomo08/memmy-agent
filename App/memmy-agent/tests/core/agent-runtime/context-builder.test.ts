@@ -32,8 +32,8 @@ describe("Build Runtime Context", () => {
   });
 
   it("with channel and chatId", () => {
-    const ctx = ContextBuilder.buildRuntimeContext("telegram", "chat123");
-    expect(ctx).toContain("Channel: telegram");
+    const ctx = ContextBuilder.buildRuntimeContext("cli", "chat123");
+    expect(ctx).toContain("Channel: cli");
     expect(ctx).toContain("Chat ID: chat123");
   });
 

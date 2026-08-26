@@ -15,10 +15,12 @@ import {
   MemoryProcessingStatusOutputSchema,
   MemoryReloadConfigInputSchema,
   MemoryReloadConfigOutputSchema,
+  RecallEvidenceOutputSchema,
   OpenSessionInputSchema,
   OpenSessionOutputSchema,
   PanelAnalysisOutputSchema,
   PanelItemsInputSchema,
+  PanelProjectsOutputSchema,
   PanelItemsOutputSchema,
   PanelOverviewOutputSchema,
   PanelTasksInputSchema,
@@ -43,10 +45,12 @@ import {
   type MemoryProcessingStatusOutput,
   type MemoryReloadConfigInput,
   type MemoryReloadConfigOutput,
+  type RecallEvidenceOutput,
   type OpenSessionInput,
   type OpenSessionOutput,
   type PanelAnalysisOutput,
   type PanelItemsInput,
+  type PanelProjectsOutput,
   type PanelItemsOutput,
   type PanelOverviewOutput,
   type PanelTasksInput,
@@ -73,6 +77,7 @@ export const MEMORY_RUNTIME_ENDPOINTS = [
   "POST /api/v1/memory/:id/processing/retry",
   "GET /api/v1/memory/:id",
   "DELETE /api/v1/memory/:id",
+  "GET /api/v1/memory/recalls/:queryId",
   "GET /api/v1/memory/logs",
   "GET /api/v1/panel/overview",
   "GET /api/v1/panel/analysis",
@@ -92,12 +97,14 @@ export interface MemoryRuntimeClient {
   addMemory(input: AddMemoryInput): Promise<AddMemoryOutput>;
   getMemory(id: string): Promise<GetMemoryOutput>;
   deleteMemory(id: string): Promise<DeleteMemoryOutput>;
+  recallEvidence(queryId: string): Promise<RecallEvidenceOutput>;
   getMemoryProcessingStatus(memoryIds: string[]): Promise<MemoryProcessingStatusOutput>;
   retryMemoryProcessing(id: string): Promise<RetryMemoryProcessingOutput>;
   listMemoryLogs(input: MemoryApiLogsInput): Promise<MemoryApiLogsOutput>;
   getPanelOverview(): Promise<PanelOverviewOutput>;
   getPanelAnalysis(): Promise<PanelAnalysisOutput>;
   listPanelItems(input: PanelItemsInput): Promise<PanelItemsOutput>;
+  listPanelProjects(): Promise<PanelProjectsOutput>;
   listPanelTasks(input: PanelTasksInput): Promise<PanelTasksOutput>;
   deletePanelTask(id: string): Promise<DeletePanelTaskOutput>;
 }
@@ -169,6 +176,14 @@ export function createHttpMemoryRuntimeClient(config: RuntimeConfig): MemoryRunt
       });
     },
 
+    async recallEvidence(queryId) {
+      return requestJson({
+        config,
+        path: `/api/v1/memory/recalls/${encodeURIComponent(queryId)}`,
+        schema: RecallEvidenceOutputSchema
+      });
+    },
+
     async getMemoryProcessingStatus(memoryIds) {
       return requestJson({
         config,
@@ -205,6 +220,10 @@ export function createHttpMemoryRuntimeClient(config: RuntimeConfig): MemoryRunt
 
     async listPanelItems(input) {
       return requestJson({ config, path: withQuery("/api/v1/panel/items", PanelItemsInputSchema.parse(input)), schema: PanelItemsOutputSchema });
+    },
+
+    async listPanelProjects() {
+      return requestJson({ config, path: "/api/v1/panel/projects", schema: PanelProjectsOutputSchema });
     },
 
     async listPanelTasks(input) {
@@ -279,6 +298,9 @@ export function createUnavailableMemoryRuntimeClient(): MemoryRuntimeClient {
     async deleteMemory() {
       throw unavailable();
     },
+    async recallEvidence() {
+      throw unavailable();
+    },
     async getMemoryProcessingStatus() {
       throw unavailable();
     },
@@ -295,6 +317,9 @@ export function createUnavailableMemoryRuntimeClient(): MemoryRuntimeClient {
       throw unavailable();
     },
     async listPanelItems() {
+      throw unavailable();
+    },
+    async listPanelProjects() {
       throw unavailable();
     },
     async listPanelTasks() {

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveNodeExecutable, type NodeExecutableRuntime } from "./hook-command.js";
 
-const HOME = "/Users/test";
-
 describe("resolveNodeExecutable", () => {
   it.each([
     "/Applications/Memmy.app/Contents/MacOS/Memmy",
@@ -66,7 +64,6 @@ function runtime(overrides: {
     platform: "darwin",
     env: overrides.env ?? {},
     execPath: overrides.execPath ?? "/missing/runtime/node",
-    hermesHomeDirectory: HOME,
     isExecutableFile: (candidate) => executable.has(candidate)
   };
 }

@@ -52,7 +52,16 @@ describe("MCP HTTP probe", () => {
   });
 
   it("uses the default HTTP port when URL has no port", async () => {
+    const createConnection = vi.spyOn(net, "createConnection").mockImplementation((options: any) => {
+      expect(options).toMatchObject({ host: "unreachable-host.test", port: 80 });
+      const socket = new EventEmitter() as net.Socket;
+      socket.destroy = vi.fn(() => socket) as any;
+      queueMicrotask(() => socket.emit("error", new Error("unreachable")));
+      return socket;
+    });
+
     expect(await probeHttpUrl("http://unreachable-host.test/mcp", 0.05)).toBe(false);
+    expect(createConnection).toHaveBeenCalledTimes(1);
   });
 });
 

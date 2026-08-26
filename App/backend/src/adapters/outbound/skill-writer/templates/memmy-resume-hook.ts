@@ -1,6 +1,6 @@
 /** Memmy resume hook template. */
 
-export type MemmyResumeHookMode = "claude-code" | "codex" | "cursor";
+export type MemmyResumeHookMode = "claude-code" | "codex";
 
 export interface RenderMemmyResumeHookScriptOptions {
   source: string;
@@ -20,24 +20,34 @@ const CONFIG_URL = new URL("./memmy-memory-config.json", import.meta.url);
 const STATE_URL = new URL("./memmy-resume-state.json", import.meta.url);
 const DEFAULT_MEMMY_CONFIG_PATH = join(homedir(), ".memmy", "config.yaml");
 const FETCH_TIMEOUT_MS = 45000;
-const SEARCH_LIMIT = 20;
+/**
+ * Reads a positive integer tuning knob from the environment.
+ *
+ * @param name Environment variable name.
+ * @param fallback Value used when unset or out of range.
+ * @param min Lowest accepted value.
+ * @param max Highest accepted value.
+ * @returns The resolved value.
+ */
+function envInt(name, fallback, min, max) {
+  const parsed = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+const SEARCH_LIMIT = envInt("MEMMY_SEARCH_LIMIT", 20, 1, 200);
+// Character budget the service applies when building the per-turn injected context.
+// Injection happens on every prompt, so this is the main knob on what memory costs
+// in tokens; the service default is 1800 and is mirrored here so it can be tuned
+// without rebuilding the app.
+const CONTEXT_BUDGET = envInt("MEMMY_CONTEXT_BUDGET", 1800, 200, 24000);
 const DISPLAY_LIMIT = 5;
 const STATE_TTL_MS = 10 * 60 * 1000;
 const TURN_STATE_TTL_MS = 24 * 60 * 60 * 1000;
-const RESUME_CONTEXT_MAX_CHARS = 24000;
+const RESUME_CONTEXT_MAX_CHARS = envInt("MEMMY_RESUME_CONTEXT_MAX_CHARS", 24000, 1000, 200000);
 
 async function main() {
   const input = await readStdin();
   const payload = parseJson(input) || {};
-  if (isAgentResponseEvent(payload)) {
-    try {
-      await rememberAgentResponse(payload);
-    } catch {
-      // Observation hooks must never interrupt the host agent.
-    }
-    writeObservationOutput();
-    return;
-  }
   if (isStopEvent(payload)) {
     try {
       await captureCompletedTurn(payload);
@@ -99,6 +109,7 @@ async function main() {
       query,
       layers: ["L1"],
       limit: SEARCH_LIMIT,
+      contextBudget: CONTEXT_BUDGET,
       verbose: true
     });
     const candidates = await buildEpisodeCandidates(client, query, result);
@@ -141,11 +152,6 @@ function parseJson(value) {
 
 function isStopEvent(payload) {
   return normalizeText(payload.hook_event_name || payload.hookEventName).toLowerCase() === "stop";
-}
-
-function isAgentResponseEvent(payload) {
-  return MODE === "cursor" &&
-    normalizeText(payload.hook_event_name || payload.hookEventName).toLowerCase() === "afteragentresponse";
 }
 
 async function captureCompletedTurn(payload) {
@@ -218,7 +224,8 @@ async function startCapturedTurn(payload, prompt) {
     requestId: SOURCE + "-start:" + requestedTurnId,
     sessionId,
     turnId: requestedTurnId,
-    query
+    query,
+    contextBudget: CONTEXT_BUDGET
   });
   const state = {
     createdAt: new Date().toISOString(),
@@ -231,24 +238,6 @@ async function startCapturedTurn(payload, prompt) {
   };
   await writeTurnState(payload, state);
   return turn;
-}
-
-async function rememberAgentResponse(payload) {
-  const pending = await readTurnState(payload);
-  if (!pending) {
-    return;
-  }
-  const answer = sanitizeCaptureText(
-    normalizeText(payload.text) ||
-    normalizeText(payload.last_assistant_message || payload.lastAssistantMessage)
-  );
-  if (!answer) {
-    return;
-  }
-  await writeTurnState(payload, {
-    ...pending,
-    answer
-  });
 }
 
 async function readTranscriptMessages(filePath) {
@@ -489,22 +478,10 @@ function failedTurnText(payload) {
 }
 
 function writeAllowOutput() {
-  if (MODE === "cursor") {
-    process.stdout.write(JSON.stringify({ continue: true }));
-  }
-}
-
-function writeObservationOutput() {
-  if (MODE === "cursor") {
-    process.stdout.write("{}");
-  }
+  // Claude Code and Codex allow the prompt when the hook produces no output.
 }
 
 function writeStopOutput() {
-  if (MODE === "cursor") {
-    process.stdout.write("{}");
-    return;
-  }
   process.stdout.write(JSON.stringify({
     continue: true,
     suppressOutput: true
@@ -512,10 +489,6 @@ function writeStopOutput() {
 }
 
 function writeTurnStartOutput(started) {
-  if (MODE === "cursor") {
-    writeAllowOutput();
-    return;
-  }
   const injected = started && started.injectedContext && typeof started.injectedContext === "object"
     ? normalizeText(started.injectedContext.markdown)
     : normalizeText(started && started.injectedContext);
@@ -533,14 +506,6 @@ function writeTurnStartOutput(started) {
 }
 
 function writeResultOutput(message) {
-  if (MODE === "cursor") {
-    process.stdout.write(JSON.stringify({
-      continue: false,
-      user_message: message
-    }));
-    return;
-  }
-
   process.stdout.write(JSON.stringify({
     decision: "block",
     reason: message
@@ -548,14 +513,6 @@ function writeResultOutput(message) {
 }
 
 function writeResumeContextOutput(context) {
-  if (MODE === "cursor") {
-    process.stdout.write(JSON.stringify({
-      continue: false,
-      user_message: context
-    }));
-    return;
-  }
-
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",

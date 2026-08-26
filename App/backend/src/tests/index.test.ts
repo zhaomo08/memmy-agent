@@ -5,7 +5,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import YAML from "yaml";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CloudClient } from "../adapters/outbound/cloud-client/index.js";
 import type { MemoryClient } from "../adapters/outbound/memory-client/index.js";
 import { createLocalBackend, readMemoryLayerConfig, type LocalBackend } from "../index.js";
@@ -85,6 +85,38 @@ describe("local api", () => {
 
     expect(reloadReasons).toEqual([{ reason: "desktop_startup" }]);
     expect(backend.runtimeConfig.memory).toEqual({ baseUrl: "http://127.0.0.1:18960" });
+  });
+
+  it("does not block local API startup while managed Memory is still initializing", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "memmy-backend-memory-ready-"));
+    const baseClient = createMockMemoryClient();
+    const reloadReasons: unknown[] = [];
+    let markMemoryReady: (() => void) | undefined;
+    const memoryReady = new Promise<void>((resolveReady) => {
+      markMemoryReady = resolveReady;
+    });
+    const memoryClient: MemoryClient = {
+      ...baseClient,
+      async reloadConfig(input) {
+        reloadReasons.push(input);
+        return baseClient.reloadConfig(input);
+      }
+    };
+
+    backend = await createLocalBackend({
+      databasePath: join(tempDir, "app.sqlite"),
+      runtimeConfigPath: join(tempDir, "runtime.json"),
+      localToken: "test-token",
+      memoryBaseUrl: "http://127.0.0.1:18960",
+      memoryReady,
+      memoryClient,
+      cloudClient: createMockCloudClient(),
+      memmyConfigPath: join(tempDir, "config.yaml")
+    });
+
+    expect(reloadReasons).toEqual([]);
+    markMemoryReady?.();
+    await vi.waitFor(() => expect(reloadReasons).toEqual([{ reason: "desktop_startup" }]));
   });
 
   it("uses the built-in default Cloud client when MEMMY_CLOUD_URL is missing", async () => {
@@ -1007,7 +1039,7 @@ describe("local api", () => {
     }
   });
 
-  it("exposes the six built-in agent sources in registry order", async () => {
+  it("exposes only the Codex and Claude Code built-in sources in registry order", async () => {
     backend = await createTempBackend();
 
     const response = await fetch(`${backend.runtimeConfig.baseUrl}/api/agent-sources`, {
@@ -1020,11 +1052,7 @@ describe("local api", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([
       expect.objectContaining({ sourceId: "claude_code", displayName: "Claude Code" }),
-      expect.objectContaining({ sourceId: "codex", displayName: "Codex" }),
-      expect.objectContaining({ sourceId: "opencode", displayName: "Opencode" }),
-      expect.objectContaining({ sourceId: "openclaw", displayName: "OpenClaw" }),
-      expect.objectContaining({ sourceId: "hermes", displayName: "Hermes" }),
-      expect.objectContaining({ sourceId: "workbuddy", displayName: "WorkBuddy" })
+      expect.objectContaining({ sourceId: "codex", displayName: "Codex" })
     ]);
   });
 });

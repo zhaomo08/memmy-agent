@@ -680,6 +680,7 @@ export class SessionManager {
 
   listSessions(): Record<string, any>[] {
     const rows: Record<string, any>[] = [];
+    if (!fs.existsSync(this.root)) return rows;
     for (const file of fs.readdirSync(this.root).filter((name) => name.endsWith(".jsonl"))) {
       const fullPath = path.join(this.root, file);
       const fallbackKey = path.basename(file, ".jsonl").replace("_", ":");

@@ -38,7 +38,7 @@ describe("prompt templates", () => {
       runtime: "runtime",
       workspacePath: "/workspace",
       platformPolicy: "policy",
-      channel: "telegram",
+      channel: "cli",
     });
 
     expect(text).toContain("/workspace/skills/{skill-name}/SKILL.md");

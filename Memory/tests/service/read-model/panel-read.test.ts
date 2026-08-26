@@ -92,7 +92,7 @@ describe("MemoryService / read model / panel", () => {
     const { db, service } = createTestService();
     service.addMemory({
       requestId: "cursor-import-log-1",
-      adapterId: "agent-source:cursor",
+      adapterId: "agent-source:claude_code",
       namespace: {
         source: "codex",
         profileId: "default",
@@ -100,9 +100,9 @@ describe("MemoryService / read model / panel", () => {
       },
       content: "User: imported scan turn\n\nAssistant: imported scan answer",
       layer: "L1",
-      source: "cursor",
-      tags: ["agent-source", "cursor"],
-      turnId: "cursor:conversation-1:0"
+      source: "claude_code",
+      tags: ["agent-source", "claude_code"],
+      turnId: "claude_code:conversation-1:0"
     });
 
     expect(service.apiLogs({ tools: ["memory_add"], limit: 10 }).logs).toHaveLength(0);
@@ -306,7 +306,7 @@ describe("MemoryService / read model / panel", () => {
     const { db, service } = createTestService();
     const userId = "user-panel-source-agent";
     const cursorSession = service.openSession({
-      namespace: { source: "cursor", profileId: "default", userId }
+      namespace: { source: "claude_code", profileId: "default", userId }
     });
     const memmySession = service.openSession({
       namespace: { source: "memmy-agent", profileId: "default", userId }
@@ -332,7 +332,7 @@ describe("MemoryService / read model / panel", () => {
     db.db.prepare("UPDATE memories SET agent_id = 'test_agent', session_id = NULL WHERE id = ?")
       .run(otherMemory.l1MemoryId);
 
-    expect(service.panelItems({ layer: "L1", sourceAgent: "cursor", limit: 1 })).toMatchObject({
+    expect(service.panelItems({ layer: "L1", sourceAgent: "claude_code", limit: 1 })).toMatchObject({
       total: 1,
       items: [{ id: cursorMemory.l1MemoryId }]
     });
@@ -342,7 +342,7 @@ describe("MemoryService / read model / panel", () => {
     });
     expect(service.panelItems({
       layer: "L1",
-      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "opencode", "openclaw", "hermes"],
+      excludedSourceAgents: ["memmy-agent", "claude_code", "claude_code", "codex", "codex", "codex", "claude_code"],
       limit: 1
     })).toMatchObject({
       total: 1,
@@ -484,37 +484,37 @@ describe("MemoryService / read model / panel", () => {
     db.close();
   });
 
-  it("exposes OpenClaw as the panel source for OpenClaw trace memories", async () => {
+  it("exposes Codex as the panel source for Codex trace memories", async () => {
     const embeddingTexts: string[] = [];
     const { db, service } = createTestService({
       embedder: createCapturingEmbedder(embeddingTexts)
     });
     const namespace = {
-      source: "openclaw",
+      source: "codex",
       profileId: "default",
-      userId: "source-openclaw-user",
-      sessionKey: "openclaw-window-1"
+      userId: "source-codex-user",
+      sessionKey: "codex-window-1"
     };
     const session = service.openSession({
       namespace,
-      sessionId: "openclaw-memory-agent:main:test"
+      sessionId: "codex-memory-agent:main:test"
     });
-    const complete = service.completeTurn("turn-source-openclaw", {
+    const complete = service.completeTurn("turn-source-codex", {
       sessionId: session.sessionId,
-      query: "remember openclaw panel source",
-      answer: "OpenClaw should be displayed as the source agent."
+      query: "remember codex panel source",
+      answer: "Codex should be displayed as the source agent."
     });
 
     const list = service.panelItems({ namespace, layer: "L1" });
     const itemBeforeEmbedding = list.items.find((item) => item.id === complete.l1MemoryId);
     expect(itemBeforeEmbedding?.tags).toContain("摘要总结中");
-    expect(itemBeforeEmbedding?.tags).not.toContain("openclaw");
-    expect(itemBeforeEmbedding?.metadata?.source).toBe("openclaw");
+    expect(itemBeforeEmbedding?.tags).not.toContain("codex");
+    expect(itemBeforeEmbedding?.metadata?.source).toBe("codex");
 
     const detail = service.getMemory(complete.l1MemoryId, { namespace });
     expect(detail.item.tags).toContain("摘要总结中");
-    expect(detail.item.tags).not.toContain("openclaw");
-    expect(detail.item.metadata.source).toBe("openclaw");
+    expect(detail.item.tags).not.toContain("codex");
+    expect(detail.item.metadata.source).toBe("codex");
     expect(detail.refs.episode).toMatchObject({
       id: complete.episodeId,
       sessionId: session.sessionId,
@@ -527,7 +527,7 @@ describe("MemoryService / read model / panel", () => {
     expect(embeddingTexts.length).toBeGreaterThan(0);
     const listAfterEmbedding = service.panelItems({ namespace, layer: "L1" });
     expect(listAfterEmbedding.items.find((item) => item.id === complete.l1MemoryId)?.tags).not.toContain("索引建立中");
-    expect(listAfterEmbedding.items.find((item) => item.id === complete.l1MemoryId)?.metadata?.source).toBe("openclaw");
+    expect(listAfterEmbedding.items.find((item) => item.id === complete.l1MemoryId)?.metadata?.source).toBe("codex");
 
     db.close();
   });

@@ -49,6 +49,37 @@ describe("createMemosSqliteMemoryClient", () => {
     });
   });
 
+  it("lists and deletes User Memory through the sqlite fallback", async () => {
+    const dbPath = createMemoryDatabase({
+      id: "trace_user_memory_seed",
+      sessionId: "codex-user-memory",
+      agentId: "codex",
+      tagsJson: "[]",
+      infoJson: "{}",
+      propertiesJson: JSON.stringify({ internal_info: { memory_layer: "L1" } })
+    });
+    insertUserMemory(dbPath, "user_memory_sqlite_1", "我最喜欢的水果是苹果");
+    const client = createMemosSqliteMemoryClient({
+      sources: [{ id: "memmy-memory", label: "memmy", dbPath }],
+      now: () => NOW
+    });
+
+    await expect(client.panelItems({ layer: "UserMemory", q: "苹果", page: 1 })).resolves.toMatchObject({
+      total: 1,
+      items: [{
+        id: "memmy-memory::user_memory_sqlite_1",
+        kind: "user_memory",
+        memoryLayer: "UserMemory",
+        tags: ["User Preference"]
+      }]
+    });
+    await expect(client.deleteMemory({ memoryId: "memmy-memory::user_memory_sqlite_1" })).resolves.toMatchObject({
+      kind: "user_memory",
+      status: "deleted"
+    });
+    await expect(client.panelItems({ layer: "UserMemory", page: 1 })).resolves.toMatchObject({ total: 0, items: [] });
+  });
+
   it("exposes only the span's raw-turn tool-call range in detail metadata", async () => {
     const dbPath = createMemoryDatabase({
       id: "span_sqlite_steps",
@@ -90,10 +121,10 @@ describe("createMemosSqliteMemoryClient", () => {
     });
   });
 
-  it("derives Hermes source from the session id when the row agent is the default", async () => {
+  it("derives Claude Code source from the session id when the row agent is the default", async () => {
     const dbPath = createMemoryDatabase({
-      id: "trace_hermes_1",
-      sessionId: "hermes-20260608_165922_f6cf51",
+      id: "trace_claude_1",
+      sessionId: "claude-20260608_165922_f6cf51",
       agentId: "codex",
       tagsJson: JSON.stringify(["trace"]),
       infoJson: "{}",
@@ -105,16 +136,16 @@ describe("createMemosSqliteMemoryClient", () => {
     });
 
     const list = await client.panelItems({ layer: "L1", page: 1 });
-    expect(list.items[0]?.tags).toEqual(["hermes", "trace"]);
-    expect(list.items[0]?.metadata?.source).toBe("hermes");
+    expect(list.items[0]?.tags).toEqual(["claude-code", "trace"]);
+    expect(list.items[0]?.metadata?.source).toBe("claude-code");
     expect(list.items[0]?.metrics).toEqual({ value: 0.42, alpha: 0.8, reflectionDone: true });
-    await expect(client.panelItems({ layer: "L1", sourceAgent: "hermes", page: 1 }))
-      .resolves.toMatchObject({ total: 1, items: [{ id: expect.stringContaining("trace_hermes_1") }] });
+    await expect(client.panelItems({ layer: "L1", sourceAgent: "claude-code", page: 1 }))
+      .resolves.toMatchObject({ total: 1, items: [{ id: expect.stringContaining("trace_claude_1") }] });
     await expect(client.panelItems({ layer: "L1", sourceAgent: "codex", page: 1 }))
       .resolves.toMatchObject({ total: 0, items: [] });
 
-    const detail = await client.getMemory({ memoryId: "memmy-memory::trace_hermes_1" });
-    expect(detail.item.metadata.source).toBe("hermes");
+    const detail = await client.getMemory({ memoryId: "memmy-memory::trace_claude_1" });
+    expect(detail.item.metadata.source).toBe("claude-code");
     expect(detail.item.metrics).toEqual({ value: 0.42, alpha: 0.8, reflectionDone: true });
   });
 
@@ -134,7 +165,7 @@ describe("createMemosSqliteMemoryClient", () => {
 
     await expect(client.panelItems({
       layer: "L1",
-      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "opencode", "openclaw", "hermes"],
+      excludedSourceAgents: ["memmy-agent", "claude_code", "claude-code", "codex"],
       page: 1
     })).resolves.toMatchObject({
       total: 1,
@@ -375,19 +406,19 @@ describe("createMemosSqliteMemoryClient", () => {
 
     await expect(client.memoryApiLogs({
       tools: ["memory_add", "memory_search"],
-      sourceAgent: "openclaw",
+      sourceAgent: "codex",
       limit: 20,
       offset: 0
     })).resolves.toMatchObject({
       total: 2,
       logs: [
-        { toolName: "memory_add", sourceAgent: "openclaw", outputJson: expect.stringContaining("OpenClaw") },
-        { toolName: "memory_search", sourceAgent: "openclaw", inputJson: expect.stringContaining("session_openclaw") }
+        { toolName: "memory_add", sourceAgent: "codex", outputJson: expect.stringContaining("Codex") },
+        { toolName: "memory_search", sourceAgent: "codex", inputJson: expect.stringContaining("session_codex") }
       ]
     });
     const otherLogs = await client.memoryApiLogs({
       tools: ["memory_add", "memory_search"],
-      excludedSourceAgents: ["memmy-agent", "cursor", "claude_code", "codex", "opencode", "openclaw", "hermes"],
+      excludedSourceAgents: ["memmy-agent", "claude_code", "claude-code", "codex"],
       limit: 20,
       offset: 0
     });
@@ -404,7 +435,7 @@ describe("createMemosSqliteMemoryClient", () => {
 
     await expect(client.memoryApiLogs({
       tools: ["memory_search"],
-      sourceAgent: "openclaw",
+      sourceAgent: "codex",
       limit: 20,
       offset: 0
     })).resolves.toMatchObject({ total: 1, logs: [{ toolName: "memory_search" }] });
@@ -432,7 +463,7 @@ describe("createMemosSqliteMemoryClient", () => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       "memory_add",
-      "codex",
+      "claude_code",
       "{}",
       JSON.stringify({ details: [{ role: "span", traceId: "span_log_goal" }] }),
       1,
@@ -447,7 +478,7 @@ describe("createMemosSqliteMemoryClient", () => {
     });
 
     await expect(client.memoryApiLogs({
-      tools: ["memory_add"], sourceAgent: "codex", limit: 20, offset: 0
+      tools: ["memory_add"], sourceAgent: "claude_code", limit: 20, offset: 0
     })).resolves.toMatchObject({
       logs: [{ outputJson: expect.stringContaining("Current goal from the span") }]
     });
@@ -585,7 +616,7 @@ function createMemoryDatabase(row: {
     "activated",
     "private",
     row.id,
-    row.memoryValue ?? "Hermes wrote this turn.",
+    row.memoryValue ?? "Claude Code wrote this turn.",
     row.tagsJson,
     row.infoJson,
     row.propertiesJson,
@@ -700,6 +731,43 @@ function readMemoryRowCount(dbPath: string, memoryId: string): number {
   }
 }
 
+function insertUserMemory(dbPath: string, id: string, content: string): void {
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec(`
+      CREATE TABLE user_memories (
+        id TEXT PRIMARY KEY,
+        source_turn_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        memory_types_json TEXT NOT NULL,
+        content TEXT NOT NULL,
+        normalized_user_text_hash TEXT NOT NULL,
+        source_turn_refs_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        replaces_memory_id TEXT,
+        replaced_by_memory_id TEXT,
+        archived_at TEXT,
+        archive_reason TEXT,
+        embedding_json TEXT,
+        embedding_model TEXT,
+        embedding_provider TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      )
+    `);
+    db.prepare(`
+      INSERT INTO user_memories (
+        id, source_turn_id, user_id, memory_types_json, content,
+        normalized_user_text_hash, source_turn_refs_json, status,
+        created_at, updated_at
+      ) VALUES (?, 'turn-user-memory', 'local-user', '["User Preference"]', ?, 'hash', '["turn-user-memory"]', 'active', ?, ?)
+    `).run(id, content, NOW, NOW);
+  } finally {
+    db.close();
+  }
+}
+
 function seedApiLogs(dbPath: string): void {
   const db = new DatabaseSync(dbPath);
   try {
@@ -720,8 +788,8 @@ function seedApiLogs(dbPath: string): void {
         tool_name, source_agent, input_json, output_json, duration_ms, success, called_at
       ) VALUES (?, ?, ?, ?, 1, 1, ?)
     `);
-    insert.run("memory_add", "openclaw", "{}", JSON.stringify({
-      details: [{ sourceAgent: "openclaw", summary: "Stored by OpenClaw" }]
+    insert.run("memory_add", "codex", "{}", JSON.stringify({
+      details: [{ sourceAgent: "codex", summary: "Stored by Codex" }]
     }), "2026-06-08T09:03:00.000Z");
     insert.run("memory_add", "test_agent", "{}", JSON.stringify({
       details: [{ sourceAgent: "test_agent", summary: "Stored by custom Agent" }]
@@ -729,7 +797,7 @@ function seedApiLogs(dbPath: string): void {
     insert.run("memory_add", null, "{}", JSON.stringify({
       details: [{ summary: "Stored directly through CLI" }]
     }), "2026-06-08T09:02:00.000Z");
-    insert.run("memory_search", "openclaw", JSON.stringify({ sessionId: "session_openclaw" }), JSON.stringify({ candidates: [] }), "2026-06-08T09:01:00.000Z");
+    insert.run("memory_search", "codex", JSON.stringify({ sessionId: "session_codex" }), JSON.stringify({ candidates: [] }), "2026-06-08T09:01:00.000Z");
     insert.run("memory_search", "test_agent", JSON.stringify({ sessionId: "session_test_agent" }), JSON.stringify({ candidates: [] }), "2026-06-08T09:00:30.000Z");
     insert.run("memory_search", null, "{}", JSON.stringify({ candidates: [] }), "2026-06-08T09:00:00.000Z");
   } finally {

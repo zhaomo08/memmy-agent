@@ -3,8 +3,7 @@ import type { AgentSourceAutoInjectResult, ScanPreferences } from "@memmy/local-
 import type { PermissionManager } from "../permission/index.js";
 import type { AgentSourceService } from "./agent-source-service.js";
 
-const AUTO_INJECT_AGENT_SOURCE_IDS = new Set(["claude_code", "codex", "opencode", "openclaw", "hermes", "workbuddy"]);
-const HOOK_OR_PLUGIN_AGENT_SOURCE_IDS = new Set(["claude_code", "codex", "opencode", "openclaw", "hermes"]);
+const AUTO_INJECT_AGENT_SOURCE_IDS = new Set(["claude_code", "codex"]);
 
 export interface AgentSourceAutoInjectService {
   runOnce(): Promise<AgentSourceAutoInjectResult>;
@@ -61,11 +60,7 @@ export function createAgentSourceAutoInjectService(
           }
 
           try {
-            if (HOOK_OR_PLUGIN_AGENT_SOURCE_IDS.has(source.sourceId)) {
-              await options.agentSources.installPlugin(source.sourceId, { installType: "auto_inject" });
-            } else {
-              await options.agentSources.installSkill(source.sourceId);
-            }
+            await options.agentSources.installPlugin(source.sourceId, { installType: "auto_inject" });
             installed.push(source.sourceId);
           } catch (error) {
             failed.push({

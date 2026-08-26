@@ -26,10 +26,12 @@ import type {
   PanelAnalysisOutput,
   PanelItemsInput,
   PanelItemsOutput,
+  PanelProjectsOutput,
   PanelOverviewOutput,
   PanelTasksInput,
   PanelTasksOutput,
   RecallHit,
+  RecallEvidenceOutput,
   StartTurnInput,
   StartTurnOutput,
   SearchOutput
@@ -95,6 +97,21 @@ interface LocalRawTurnRow {
   redacted_at: string | null;
   deleted_at: string | null;
   created_at: string;
+}
+
+interface LocalUserMemoryRow {
+  id: string;
+  source_turn_id: string;
+  user_id: string;
+  memory_types_json: string;
+  content: string;
+  source_turn_refs_json: string;
+  status: "active" | "archived" | "deleted";
+  archived_at: string | null;
+  archive_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 interface LocalEpisodeRow {
@@ -283,6 +300,19 @@ export function createMemosSqliteMemoryClient(options: CreateMemosSqliteMemoryCl
     },
 
     async deleteMemory(input): Promise<DeleteMemoryOutput> {
+      const userMemory = findWritableUserMemoryRow(sources, input.memoryId);
+      if (userMemory) {
+        const deleted = softDeleteUserMemoryRow(userMemory, now());
+        return {
+          ok: true,
+          id: encodeId(userMemory.source, userMemory.row.id),
+          kind: "user_memory",
+          status: "deleted",
+          changeSeq: deleted.changeSeq,
+          syncCursor: deleted.syncCursor,
+          serverTime: deleted.serverTime
+        };
+      }
       const target = findWritableMemoryRow(sources, input.memoryId);
       if (!target) {
         throw new MemoryLayerError("not_found", 404, `memory not found: ${input.memoryId}`);
@@ -300,6 +330,10 @@ export function createMemosSqliteMemoryClient(options: CreateMemosSqliteMemoryCl
         auditId: deleted.auditId,
         serverTime: deleted.serverTime
       };
+    },
+
+    async recallEvidence(queryId): Promise<RecallEvidenceOutput> {
+      throw new MemoryLayerError("not_found", 404, `recall event not found: ${queryId}`);
     },
 
     async enqueueImportSummaries() {
@@ -325,6 +359,7 @@ export function createMemosSqliteMemoryClient(options: CreateMemosSqliteMemoryCl
       return {
         counts: {
           memories: rows.filter((item) => item.row.memory_layer === "L1").length,
+          userMemories: 0,
           skills: rows.filter((item) => item.row.memory_layer === "Skill").length,
           experiences: rows.filter((item) => item.row.memory_layer === "L2").length,
           worldModels: rows.filter((item) => item.row.memory_layer === "L3").length
@@ -361,10 +396,17 @@ export function createMemosSqliteMemoryClient(options: CreateMemosSqliteMemoryCl
       };
     },
 
+    async panelProjects(): Promise<PanelProjectsOutput> {
+      // The sqlite fallback reads scanned agent history, which carries no project attribution.
+      return { projects: [], serverTime: now() };
+    },
+
     async panelItems(input: PanelItemsInput): Promise<PanelItemsOutput> {
       const pageSize = 20;
-      const filtered = listMemoryRows(sources)
-        .map((row) => ({ item: toListItem(row), sourceAgent: sourceAgentForRow(row) }))
+      const rows = input.layer === "UserMemory"
+        ? listUserMemoryRows(sources).map((row) => ({ item: toUserMemoryListItem(row), sourceAgent: undefined }))
+        : listMemoryRows(sources).map((row) => ({ item: toListItem(row), sourceAgent: sourceAgentForRow(row) }));
+      const filtered = rows
         .filter(({ item, sourceAgent }) => itemMatchesPanelInput(item, input, sourceAgent))
         .map(({ item }) => item)
         .sort((a, b) =>
@@ -474,6 +516,17 @@ function listMemoryRows(sources: readonly MemosSqliteSource[]): MemoryRow[] {
       .prepare("select * from memories where deleted_at is null and status != 'deleted'")
       .all()
       .map((row) => ({ source, row: row as unknown as LocalMemoryRow }));
+  }));
+}
+
+type UserMemoryRow = { source: MemosSqliteSource; row: LocalUserMemoryRow };
+
+function listUserMemoryRows(sources: readonly MemosSqliteSource[]): UserMemoryRow[] {
+  return sources.flatMap((source) => withDb(source, (db) => {
+    if (!tableExists(db, "user_memories")) return [];
+    return db.prepare(
+      "select * from user_memories where deleted_at is null and status != 'deleted'"
+    ).all().map((row) => ({ source, row: row as unknown as LocalUserMemoryRow }));
   }));
 }
 
@@ -866,6 +919,54 @@ function findWritableMemoryRow(sources: readonly MemosSqliteSource[], encodedId:
   return null;
 }
 
+function findWritableUserMemoryRow(
+  sources: readonly MemosSqliteSource[],
+  encodedId: string
+): UserMemoryRow | null {
+  const decoded = decodeId(encodedId);
+  const candidates = decoded.sourceId ? sources.filter((source) => source.id === decoded.sourceId) : sources;
+  for (const source of candidates) {
+    const row = withDb(source, (db) => {
+      if (!tableExists(db, "user_memories")) return undefined;
+      return db.prepare(
+        "select * from user_memories where id = ? and deleted_at is null and status != 'deleted' limit 1"
+      ).get(decoded.rawId) as unknown as LocalUserMemoryRow | undefined;
+    });
+    if (row) return { source, row };
+  }
+  return null;
+}
+
+function softDeleteUserMemoryRow(target: UserMemoryRow, serverTime: string): LocalDeleteResult {
+  return withWritableDb(target.source, (db) => {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (tableExists(db, "user_memories_fts")) {
+        db.prepare("delete from user_memories_fts where id = ?").run(target.row.id);
+      }
+      const result = db.prepare(
+        `update user_memories
+         set memory_types_json = '[]', content = '[DELETED]', source_turn_refs_json = '[]',
+             status = 'deleted', embedding_json = null, embedding_model = null,
+             embedding_provider = null, updated_at = ?, deleted_at = ?
+         where id = ? and deleted_at is null and status != 'deleted'`
+      ).run(serverTime, serverTime, target.row.id) as { changes?: number | bigint };
+      if (Number(result.changes ?? 0) !== 1) {
+        throw new MemoryLayerError("not_found", 404, `memory not found: ${encodeId(target.source, target.row.id)}`);
+      }
+      db.exec("COMMIT");
+      return {
+        changeSeq: 0,
+        syncCursor: `sqlite-delete:${target.source.id}:0`,
+        serverTime
+      };
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
 function hardDeleteMemoryRow(target: MemoryRow, serverTime: string): LocalDeleteResult {
   return withWritableDb(target.source, (db) => {
     db.exec("BEGIN IMMEDIATE");
@@ -963,6 +1064,31 @@ function toListItem(row: MemoryRow): MemoryListItem {
     createdAt: normalizeIsoTime(row.row.created_at),
     updatedAt: normalizeIsoTime(row.row.updated_at),
     version: nonNegativeInt(row.row.version, 1)
+  };
+}
+
+function toUserMemoryListItem(row: UserMemoryRow): MemoryListItem {
+  const memoryTypes = readJsonArray(row.row.memory_types_json);
+  const sourceTurnRefs = readJsonArray(row.row.source_turn_refs_json);
+  return {
+    id: encodeId(row.source, row.row.id),
+    kind: "user_memory",
+    memoryLayer: "UserMemory",
+    status: row.row.status === "active" ? "activated" : row.row.status,
+    title: truncate(firstLine(row.row.content) || row.row.id, 80),
+    summary: row.row.content,
+    tags: memoryTypes,
+    metadata: {
+      source: row.source.label,
+      sourceTurnId: row.row.source_turn_id,
+      sourceTurnRefs,
+      memoryTypes,
+      archivedAt: row.row.archived_at,
+      archiveReason: row.row.archive_reason
+    },
+    createdAt: normalizeIsoTime(row.row.created_at),
+    updatedAt: normalizeIsoTime(row.row.updated_at),
+    version: Math.max(1, sourceTurnRefs.length)
   };
 }
 
@@ -1152,8 +1278,7 @@ function sourceLabelFromSessionId(value: string | null): string | undefined {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return undefined;
   if (normalized === "claude" || normalized.startsWith("claude-")) return "claude-code";
-  if (normalized === "open-code" || normalized.startsWith("open-code-")) return "opencode";
-  for (const source of ["hermes", "openclaw", "codex", "claude-code", "opencode", "workbuddy"]) {
+  for (const source of ["codex", "claude-code"]) {
     if (normalized === source || normalized.startsWith(`${source}-`)) return source;
   }
   return undefined;
@@ -1162,8 +1287,7 @@ function sourceLabelFromSessionId(value: string | null): string | undefined {
 function normalizedAgentSource(value: string | undefined): string | undefined {
   const normalized = value?.trim().toLowerCase();
   if (normalized === "claude") return "claude-code";
-  if (normalized === "open-code") return "opencode";
-  return ["hermes", "openclaw", "codex", "claude-code", "opencode", "workbuddy"].includes(normalized ?? "")
+  return ["codex", "claude-code"].includes(normalized ?? "")
     ? normalized
     : undefined;
 }

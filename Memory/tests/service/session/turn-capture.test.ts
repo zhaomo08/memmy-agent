@@ -21,7 +21,7 @@ describe("MemoryService / session / turn capture", () => {
     const { db, service } = createTestService();
     const session = service.openSession({
       namespace: {
-        source: "cursor",
+        source: "claude_code",
         profileId: "default",
         userId: "turn-start-readonly-user"
       }
@@ -37,11 +37,11 @@ describe("MemoryService / session / turn capture", () => {
     const before = counts();
 
     const started = await service.startTurn({
-      adapterId: "memmy-cursor-hook",
+      adapterId: "memmy-claude_code-hook",
       requestId: "cursor-start:readonly",
       sessionId: session.sessionId,
       turnId: "turn-start-readonly",
-      query: "Do not create L1 until the assistant finishes."
+      query: "Implement the sqlite persistence transaction after inspecting the schema."
     });
 
     expect(started.turnId).toBe("turn-start-readonly");
@@ -78,10 +78,10 @@ describe("MemoryService / session / turn capture", () => {
     });
 
     const completed = service.completeTurn("turn-start-readonly", {
-      adapterId: "memmy-cursor-hook",
+      adapterId: "memmy-claude_code-hook",
       requestId: "cursor-complete:readonly",
       sessionId: session.sessionId,
-      query: "Do not create L1 until the assistant finishes.",
+      query: "Implement the sqlite persistence transaction after inspecting the schema.",
       answer: "The complete user and assistant turn is now safe to persist.",
       status: "succeeded",
       sourceMemoryIds: started.sourceMemoryIds
@@ -111,7 +111,7 @@ describe("MemoryService / session / turn capture", () => {
     };
     expect(completedRawTurn).toMatchObject({
       episode_id: completed.episodeId,
-      user_text: "Do not create L1 until the assistant finishes.",
+      user_text: "Implement the sqlite persistence transaction after inspecting the schema.",
       assistant_text: "The complete user and assistant turn is now safe to persist.",
       status: "succeeded"
     });
@@ -193,7 +193,7 @@ describe("MemoryService / session / turn capture", () => {
     const { db, service } = createTestService();
     const session = service.openSession({
       namespace: {
-        source: "cursor",
+        source: "claude_code",
         profileId: "default",
         userId: "turn-cancelled-user"
       }
@@ -237,7 +237,7 @@ describe("MemoryService / session / turn capture", () => {
     const { db, service } = createTestService();
     const session = service.openSession({
       namespace: {
-        source: "cursor",
+        source: "claude_code",
         profileId: "default",
         userId: "turn-failed-user"
       }
@@ -480,7 +480,7 @@ describe("MemoryService / session / turn capture", () => {
         inputTokens: 10,
         outputTokens: 5
       },
-      tags: ["trace", "turn", "memmy", "openclaw"]
+      tags: ["trace", "turn", "memmy", "codex"]
     });
 
     const rawTurn = db.db.prepare(
@@ -539,7 +539,7 @@ describe("MemoryService / session / turn capture", () => {
     expect(detail.item.tags).not.toContain("trace");
     expect(detail.item.tags).not.toContain("turn");
     expect(detail.item.tags).not.toContain("memmy");
-    expect(detail.item.tags).not.toContain("openclaw");
+    expect(detail.item.tags).not.toContain("codex");
     const detailProperties = detail.item.metadata.properties as {
       internal_info: {
         trace: {

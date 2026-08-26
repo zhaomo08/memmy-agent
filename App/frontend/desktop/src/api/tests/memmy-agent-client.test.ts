@@ -237,7 +237,6 @@ describe("memmy-agent client", () => {
             { command: "/dream-restore", title: "Dream restore", description: "Restore Dream", icon: "undo-2", arg_hint: "" },
             { command: "/history", title: "History", description: "Show history", icon: "history", arg_hint: "[n]" },
             { command: "/goal", title: "Goal", description: "Start goal", icon: "activity", arg_hint: "<goal>" },
-            { command: "/pairing", title: "Pairing", description: "Manage pairing", icon: "shield", arg_hint: "" },
             { command: "/help", title: "Help", description: "Show help", icon: "circle-help", arg_hint: "" },
             { command: "/status", title: "Status", description: "Show status", icon: "activity", arg_hint: "" },
             { command: "/new", title: "New", description: "New chat", icon: "square-pen", arg_hint: "" },

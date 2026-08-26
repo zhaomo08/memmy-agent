@@ -24,6 +24,7 @@ describe("HttpMemoryClient", () => {
       "/api/v1/memory/add",
       "/api/v1/memory/:id",
       "/api/v1/memory/:id",
+      "/api/v1/memory/recalls/:queryId",
       "/api/v1/worker/run",
       "/api/v1/worker/import-summaries/enqueue",
       "/api/v1/memory/processing/status",
@@ -32,6 +33,7 @@ describe("HttpMemoryClient", () => {
       "/api/v1/panel/overview",
       "/api/v1/panel/analysis",
       "/api/v1/panel/items",
+      "/api/v1/panel/projects",
       "/api/v1/panel/tasks",
       "/api/v1/panel/tasks/:id"
     ]);
@@ -81,6 +83,7 @@ describe("HttpMemoryClient", () => {
     await expect(client.addMemory(addMemoryInput())).resolves.toMatchObject({ id: "memory-1" });
     await expect(client.getMemory({ memoryId: "memory-1" })).resolves.toMatchObject({ item: { id: "memory-1" } });
     await expect(client.deleteMemory({ memoryId: "memory-1", source: "codex" })).resolves.toMatchObject({ status: "deleted" });
+    await expect(client.recallEvidence("turn-1")).resolves.toMatchObject({ queryId: "turn-1", hits: [] });
     await expect(
       client.memoryApiLogs({ tools: ["memory_add", "memory_search"], limit: 20, offset: 0 })
     ).resolves.toMatchObject({ logs: [] });
@@ -102,6 +105,7 @@ describe("HttpMemoryClient", () => {
       "POST /api/v1/memory/add",
       "GET /api/v1/memory/memory-1",
       "DELETE /api/v1/memory/memory-1",
+      "GET /api/v1/memory/recalls/turn-1",
       "GET /api/v1/memory/logs",
       "GET /api/v1/panel/overview",
       "GET /api/v1/panel/analysis",
@@ -143,20 +147,20 @@ describe("HttpMemoryClient", () => {
 
     await client.memoryApiLogs({
       tools: ["memory_search"],
-      sourceAgent: "cursor",
+      sourceAgent: "claude_code",
       limit: 20,
       offset: 0
     });
     await client.memoryApiLogs({
       tools: ["memory_search"],
-      excludedSourceAgents: ["memmy-agent", "cursor"],
+      excludedSourceAgents: ["memmy-agent", "claude_code"],
       limit: 20,
       offset: 0
     });
 
     expect(requestUrls[0]?.searchParams.get("tools")).toBe("memory_search");
-    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("cursor");
-    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("claude_code");
+    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 
   it("forwards L1 panel item Agent filters to the Memory service", async () => {
@@ -167,13 +171,13 @@ describe("HttpMemoryClient", () => {
     });
     const client = createHttpMemoryClient({ baseUrl, token: "", timeoutMs: 500, maxRetries: 0 });
 
-    await client.panelItems({ layer: "L1", sourceAgent: "cursor", page: 2 });
-    await client.panelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "cursor"], page: 1 });
+    await client.panelItems({ layer: "L1", sourceAgent: "claude_code", page: 2 });
+    await client.panelItems({ layer: "L1", excludedSourceAgents: ["memmy-agent", "claude_code"], page: 1 });
 
     expect(requestUrls[0]?.searchParams.get("layer")).toBe("L1");
-    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("cursor");
+    expect(requestUrls[0]?.searchParams.get("sourceAgent")).toBe("claude_code");
     expect(requestUrls[0]?.searchParams.get("page")).toBe("2");
-    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "cursor"]);
+    expect(requestUrls[1]?.searchParams.getAll("excludedSourceAgents")).toEqual(["memmy-agent", "claude_code"]);
   });
 
   it("limits worker requests to the scan's imported memories", async () => {
@@ -382,6 +386,16 @@ function fixtureFor(method: string, path: string, body: unknown): unknown {
   if (method === "POST" && path === "/api/v1/memory/add") return addMemoryOutput(body);
   if (method === "GET" && path === "/api/v1/memory/memory-1") return getMemoryOutput();
   if (method === "DELETE" && path === "/api/v1/memory/memory-1") return deleteMemoryOutput();
+  if (method === "GET" && path === "/api/v1/memory/recalls/turn-1") {
+    return {
+      recallEventId: "recall-1",
+      queryId: "turn-1",
+      query: "remember",
+      hits: [],
+      createdAt: now(),
+      serverTime: now()
+    };
+  }
   if (method === "GET" && path === "/api/v1/memory/logs") return memoryApiLogsOutput();
   if (method === "GET" && path === "/api/v1/panel/overview") return panelOverviewOutput();
   if (method === "GET" && path === "/api/v1/panel/analysis") return panelAnalysisOutput();
@@ -533,7 +547,7 @@ function memoryApiLogsOutput() {
 }
 
 function panelOverviewOutput() {
-  return { counts: { memories: 0, skills: 0, experiences: 0, worldModels: 0 }, dailyActivity: panelDays(), sourceDistribution: [] };
+  return { counts: { memories: 0, userMemories: 0, skills: 0, experiences: 0, worldModels: 0 }, dailyActivity: panelDays(), sourceDistribution: [] };
 }
 
 function panelAnalysisOutput() {

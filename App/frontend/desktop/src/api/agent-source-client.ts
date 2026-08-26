@@ -1,21 +1,17 @@
 import {
-  AddManualInputSchema,
   AgentSourceMemoryPluginConflictsResponseSchema,
   AgentSourceScanJobResponseSchema,
   AgentSourceScanInputSchema,
   AgentSourceScanStatusResponseSchema,
   AgentSourceViewSchema,
-  ManagedAgentSourceImportResultSchema,
   OkResponseSchema,
   AgentSourcePluginActionInputSchema,
-  type AddManualInput,
   type AgentSourceMemoryPluginConflict,
   type AgentSourcePluginActionInput,
   type AgentSourceScanJobResponse,
   type AgentSourceScanInput,
   type AgentSourceScanStatusResponse,
   type AgentSourceView,
-  type ManagedAgentSourceImportResult,
   type RuntimeConfig
 } from "@memmy/local-api-contracts";
 import { requestJson } from "./http.js";
@@ -26,8 +22,6 @@ export interface AgentSourceClient {
   getScanStatus(): Promise<AgentSourceScanStatusResponse>;
   stopScan(): Promise<void>;
   cancelScan(): Promise<void>;
-  addManualSource(input: AddManualInput): Promise<AgentSourceView>;
-  syncManagedSource(sourceId: string): Promise<ManagedAgentSourceImportResult>;
   removeSource(sourceId: string): Promise<void>;
   installSkill(sourceId: string): Promise<void>;
   uninstallSkill(sourceId: string): Promise<void>;
@@ -86,24 +80,6 @@ export function createHttpAgentSourceClient(config: RuntimeConfig): AgentSourceC
         config,
         path: "/api/agent-sources/scan/cancel",
         schema: OkResponseSchema,
-        init: { method: "POST" }
-      });
-    },
-
-    async addManualSource(input) {
-      return requestJson({
-        config,
-        path: "/api/agent-sources/manual",
-        schema: AgentSourceViewSchema,
-        body: AddManualInputSchema.parse(input)
-      });
-    },
-
-    async syncManagedSource(sourceId) {
-      return requestJson({
-        config,
-        path: `/api/agent-sources/${encodeURIComponent(sourceId)}/managed/sync`,
-        schema: ManagedAgentSourceImportResultSchema,
         init: { method: "POST" }
       });
     },

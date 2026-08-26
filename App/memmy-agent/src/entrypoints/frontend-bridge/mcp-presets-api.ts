@@ -55,7 +55,7 @@ const ATTACHMENT_KEYS = ["name", "display_name", "category", "transport", "logo_
 const MAX_TEST_TOOLS = 16;
 const DEFAULT_TEST_TIMEOUT = 20;
 const DEFAULT_CUSTOM_TIMEOUT = 30;
-const CUSTOM_ACTIONS = new Set(["custom", "import", "import-cursor", "tools"]);
+const CUSTOM_ACTIONS = new Set(["custom", "import", "tools"]);
 
 class McpPresetTestTimeoutError extends Error {}
 
@@ -649,9 +649,9 @@ function actionMessage(action: string, preset: McpPreset, ok = true): Record<str
 }
 
 function serverActionMessage(action: string, name: string, ok = true): Record<string, any> {
-  const verb = { custom: "Saved", import: "Imported", "import-cursor": "Imported", tools: "Updated tools for", remove: "Removed" }[action] ?? "Updated";
+  const verb = { custom: "Saved", import: "Imported", tools: "Updated tools for", remove: "Removed" }[action] ?? "Updated";
   const payload: Record<string, any> = { ok, message: `${verb} MCP server ${name}.` };
-  if (["custom", "import", "import-cursor"].includes(action)) {
+  if (["custom", "import"].includes(action)) {
     payload.installed = true;
     payload.verification = ["config_present"];
   } else if (action === "remove") {
@@ -990,7 +990,7 @@ function closeMcpStacks(stacks: Record<string, any>): Promise<void> {
 }
 
 export function customMcpAction(action: string, query: QueryParams): Record<string, any> {
-  if (action === "import" || action === "import-cursor") {
+  if (action === "import") {
     const servers = importMcpServers(queryFirst(query, "config"));
     const config = loadConfig();
     for (const [name, cfg] of Object.entries(servers)) {

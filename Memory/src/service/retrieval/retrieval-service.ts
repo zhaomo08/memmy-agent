@@ -13,6 +13,7 @@ import {
   isResearchDomain,
   isStandaloneMathFinalAnswerTask,
   policyMetaFromMemory,
+  policyRequiresRevalidation,
   renderMathFinalAnswerProtocol,
   renderRepositoryRepairProtocol,
   RETRIEVAL_FILTER_PROMPT,
@@ -45,9 +46,11 @@ import type {
   MemoryRow,
   MemorySearchRequest,
   RecallHit,
+  RecallMemoryLayer,
   RequestEnvelope,
   RetrievalMode,
-  RuntimeNamespace
+  RuntimeNamespace,
+  UserMemoryRecord
 } from "../../types.js";
 import { newId, stableHash } from "../../utils/id.js";
 import { nowIso } from "../../utils/time.js";
@@ -55,6 +58,7 @@ import { recordApiLog } from "../model-audit/model-call-audit.js";
 import {
   sourceMemoryIdsFromMemory
 } from "../read-model/memory.js";
+import { isDynamicCurrentFactQuery } from "../user-memory/user-memory.js";
 import { mergeRetrievalResults, normalizeQueryRewriteQueries } from "../retrieval/query-rewrite.js";
 import {
   normalizeRetrievalExtractKeywords
@@ -157,6 +161,8 @@ function describeRetrievalFilterCandidate(hit: RecallHit, bodyChars: number): st
   const body = clip(hit.snippet, bodyChars);
   const title = clip(hit.title ?? hit.id, 120);
   switch (hit.memoryLayer) {
+    case "UserMemory":
+      return `[USER MEMORY] ${title}${body ? `\n   ${body}` : ""}`;
     case "Skill":
       return `[SKILL] ${title}${body ? `\n   ${body}` : ""}`;
     case "L1":
@@ -234,6 +240,171 @@ function emptyRetrievalResult(): RetrievalResult {
       droppedByThreshold: 0
     }
   };
+}
+
+function userMemoryRecallHit(memory: UserMemoryRecord, score: number): RecallHit {
+  return {
+    id: memory.id,
+    kind: "user_memory",
+    memoryLayer: "UserMemory",
+    status: "activated",
+    title: memory.memoryTypes.join(" / "),
+    snippet: memory.content,
+    score,
+    tags: memory.memoryTypes,
+    createdAt: memory.createdAt,
+    updatedAt: memory.updatedAt,
+    source: "search",
+    sourceTurnId: memory.sourceTurnId,
+    memberMemoryIds: [memory.id],
+    retrievalRoutes: ["user_memory"],
+    members: [{
+      id: memory.id,
+      kind: "user_memory",
+      memoryLayer: "UserMemory",
+      status: memory.status,
+      content: memory.content,
+      createdAt: memory.createdAt,
+      updatedAt: memory.updatedAt,
+      retrievalRoute: "user_memory"
+    }]
+  };
+}
+
+function sourceTurnIdFromAgentMemory(memory: MemoryRow): string | undefined {
+  const internal = memory.properties.internal_info;
+  const direct = internal.source_raw_turn_id ?? internal.raw_turn_id;
+  if (typeof direct === "string" && direct) return direct;
+  const trace = isRecord(internal.trace) ? internal.trace : undefined;
+  return trace && typeof trace.raw_turn_id === "string" ? trace.raw_turn_id : undefined;
+}
+
+export function mergeSameTurnRecallHits(
+  agentHits: RecallHit[],
+  agentMemories: MemoryRow[],
+  userHits: RecallHit[]
+): { hits: RecallHit[]; mergedSourceTurnIds: string[]; membersBySourceTurnId: Record<string, string[]> } {
+  const memoryById = new Map(agentMemories.map((memory) => [memory.id, memory]));
+  const annotatedAgentHits = agentHits.map((hit) => {
+    const memory = memoryById.get(hit.id);
+    const sourceTurnId = memory?.memoryLayer === "L1" ? sourceTurnIdFromAgentMemory(memory) : undefined;
+    const internal = memory?.properties.internal_info;
+    return {
+      ...hit,
+      sourceTurnId,
+      createdAt: memory?.createdAt ?? hit.createdAt,
+      memberMemoryIds: [hit.id],
+      retrievalRoutes: [memory?.memoryLayer === "L1" ? "l1" as const : "agent_memory" as const],
+      ...(memory ? {
+        members: [{
+          id: memory.id,
+          kind: kindFromMemory(memory),
+          memoryLayer: memory.memoryLayer,
+          status: memory.status,
+          content: hit.snippet,
+          createdAt: memory.createdAt,
+          updatedAt: memory.updatedAt,
+          retrievalRoute: memory.memoryLayer === "L1" ? "l1" as const : "agent_memory" as const
+        }]
+      } : {}),
+      ...(memory?.memoryLayer === "Skill" && internal?.read_only === true
+        ? {
+            readOnly: true,
+            ...(typeof internal.source_agent_id === "string" ? { sourceAgentId: internal.source_agent_id } : {}),
+            ...(typeof internal.source_skill_id === "string" ? { sourceSkillId: internal.source_skill_id } : {}),
+            ...(typeof internal.source_skill_version === "string" ? { sourceSkillVersion: internal.source_skill_version } : {})
+          }
+        : {})
+    };
+  });
+  const l1ByTurn = new Map<string, RecallHit[]>();
+  for (const hit of annotatedAgentHits) {
+    if (hit.memoryLayer !== "L1" || !hit.sourceTurnId) continue;
+    const bucket = l1ByTurn.get(hit.sourceTurnId) ?? [];
+    bucket.push(hit);
+    l1ByTurn.set(hit.sourceTurnId, bucket);
+  }
+  const userByTurn = new Map<string, RecallHit[]>();
+  for (const hit of userHits) {
+    if (!hit.sourceTurnId) continue;
+    const bucket = userByTurn.get(hit.sourceTurnId) ?? [];
+    bucket.push(hit);
+    userByTurn.set(hit.sourceTurnId, bucket);
+  }
+
+  const mergedSourceTurnIds = [...l1ByTurn.keys()].filter((id) => userByTurn.has(id));
+  const mergedTurns = new Set(mergedSourceTurnIds);
+  const membersBySourceTurnId: Record<string, string[]> = {};
+  const mergedHits = mergedSourceTurnIds.map((sourceTurnId) => {
+    const members = [...(l1ByTurn.get(sourceTurnId) ?? []), ...(userByTurn.get(sourceTurnId) ?? [])];
+    const representative = [...members].sort((left, right) => {
+      const leftL1 = left.memoryLayer === "L1" ? 1 : 0;
+      const rightL1 = right.memoryLayer === "L1" ? 1 : 0;
+      return rightL1 - leftL1 || right.score - left.score;
+    })[0]!;
+    const memberMemoryIds = uniq(members.flatMap((hit) => hit.memberMemoryIds ?? [hit.id]));
+    membersBySourceTurnId[sourceTurnId] = memberMemoryIds;
+    return {
+      ...representative,
+      score: Math.max(...members.map((hit) => hit.score)),
+      sourceTurnId,
+      memberMemoryIds,
+      retrievalRoutes: ["user_memory", "l1"] as Array<"user_memory" | "l1" | "agent_memory">,
+      members: members.flatMap((hit) => hit.members ?? [])
+    };
+  });
+  return {
+    hits: [
+      ...annotatedAgentHits.filter((hit) => !hit.sourceTurnId || !mergedTurns.has(hit.sourceTurnId)),
+      ...userHits.filter((hit) => !hit.sourceTurnId || !mergedTurns.has(hit.sourceTurnId)),
+      ...mergedHits
+    ],
+    mergedSourceTurnIds,
+    membersBySourceTurnId
+  };
+}
+
+export function mmrRecallHits(hits: RecallHit[], limit: number, lambda: number): RecallHit[] {
+  const pool = [...hits];
+  const selected: RecallHit[] = [];
+  while (selected.length < limit && pool.length > 0) {
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (let index = 0; index < pool.length; index += 1) {
+      const candidate = pool[index]!;
+      const redundancy = selected.length === 0
+        ? 0
+        : Math.max(...selected.map((prior) =>
+            candidate.memoryLayer === "UserMemory" && prior.memoryLayer === "UserMemory"
+              ? 0
+              : recallTextSimilarity(candidate.snippet, prior.snippet)
+          ));
+      const score = lambda * candidate.score - (1 - lambda) * redundancy;
+      if (score > bestScore) {
+        bestIndex = index;
+        bestScore = score;
+      }
+    }
+    const [winner] = pool.splice(bestIndex, 1);
+    if (winner) selected.push(winner);
+  }
+  return selected;
+}
+
+function recallTextSimilarity(left: string, right: string): number {
+  const terms = (value: string) => new Set(
+    value.toLowerCase().match(/[\p{Script=Han}]|[a-z0-9_:-]{2,}/gu) ?? []
+  );
+  const a = terms(left);
+  const b = terms(right);
+  if (a.size === 0 || b.size === 0) return 0;
+  let overlap = 0;
+  for (const term of a) if (b.has(term)) overlap += 1;
+  return overlap / Math.max(a.size, b.size);
+}
+
+export function parallelMemoryLaneLimit(limit: number): number {
+  return Math.ceil(1.5 * limit);
 }
 
 function isOnboardingFirstReportContinuationQuery(query: string): boolean {
@@ -328,13 +499,40 @@ export function retrievedMemorySourceIds(memory: MemoryRow): string[] {
   ];
 }
 
+function memoryUsesStalePolicy(memory: MemoryRow, stalePolicyIds: ReadonlySet<string>): boolean {
+  if (stalePolicyIds.has(memory.id)) return true;
+  const sourcePolicyIds = memory.memoryLayer === "Skill"
+    ? skillMetaFromMemory(memory)?.sourcePolicyIds ?? []
+    : memory.memoryLayer === "L3"
+      ? worldModelMetaFromMemory(memory)?.policyIds ?? []
+      : [];
+  return sourcePolicyIds.some((policyId) => stalePolicyIds.has(policyId));
+}
+
 function llmFilterFallbackCap(hits: RecallHit[], maxKeep: number): RecallHit[] {
   const capped = Math.max(0, maxKeep);
   return capped === 0 ? [] : hits.slice(0, capped);
 }
 
 
-function estimateTokens(text: string): number { return Math.ceil(text.length / 4); }
+/**
+ * Estimates tokens for a rendered section.
+ *
+ * Latin text averages ~4 characters per token, but CJK runs closer to one token per
+ * character; counting everything at /4 under-measured Chinese context by roughly 4x
+ * and let the injection budget through far more than it allowed.
+ */
+function estimateTokens(text: string): number {
+  let cjk = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if ((code >= 0x3040 && code <= 0x30ff) || (code >= 0x3400 && code <= 0x9fff) ||
+        (code >= 0xf900 && code <= 0xfaff) || (code >= 0x20000 && code <= 0x2fa1f)) {
+      cjk += 1;
+    }
+  }
+  return Math.ceil(cjk + (text.length - cjk) / 4);
+}
 function stringArray(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
 function stringValue(value: unknown): string | undefined { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function uniq<T>(values: readonly T[]): T[] { return [...new Set(values)]; }
@@ -377,7 +575,7 @@ export function buildInjectedContext(
   droppedDueToBudget: Array<{
     id: string;
     kind: MemoryKind;
-    memoryLayer: MemoryLayer;
+    memoryLayer: RecallMemoryLayer;
     reason: "token_budget";
     tokenEstimate?: number;
   }>;
@@ -401,37 +599,57 @@ export function buildInjectedContext(
       )
     : rendered;
 
-  void budget;
-  const sections: InjectedContext["sections"] = memories.map((section) => section.section);
-  const renderedSections: RenderedInjectedSection[] = [...memories];
-  const sourceMemoryIds: string[] = memories.map((section) => section.hitId);
+  const sections: InjectedContext["sections"] = [];
+  const renderedSections: RenderedInjectedSection[] = [];
+  const sourceMemoryIds: string[] = [];
   const droppedDueToBudget: Array<{
     id: string;
     kind: MemoryKind;
-    memoryLayer: MemoryLayer;
+    memoryLayer: RecallMemoryLayer;
     reason: "token_budget";
     tokenEstimate?: number;
   }> = [];
-  let used = sections.reduce((sum, section) => sum + (section.tokenEstimate ?? 0), 0);
+  // Sections arrive ranked, so spending the budget in order keeps the best ones.
+  // The first section is always kept: an empty packet is worse than an oversized one.
+  let used = 0;
+  for (const rendered of memories) {
+    const estimate = rendered.section.tokenEstimate ?? 0;
+    if (sections.length > 0 && used + estimate > budget) {
+      droppedDueToBudget.push({
+        id: rendered.section.memoryIds[0] ?? "",
+        kind: rendered.section.kind,
+        memoryLayer: rendered.section.memoryLayer,
+        reason: "token_budget",
+        tokenEstimate: estimate
+      });
+      continue;
+    }
+    sections.push(rendered.section);
+    renderedSections.push(rendered);
+    sourceMemoryIds.push(...rendered.section.memoryIds);
+    used += estimate;
+  }
   const guidance = decisionGuidanceSection(
     contextMemoriesForInjectedSources(contextMemories, sourceMemoryIds)
   );
   const avoidance = failureAvoidanceSection(
     contextMemoriesForInjectedSources(contextMemories, sourceMemoryIds)
   );
-  if (guidance) {
-    const estimate = guidance.tokenEstimate ?? 0;
-    sections.push(guidance);
-    sourceMemoryIds.push(...guidance.memoryIds);
+  // Guidance and avoidance are appended last, so they answer to the same budget
+  // rather than riding past it.
+  const fits = (section?: InjectedContext["sections"][number]): boolean => {
+    if (!section) return false;
+    const estimate = section.tokenEstimate ?? 0;
+    if (sections.length > 0 && used + estimate > budget) return false;
+    sections.push(section);
+    sourceMemoryIds.push(...section.memoryIds);
     used += estimate;
-  }
-  if (avoidance) {
-    sections.push(avoidance);
-    sourceMemoryIds.push(...avoidance.memoryIds);
-    used += avoidance.tokenEstimate ?? 0;
-  }
+    return true;
+  };
+  const keptGuidance = fits(guidance) ? guidance : undefined;
+  const keptAvoidance = fits(avoidance) ? avoidance : undefined;
 
-  const markdown = renderInjectedMarkdown(renderedSections, guidance, avoidance, retrievalMode, options);
+  const markdown = renderInjectedMarkdown(renderedSections, keptGuidance, keptAvoidance, retrievalMode, options);
 
   return {
     injectedContext: {
@@ -525,7 +743,7 @@ function renderInjectedSection(
       title: rendered.title,
       kind: hit.kind,
       memoryLayer: hit.memoryLayer,
-      memoryIds: [hit.id],
+      memoryIds: hit.memberMemoryIds ?? [hit.id],
       content,
       tokenEstimate: estimateTokens(`${rendered.title}\n${content}`)
     }
@@ -537,6 +755,23 @@ function renderInjectedSnippet(
   memory: MemoryRow | undefined,
   options: InjectedRenderOptions
 ): { refKind: InjectedSnippetRefKind; title: string; body: string } | null {
+  if (hit.kind === "user_memory" || hit.memoryLayer === "UserMemory") {
+    return {
+      refKind: "trace",
+      title: "User Memory",
+      body: truncateInjectedSnippet([
+        `id: ${hit.id}`,
+        ...(hit.memberMemoryIds && hit.memberMemoryIds.length > 1
+          ? [`member ids: ${hit.memberMemoryIds.join(", ")}`]
+          : []),
+        ...(hit.sourceTurnId ? [`source turn: ${hit.sourceTurnId}`] : []),
+        ...(hit.createdAt ? [`created at: ${hit.createdAt}`] : []),
+        ...(hit.updatedAt ? [`updated at: ${hit.updatedAt}`] : []),
+        "",
+        ...labeledInjectedBlock("User statement", hit.snippet)
+      ].join("\n"))
+    };
+  }
   if (hit.kind === "skill" || hit.memoryLayer === "Skill") {
     const skill = memory ? skillMetaFromMemory(memory) : null;
     const name = skill?.name || hit.title || "Skill";
@@ -548,6 +783,9 @@ function renderInjectedSnippet(
         title: "Skill",
         body: truncateInjectedSnippet([
           `id: ${hit.id}`,
+          ...(hit.sourceAgentId ? [`source agent: ${hit.sourceAgentId}`] : []),
+          ...(hit.sourceSkillId ? [`source skill: ${hit.sourceSkillId}`] : []),
+          ...(hit.sourceSkillVersion ? [`source version: ${hit.sourceSkillVersion}`] : []),
           "",
           ...labeledInjectedBlock("Name", name),
           "",
@@ -557,6 +795,9 @@ function renderInjectedSnippet(
     }
     const lines = [
       `id: ${hit.id}`,
+      ...(hit.sourceAgentId ? [`source agent: ${hit.sourceAgentId}`] : []),
+      ...(hit.sourceSkillId ? [`source skill: ${hit.sourceSkillId}`] : []),
+      ...(hit.sourceSkillVersion ? [`source version: ${hit.sourceSkillVersion}`] : []),
       "",
       ...labeledInjectedBlock("Name", name),
       "",
@@ -651,12 +892,15 @@ function renderInjectedSnippet(
   ];
   return {
     refKind: "experience",
-    title: "Experience",
+    title: policy?.status === "candidate" ? "Candidate Experience (unverified)" : "Experience",
     body: truncateInjectedSnippet(parts.join("\n") || hit.snippet)
   };
 }
 
 function renderInjectedExperienceUseHint(policy: NonNullable<ReturnType<typeof policyMetaFromMemory>>): string {
+  if (policy.status === "candidate") {
+    return "Candidate, unverified guidance. Treat it as a hypothesis and verify it in the current task before use.";
+  }
   if (policy.experienceType === "failure_avoidance" || policy.evidencePolarity === "negative") {
     return "Use as a guardrail before planning.";
   }
@@ -1455,7 +1699,7 @@ export class RetrievalService {
     droppedDueToBudget: Array<{
       id: string;
       kind: MemoryKind;
-      memoryLayer: MemoryLayer;
+      memoryLayer: RecallMemoryLayer;
       reason: "token_budget";
       tokenEstimate?: number;
     }>;
@@ -1507,18 +1751,34 @@ export class RetrievalService {
       : undefined;
     const tuning = this.retrievalTuningConfig();
     const allowedLayers = retrievalLayersForProfile(retrievalLayersForMode(retrievalMode), tuning);
-    const semanticLayers = request.layers === undefined
+    const requestedSemanticLayers = request.layers === undefined
       ? allowedLayers
       : request.layers.filter((layer) => allowedLayers.includes(layer));
+    const dynamicCurrentQuery = isDynamicCurrentFactQuery(request.query);
+    const stalePolicyIds = new Set(this.deps.repos.memories
+      .list({ memoryLayer: "L2", status: "activated" }, 1000)
+      .map(policyMetaFromMemory)
+      .filter((policy): policy is NonNullable<ReturnType<typeof policyMetaFromMemory>> =>
+        Boolean(policy && policyRequiresRevalidation(policy))
+      )
+      .map((policy) => policy.id));
+    const semanticLayers = dynamicCurrentQuery
+      ? requestedSemanticLayers.filter((layer) => layer !== "L1")
+      : requestedSemanticLayers;
     const searchAt = Date.now();
+    const includeUserMemory = !onboardingFirstReportHit && semanticLayers.includes("L1");
+    const userMemoryCount = includeUserMemory
+      ? this.deps.repos.userMemories.listActive(context.userId).length
+      : 0;
     const candidateCount = onboardingFirstReportHit
       ? 1
       : semanticLayers.length === 0
       ? 0
       : this.candidatePool.retrievalCandidateCount({
+          userId: context.userId,
           layers: semanticLayers,
           tags: request.tags
-        });
+        }) + userMemoryCount;
     const retrievalQuery = focusResearchRetrievalQuery(request.query, tuning.domain).text;
     const queryExtract = candidateCount > 0 && !onboardingFirstReportHit
       ? await this.extractRetrievalQuery(retrievalQuery)
@@ -1529,6 +1789,9 @@ export class RetrievalService {
     const retrievalLimit = timeFilter
       ? TIME_FILTERED_TRACE_LIMIT
       : request.limit ?? this.deps.turnStartRetrievalLimit();
+    const parallelLaneLimit = includeUserMemory
+      ? parallelMemoryLaneLimit(retrievalLimit)
+      : retrievalLimit;
     const retrievalOutput = onboardingFirstReportHit && onboardingFirstReportMemory
       ? {
           retrieval: directRetrievalResult(onboardingFirstReportHit),
@@ -1541,27 +1804,57 @@ export class RetrievalService {
           limit: retrievalLimit
         })
       : await this.retrieveSearchMemories({
+          userId: context.userId,
           query: retrievalQuery,
           queryVectorText,
           queryExtract,
           layers,
           tags: request.tags,
-          limit: retrievalLimit,
+          limit: parallelLaneLimit,
           mode: retrievalMode,
           excludeTraceRawTurnIds: recentRawTurnIds,
-          targetSkillId: request.targetSkillId
+          targetSkillId: request.targetSkillId,
+          currentAgentId: context.namespace.source
         });
-    const retrieval = retrievalOutput.retrieval;
-    const memories = retrievalOutput.memories;
+    const memories = retrievalOutput.memories.filter((memory) =>
+      !memoryUsesStalePolicy(memory, stalePolicyIds)
+    );
+    const allowedMemoryIds = new Set(memories.map((memory) => memory.id));
+    const allowedEpisodeIds = new Set(memories.flatMap((memory) => {
+      const episodeId = traceMetaFromMemory(memory)?.episodeId;
+      return episodeId ? [episodeId] : [];
+    }));
+    const retrieval = {
+      ...retrievalOutput.retrieval,
+      hits: retrievalOutput.retrieval.hits.filter((hit) =>
+        allowedMemoryIds.has(hit.id) ||
+        allowedEpisodeIds.has(hit.id) ||
+        (hit.memberMemoryIds ?? []).some((id) => allowedMemoryIds.has(id)) ||
+        (hit.members ?? []).some((member) => allowedMemoryIds.has(member.id))
+      )
+    };
+    const userMemoryOutput = includeUserMemory && !timeFilter
+      ? await this.retrieveUserMemories({
+          userId: context.userId,
+          query: retrievalQuery,
+          queryVectorText,
+          queryExtract,
+          limit: parallelLaneLimit
+        })
+      : { hits: [] as RecallHit[], memories: [] as UserMemoryRecord[] };
+    const agentHits = onboardingFirstReportHit || timeFilter
+      ? retrieval.hits
+      : filterL1TraceSpanRecallHits(retrieval.hits, memories);
+    const merged = mergeSameTurnRecallHits(agentHits, memories, userMemoryOutput.hits);
     const rerankAt = Date.now();
     const filteredHits = onboardingFirstReportHit
       ? { hits: retrieval.hits, status: ["first_report_handoff:latest_only"] }
       : timeFilter
       ? { hits: retrieval.hits, status: ["time_filter:l1"] }
-      : await this.filterRecallHits(queryVectorText, retrieval.hits);
+      : await this.filterRecallHits(queryVectorText, merged.hits);
     const hits = onboardingFirstReportHit || timeFilter
       ? filteredHits.hits
-      : filterL1TraceSpanRecallHits(filteredHits.hits,memories);
+      : mmrRecallHits(filteredHits.hits, retrievalLimit, tuning.mmrLambda);
     const contextPacket = timeFilter
       ? buildTimeFilteredInjectedContext(
           memories.filter((memory) => hits.some((hit) => hit.id === memory.id)),
@@ -1579,9 +1872,17 @@ export class RetrievalService {
     const injectedContext = contextPacket.injectedContext;
     const budgetAt = Date.now();
     const recallEventId = newId("recall");
-    const candidateMemoryIds = memories.map((memory) => memory.id);
+    const queryId = request.turnId ?? `query_${stableHash(`${recallEventId}:${request.query}`).slice(0, 20)}`;
+    const userMemoryCandidateIds = userMemoryOutput.memories.map((memory) => memory.id);
+    const l1CandidateIds = memories
+      .filter((memory) => memory.memoryLayer === "L1")
+      .map((memory) => memory.id);
+    const candidateMemoryIds = uniq([
+      ...memories.map((memory) => memory.id),
+      ...userMemoryCandidateIds
+    ]);
     const sourceMemoryIds = contextPacket.sourceMemoryIds;
-    const hitIds = new Set(hits.map((hit) => hit.id));
+    const hitIds = new Set(hits.flatMap((hit) => hit.memberMemoryIds ?? [hit.id]));
     const dropped = [
       ...contextPacket.droppedDueToBudget,
       ...memories
@@ -1592,10 +1893,30 @@ export class RetrievalService {
           kind: kindFromMemory(memory),
           memoryLayer: memory.memoryLayer,
           reason: "rank_threshold" as const
+        })),
+      ...userMemoryOutput.memories
+        .filter((memory) => !hitIds.has(memory.id))
+        .slice(0, 50)
+        .map((memory) => ({
+          id: memory.id,
+          kind: "user_memory" as const,
+          memoryLayer: "UserMemory" as const,
+          reason: "rank_threshold" as const
         }))
     ];
     const shouldRecordEvent = this.deps.memoryAddEnabled() && request.recordEvent !== false;
     if (shouldRecordEvent) {
+      const injectedIds = new Set(injectedContext.sections.flatMap((section) => section.memoryIds));
+      const injectedHits = hits.flatMap((hit) => {
+        const members = (hit.members ?? []).filter((member) => injectedIds.has(member.id));
+        const memoryIds = (hit.memberMemoryIds ?? [hit.id]).filter((id) => injectedIds.has(id));
+        if (members.length === 0 && memoryIds.length === 0 && !injectedIds.has(hit.id)) return [];
+        return [{
+          ...hit,
+          memberMemoryIds: memoryIds.length > 0 ? memoryIds : [hit.id],
+          ...(hit.members ? { members } : {})
+        }];
+      });
       this.deps.repos.runtime.insertRecallEvent({
         id: recallEventId,
         namespaceId: this.deps.namespaceIdFromContext(context.namespace),
@@ -1605,13 +1926,25 @@ export class RetrievalService {
         userId: context.userId,
         query: request.query,
         queryHash: stableHash(request.query),
+        queryId,
         layers,
         candidateMemoryIds,
+        userMemoryCandidateIds,
+        l1CandidateIds,
+        mergedSourceTurnIds: merged.mergedSourceTurnIds,
+        memberMemoryIdsBySourceTurnId: merged.membersBySourceTurnId,
         injectedMemoryIds: sourceMemoryIds,
-        hitMemoryIds: hits.map((hit) => hit.id),
+        hitMemoryIds: hits.flatMap((hit) => hit.memberMemoryIds ?? [hit.id]),
         dropped,
         outcome: "pending",
-        request: timeFilter ? { ...request, timeFilter } : request,
+        request: {
+          ...request,
+          ...(timeFilter ? { timeFilter } : {}),
+          recallEvidence: {
+            hits: injectedHits,
+            sections: injectedContext.sections
+          }
+        },
         createdAt: nowIso()
       });
     }
@@ -1631,6 +1964,8 @@ export class RetrievalService {
       },
       status: uniq([
         ...filteredHits.status,
+        ...(dynamicCurrentQuery ? ["dynamic_current:refresh_required"] : []),
+        ...(stalePolicyIds.size > 0 ? ["policy:revalidation_required"] : []),
         ...(!this.deps.memoryAddEnabled() ? ["memory_add:disabled:no_recall_log"] : [])
       ]),
       verbose: request.verbose === true,
@@ -1718,7 +2053,55 @@ export class RetrievalService {
     };
   }
 
+  private async retrieveUserMemories(input: {
+    userId: string;
+    query: string;
+    queryVectorText: string;
+    queryExtract: RetrievalQueryExtract | null;
+    limit: number;
+  }): Promise<{ hits: RecallHit[]; memories: UserMemoryRecord[] }> {
+    if (input.limit <= 0) return { hits: [], memories: [] };
+    const compiled = compileRetrievalQuery(input.query, input.queryExtract, {
+      domain: this.retrievalTuningConfig().domain
+    });
+    const active = this.deps.repos.userMemories.listActive(input.userId);
+    if (active.length === 0) return { hits: [], memories: [] };
+    const queryVector = active.some((memory) => memory.embedding?.length)
+      ? await this.queryVector(input.queryVectorText)
+      : undefined;
+    const routeHits = [
+      ...this.deps.repos.userMemories.searchFtsIds(
+        input.userId,
+        compiled.ftsMatch,
+        input.limit
+      ),
+      ...this.deps.repos.userMemories.searchPatternIds(
+        input.userId,
+        compiled.patternTerms,
+        input.limit
+      ),
+      ...(queryVector
+        ? this.deps.repos.userMemories.searchVectorIds(input.userId, queryVector, input.limit)
+        : [])
+    ];
+    const bestScoreById = new Map<string, number>();
+    for (const hit of routeHits) {
+      bestScoreById.set(hit.id, Math.max(bestScoreById.get(hit.id) ?? 0, hit.score));
+    }
+    const memories = this.deps.repos.userMemories.getMany([...bestScoreById.keys()])
+      .sort((left, right) =>
+        (bestScoreById.get(right.id) ?? 0) - (bestScoreById.get(left.id) ?? 0) ||
+        right.updatedAt.localeCompare(left.updatedAt)
+      )
+      .slice(0, input.limit);
+    return {
+      memories,
+      hits: memories.map((memory) => userMemoryRecallHit(memory, bestScoreById.get(memory.id) ?? 0))
+    };
+  }
+
   private async retrieveSearchMemories(input: {
+    userId: string;
     query: string;
     queryVectorText: string;
     queryExtract: RetrievalQueryExtract | null;
@@ -1728,6 +2111,7 @@ export class RetrievalService {
     mode: RetrievalMode;
     excludeTraceRawTurnIds?: ReadonlySet<string>;
     targetSkillId?: string;
+    currentAgentId?: string;
   }): Promise<{ retrieval: RetrievalResult; memories: MemoryRow[] }> {
     if (input.limit <= 0 || input.layers.length === 0) {
       return { retrieval: emptyRetrievalResult(), memories: [] };
@@ -1742,16 +2126,19 @@ export class RetrievalService {
         domain: config.domain
       });
       const hasVectorCandidates = this.candidatePool.hasRetrievalVectorCandidates({
+        userId: input.userId,
         layers: input.layers,
         tags: input.tags
       });
       const queryVector = hasVectorCandidates ? await this.queryVector(queryVectorText) : undefined;
       const candidatePool = await this.candidatePool.indexedRetrievalCandidatePool({
+        userId: input.userId,
         compiledQuery,
         queryVector,
         layers: input.layers,
         tags: input.tags,
         targetSkillId: input.targetSkillId,
+        currentAgentId: input.currentAgentId,
         config
       });
       const memories = candidatePool.memories;
@@ -2063,6 +2450,7 @@ export class RetrievalService {
     mmrLambda: number;
     rrfConstant: number;
     relativeThresholdFloor: number;
+    minRecallScore: number;
     minSkillEta: number;
     minTraceSim: number;
     episodeGoalMinSim: number;
@@ -2091,6 +2479,7 @@ export class RetrievalService {
       mmrLambda: retrieval.mmrLambda,
       rrfConstant: retrieval.rrfConstant,
       relativeThresholdFloor: retrieval.relativeThresholdFloor,
+      minRecallScore: retrieval.minRecallScore,
       minSkillEta: retrieval.minSkillEta,
       minTraceSim: retrieval.minTraceSim,
       episodeGoalMinSim: retrieval.episodeGoalMinSim,

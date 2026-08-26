@@ -118,7 +118,7 @@ describe("MemoryService / REST contract", () => {
       llm: createFailingLlm(),
       embedder: createCapturingEmbedder([])
     });
-    const namespace = { source: "hermes", profileId: "default", userId: "http-retry-user" };
+    const namespace = { source: "claude_code", profileId: "default", userId: "http-retry-user" };
     const added = addAgentSourceImport(service, namespace, "retry through HTTP", "http-retry");
     await runWorkerRounds(service, 3, 1);
     expect(service.memoryProcessingStatus([added.id], { namespace }).items[0]?.state).toBe("failed");
@@ -188,7 +188,7 @@ describe("MemoryService / REST contract", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         sessionId: "cursor-memory-http-fields",
-        source: "cursor",
+        source: "claude_code",
         workspacePath: "/tmp/hook-workspace"
       })
     });
@@ -203,15 +203,15 @@ describe("MemoryService / REST contract", () => {
     };
 
     const startRequestBody = {
-      adapterId: "memmy-cursor-hook",
+      adapterId: "memmy-claude_code-hook",
       requestId: "cursor-start:http-fields",
-      source: "cursor",
+      source: "claude_code",
       sessionId: opened.sessionId,
       turnId: "cursor-http-turn",
       query: "Continue the hook lifecycle repair",
       contextHints: {
         agentIdentity: "cursor-agent",
-        hostProvider: "cursor"
+        hostProvider: "claude_code"
       },
       contextBudget: 37
     };
@@ -283,9 +283,9 @@ describe("MemoryService / REST contract", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        adapterId: "memmy-cursor-hook",
+        adapterId: "memmy-claude_code-hook",
         requestId: "cursor-complete:http-fields",
-        source: "cursor",
+        source: "claude_code",
         sessionId: opened.sessionId,
         query: "Continue the hook lifecycle repair",
         answer: "The lifecycle now reuses its started turn and episode.",
@@ -311,7 +311,7 @@ describe("MemoryService / REST contract", () => {
       workspace_path: string;
     };
     expect(sessionRow).toMatchObject({
-      source: "cursor",
+      source: "claude_code",
       profile_id: "default",
       workspace_path: "/tmp/hook-workspace"
     });
@@ -351,11 +351,11 @@ describe("MemoryService / REST contract", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         namespace: {
-          source: "openclaw",
+          source: "codex",
           profileId: "default",
           userId: "auto-worker-user"
         },
-        sessionId: "openclaw-memory-agent:auto-worker"
+        sessionId: "codex-memory-agent:auto-worker"
       })
     });
     const session = await sessionResponse.json() as { sessionId: string };
@@ -399,7 +399,7 @@ describe("MemoryService / REST contract", () => {
     const { db, service } = createTestService();
     const idleSession = service.openSession({
       namespace: {
-        source: "openclaw",
+        source: "codex",
         profileId: "default",
         userId: "auto-idle-account-user",
         sessionKey: "auto-idle-session"
@@ -432,7 +432,7 @@ describe("MemoryService / REST contract", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         namespace: {
-          source: "openclaw",
+          source: "codex",
           profileId: "default",
           userId: "auto-idle-local-user",
           sessionKey: "auto-idle-trigger-session"
@@ -555,13 +555,13 @@ describe("MemoryService / REST contract", () => {
       embedder: createCapturingEmbedder(embeddingTexts)
     });
     const namespace = {
-      source: "openclaw",
+      source: "codex",
       profileId: "default",
       userId: "auto-worker-start-user"
     };
     const session = service.openSession({
       namespace,
-      sessionId: "openclaw-memory-agent:auto-worker-start"
+      sessionId: "codex-memory-agent:auto-worker-start"
     });
     const complete = service.completeTurn("turn-auto-worker-start", {
       sessionId: session.sessionId,
@@ -965,7 +965,7 @@ describe("MemoryService / REST contract", () => {
           },
           "partial-token": {
             namespace: {
-              source: "hermes",
+              source: "claude_code",
               profileId: "partial-profile",
               userId: "partial-user"
             },
@@ -1034,7 +1034,7 @@ describe("MemoryService / REST contract", () => {
        WHERE id = ?`
     ).get(partial.sessionId);
     expect(partialRow).toEqual({
-      source: "hermes",
+      source: "claude_code",
       profile_id: "partial-profile",
       user_id: "partial-user",
       project_id: "request-project",

@@ -4,13 +4,13 @@ import { isContextAware, RequestContext } from "../../../src/core/agent-runtime/
 
 describe("ContextBuilder runtime awareness", () => {
   it("adds channel, sender, and supplemental metadata to runtime context", () => {
-    const runtime = ContextBuilder.buildRuntimeContext("telegram", "chat-1", "UTC", {
+    const runtime = ContextBuilder.buildRuntimeContext("cli", "chat-1", "UTC", {
       senderId: "alice",
       supplementalLines: ["Goal: test"],
     });
 
     expect(runtime).toContain(ContextBuilder.RUNTIME_CONTEXT_TAG);
-    expect(runtime).toContain("Channel: telegram");
+    expect(runtime).toContain("Channel: cli");
     expect(runtime).toContain("Sender ID: alice");
     expect(runtime).toContain("Goal: test");
   });

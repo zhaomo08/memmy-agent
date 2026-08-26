@@ -142,13 +142,13 @@ describe("app reducer", () => {
   });
 
   it("stores real scan progress from SSE events until the completed event arrives", () => {
-    const loadingState = appReducer(createInitialAppState(), appActions.agentSourceScanStarted("cursor"));
-    expect(loadingState.agentSources.activeScanSourceId).toBe("cursor");
+    const loadingState = appReducer(createInitialAppState(), appActions.agentSourceScanStarted("codex"));
+    expect(loadingState.agentSources.activeScanSourceId).toBe("codex");
     const progressState = appReducer(
       loadingState,
       appActions.agentSourceScanProgressReceived({
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "codex",
         phase: "add",
         current: 2,
         total: 5,
@@ -160,7 +160,7 @@ describe("app reducer", () => {
     expect(progressState.agentSources.isScanning).toBe(true);
     expect(progressState.agentSources.scanProgress).toEqual({
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "codex",
       phase: "add",
       current: 2,
       total: 5,
@@ -169,33 +169,33 @@ describe("app reducer", () => {
 
     const completedState = appReducer(progressState, appActions.agentSourceScanCompleted({
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "codex",
       succeeded: true
     }));
     expect(completedState.agentSources.isScanning).toBe(false);
     expect(completedState.agentSources.activeScanSourceId).toBeNull();
     expect(completedState.agentSources.scanProgress).toBeNull();
-    expect(completedState.agentSources.recentScanCompletions).toEqual([{ jobId: "job-1", sourceId: "cursor" }]);
+    expect(completedState.agentSources.recentScanCompletions).toEqual([{ jobId: "job-1", sourceId: "codex" }]);
 
     const loadedState = appReducer(completedState, appActions.agentSourcesLoaded([]));
     expect(loadedState.agentSources.items).toEqual([]);
-    expect(loadedState.agentSources.recentScanCompletions).toEqual([{ jobId: "job-1", sourceId: "cursor" }]);
+    expect(loadedState.agentSources.recentScanCompletions).toEqual([{ jobId: "job-1", sourceId: "codex" }]);
 
     const expiredState = appReducer(loadedState, appActions.agentSourceScanCompletionExpired("job-1"));
     expect(expiredState.agentSources.recentScanCompletions).toEqual([]);
 
     const failedButFinishedState = appReducer(expiredState, appActions.agentSourceScanCompleted({
       jobId: "job-2",
-      sourceId: "hermes",
+      sourceId: "claude_code",
       succeeded: false
     }));
     expect(failedButFinishedState.agentSources.recentScanCompletions).toEqual([
-      { jobId: "job-2", sourceId: "hermes" }
+      { jobId: "job-2", sourceId: "claude_code" }
     ]);
 
     const staleProgressState = appReducer(failedButFinishedState, appActions.agentSourceScanProgressReceived({
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "codex",
       phase: "scan",
       current: 0,
       total: 0
@@ -208,7 +208,7 @@ describe("app reducer", () => {
       createInitialAppState(),
       appActions.agentSourceScanProgressReceived({
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "stopped",
         current: 2,
         total: 5
@@ -218,7 +218,7 @@ describe("app reducer", () => {
       progressState,
       appActions.agentSourceScanProgressReceived({
         jobId: "job-1",
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "add",
         current: 4,
         total: 5
@@ -228,7 +228,7 @@ describe("app reducer", () => {
     expect(staleState.agentSources.isScanning).toBe(false);
     expect(staleState.agentSources.scanProgress).toEqual({
       jobId: "job-1",
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "stopped",
       current: 2,
       total: 5

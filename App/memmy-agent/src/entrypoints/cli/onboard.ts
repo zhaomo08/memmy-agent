@@ -25,7 +25,6 @@ import {
   AgentDefaults,
   ApiConfig,
   Base,
-  ChannelsConfig,
   Config,
   ContextCompactionConfig,
   DEFAULT_CONTEXT_WINDOW_TOKENS,
@@ -36,7 +35,6 @@ import {
   SessionDagConfig,
   ToolsConfig,
 } from "../../config/schema.js";
-import { discoverAll, getChannel } from "../../integrations/channels/registry.js";
 import { PROVIDERS } from "../../providers/registry.js";
 import { getModelContextLimit, getModelSuggestions } from "./models.js";
 
@@ -902,49 +900,11 @@ export async function configureProviders(config: Config): Promise<void> {
   }
 }
 
-export function getChannelInfo(): Record<string, [string, any]> {
-  return Object.fromEntries(
-    Object.entries(discoverAll()).map(([name, cls]) => [
-      name,
-      [(cls as any).displayName ?? cls.name ?? name, (cls as any).defaultConfig?.() ?? {}],
-    ]),
-  );
-}
-
-export function getChannelNames(): Record<string, string> {
-  return Object.fromEntries(Object.entries(getChannelInfo()).map(([name, info]) => [name, info[0]]));
-}
-
-export function getChannelConfigClass(channel: string): any | null {
-  return getChannel(channel) ?? null;
-}
-
-export async function configureChannel(config: Config, channelName: string): Promise<void> {
-  const cls = getChannel(channelName);
-  const defaults = (cls as any)?.defaultConfig?.() ?? { enabled: false };
-  const current = (config.channels as any)[channelName] ?? defaults;
-  const updated = await configureDraftModel({ ...defaults, ...current }, `Channel: ${channelName}`);
-  if (updated) (config.channels as any)[channelName] = updated;
-}
-
-export async function configureChannels(config: Config): Promise<void> {
-  const choices = Object.keys(getChannelNames()).sort();
-  let defaultChoice: string | null = null;
-  while (true) {
-    const answer = await selectWithBack("Select channel:", choices, defaultChoice);
-    if (answer === BACK_PRESSED || answer == null) break;
-    defaultChoice = answer;
-    await configureChannel(config, answer);
-  }
-}
-
 export const SETTINGS_SECTIONS = [
   "Agent Settings",
   "LLM Providers",
   "Model Presets",
   "Tools",
-  "Channels",
-  "Channel Common",
   "API Server",
   "Gateway",
   "Memmy Memory",
@@ -961,9 +921,6 @@ export const SETTINGS_GETTER: Record<string, (config: Config) => any> = {
   modelPresets: (config) => config.modelPresets,
   Tools: (config) => config.tools,
   tools: (config) => config.tools,
-  Channels: (config) => config.channels,
-  channels: (config) => config.channels,
-  "Channel Common": (config) => config.channels,
   "API Server": (config) => config.api,
   api: (config) => config.api,
   Gateway: (config) => config.gateway,
@@ -991,9 +948,6 @@ export const SETTINGS_SETTER: Record<string, (config: Config, value: any) => voi
   modelPresets: (config, value) => { config.modelPresets = value; syncPresetCache(config); },
   Tools: (config, value) => { config.tools = value instanceof ToolsConfig ? value : new ToolsConfig(value); },
   tools: (config, value) => { config.tools = value instanceof ToolsConfig ? value : new ToolsConfig(value); },
-  Channels: (config, value) => { config.channels = value instanceof ChannelsConfig ? value : new ChannelsConfig(value); },
-  channels: (config, value) => { config.channels = value instanceof ChannelsConfig ? value : new ChannelsConfig(value); },
-  "Channel Common": (config, value) => { config.channels = value instanceof ChannelsConfig ? value : new ChannelsConfig(value); },
   "API Server": (config, value) => { config.api = value instanceof ApiConfig ? value : new ApiConfig(value); },
   api: (config, value) => { config.api = value instanceof ApiConfig ? value : new ApiConfig(value); },
   Gateway: (config, value) => { config.gateway = value instanceof GatewayConfig ? value : new GatewayConfig(value); },
@@ -1117,7 +1071,6 @@ export function printSummaryPanel(rows: Array<[string, string]>, title: string):
 export async function showSummary(config: Config): Promise<void> {
   printSummaryPanel(summarizeModel(config.agents.defaults), "Agent Settings");
   printSummaryPanel(Object.entries(getProviderNames()).map(([name, display]) => [display, (config.providers as any)[name]?.apiKey ? "configured" : "not configured"]), "LLM Providers");
-  printSummaryPanel(Object.entries(getChannelNames()).map(([name, display]) => [display, (config.channels as any)[name]?.enabled ? "enabled" : "not configured"]), "Chat Channels");
   await pause();
 }
 
@@ -1199,8 +1152,6 @@ export async function runOnboard(
   const menuChoices = [
     "[P] LLM Provider",
     "[M] Model Presets",
-    "[C] Chat Channel",
-    "[H] Channel Common",
     "[A] Agent Settings",
     "[I] API Server",
     "[G] Gateway",
@@ -1223,8 +1174,6 @@ export async function runOnboard(
       }
       if (answer === "[P] LLM Provider") await configureProviders(config);
       else if (answer === "[M] Model Presets") await configureModelPresets(config, null);
-      else if (answer === "[C] Chat Channel") await configureChannels(config);
-      else if (answer === "[H] Channel Common") await configureGeneralSettings(config, "Channel Common");
       else if (answer === "[A] Agent Settings") await configureGeneralSettings(config, "Agent Settings");
       else if (answer === "[I] API Server") await configureGeneralSettings(config, "API Server");
       else if (answer === "[G] Gateway") await configureGeneralSettings(config, "Gateway");

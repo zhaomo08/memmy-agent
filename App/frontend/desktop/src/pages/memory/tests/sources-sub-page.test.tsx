@@ -1,6 +1,5 @@
 /** Sources sub page tests. */
 import { renderToString } from "react-dom/server";
-import { MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH } from "@memmy/local-api-contracts";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,7 +9,6 @@ import { enUSMessages, zhCNMessages } from "../../../i18n/messages.js";
 import { AGENT_SOURCE_SCAN_COMPLETION_FEEDBACK_MS } from "../../../state/app-actions.js";
 import { agentSourceLogoUrl } from "../../agent-source-logos.js";
 import {
-  buildManagedAgentTaskPrompt,
   formatAgentSourceActionError,
   formatMemoryServiceAddress,
   formatScanProgressTail,
@@ -19,14 +17,13 @@ import {
   isAgentSourceConnectionActionDisabled,
   resolveAgentSourceScanButtonState,
   resolveAgentSourceConnectionAction,
-  resolveManagedAgentSourceSyncButtonState,
   resolveAgentSourceStatusLabelKey,
   resolveScanContinueSourceId
 } from "../../memory-sources-page.js";
 import { SourcesSubPage } from "../sources-sub-page.js";
 
 describe("SourcesSubPage", () => {
-  it("只用 Hook 描述 Cursor、Claude Code 和 Codex 的接入操作", () => {
+  it("只用 Hook 描述 Claude Code 和 Codex 的接入操作", () => {
     expect(zhCNMessages["memory.hookInstalled"]).toBe("已安装 Hook");
     expect(zhCNMessages["memory.hookNotInstalled"]).toBe("未安装 Hook");
     expect(zhCNMessages["memory.installHook"]).toBe("安装 Hook");
@@ -38,7 +35,7 @@ describe("SourcesSubPage", () => {
   });
 
   it("同步按钮在扫描中旋转，完成后进入不可重复点击的勾选状态", () => {
-    const sourceIds = ["cursor", "claude_code", "codex", "opencode", "openclaw", "hermes", "workbuddy"];
+    const sourceIds = ["claude_code", "codex"];
     for (const sourceId of sourceIds) {
       const otherSourceId = sourceIds.find((candidate) => candidate !== sourceId)!;
       expect(resolveAgentSourceScanButtonState(sourceId, true, sourceId, new Set())).toBe("running");
@@ -51,15 +48,9 @@ describe("SourcesSubPage", () => {
     expect(AGENT_SOURCE_SCAN_COMPLETION_FEEDBACK_MS).toBe(5000);
   });
 
-  it("手动添加的 Agent 同步完成后显示与内置 Agent 一致的勾选反馈", () => {
-    expect(resolveManagedAgentSourceSyncButtonState("manual-qoder", "manual-qoder", null)).toBe("running");
-    expect(resolveManagedAgentSourceSyncButtonState("manual-qoder", null, "manual-qoder")).toBe("completed");
-    expect(resolveManagedAgentSourceSyncButtonState("manual-qoder", null, null)).toBe("idle");
-    expect(resolveManagedAgentSourceSyncButtonState("manual-qoder", "manual-other", "manual-other")).toBe("idle");
-  });
-
-  it("使用 WorkBuddy 官方图标而不是文字缩写", () => {
-    expect(agentSourceLogoUrl("workbuddy")).toContain("workbuddy.png");
+  it("为两个受支持的 Agent 使用官方图标", () => {
+    expect(agentSourceLogoUrl("claude_code")).toContain("data:image/svg+xml");
+    expect(agentSourceLogoUrl("codex")).toContain("data:image/svg+xml");
   });
 
   it("复用跨 Agent 接入源主体内容", () => {
@@ -97,84 +88,11 @@ describe("SourcesSubPage", () => {
     expect(html).not.toContain("w-52 border-r border-border-stone/30");
   });
 
-  it("手动添加弹窗复用通用 Modal 和主题按钮", () => {
+  it("重新进入页面时从后端刷新 Codex 与 Claude Code", () => {
     const source = readFileSync(resolve(__dirname, "..", "..", "memory-sources-page.tsx"), "utf8");
 
-    expect(source).toContain('import { Modal } from "../components/modal.js";');
-    expect(source).toContain("<Modal");
-    expect(source).toContain("open={state.modals.manualSource}");
-    expect(source).toContain('variant="soft"');
-    expect(source).toContain("manual-source-modal__footer");
-    expect(source).not.toContain("fixed inset-0 z-50 flex items-center justify-center bg-text-ink/25 backdrop-blur-sm");
-  });
-
-  it("新增 Agent 立即写入页面状态，并在重新进入页面时从后端刷新", () => {
-    const source = readFileSync(resolve(__dirname, "..", "..", "memory-sources-page.tsx"), "utf8");
-
-    expect(source).toContain("dispatch(appActions.agentSourcesRefreshed([");
     expect(source).toContain(".listSources()");
     expect(source).toContain("if (active) dispatch(appActions.agentSourcesRefreshed(sources));");
-  });
-
-  it("未知 Agent 首次接入任务始终使用英文 Prompt", () => {
-    const prompt = buildManagedAgentTaskPrompt({
-      sourceId: "manual-1",
-      displayName: "Aider",
-      dataPath: "~/.aider"
-    }, "connect");
-
-    expect(prompt).toContain("$agent-memory-onboarding");
-    expect(prompt).toContain("Use $agent-memory-onboarding for this cross-Agent memory task.");
-    expect(prompt).toContain("This is an on-demand task launched by the cross-Agent button.");
-    expect(prompt).not.toMatch(/[\u3400-\u9fff]/u);
-    expect(prompt).toContain('"operation": "connect"');
-    expect(prompt).toContain('"source_id": "manual-1"');
-    expect(prompt).not.toContain("sync_boundary_at");
-  });
-
-  it("未知 Agent 后续同步直接调用后端配方，不再启动 Agent 会话", () => {
-    const source = readFileSync(resolve(__dirname, "..", "..", "memory-sources-page.tsx"), "utf8");
-
-    expect(source).toContain(".syncManagedSource(source.sourceId)");
-    expect(source).toContain("source.syncReady === true");
-    expect(source).not.toContain('launchManagedAgentTask(source, "sync")');
-  });
-
-  it("未知 Agent GUI 文案同时提供中英文版本", () => {
-    const keys = [
-      "memory.addOtherAgent",
-      "memory.addOtherAgentDescription",
-      "memory.addTitle",
-      "memory.confirmAndStart",
-      "memory.manualAgentAiHint",
-      "memory.deleteAgent"
-    ] as const;
-
-    for (const key of keys) {
-      expect(zhCNMessages[key]).toBeTruthy();
-      expect(enUSMessages[key]).toBeTruthy();
-      expect(zhCNMessages[key]).not.toBe(enUSMessages[key]);
-    }
-  });
-
-  it("未知 Agent 的待发现占位符不会被当作历史目录", () => {
-    const prompt = buildManagedAgentTaskPrompt({
-      sourceId: "manual-1",
-      displayName: "Aider",
-      dataPath: MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH
-    }, "connect");
-
-    expect(prompt).not.toContain("data_path");
-  });
-
-  it("首次扫描不会沿用错误的旧同步边界", () => {
-    const prompt = buildManagedAgentTaskPrompt({
-      sourceId: "manual-1",
-      displayName: "Kimi Work",
-      dataPath: "~/Library/Application Support/kimi-desktop"
-    }, "connect");
-
-    expect(prompt).not.toContain("sync_boundary_at");
   });
 
   it("全量扫描确认页要求先选择扫描范围，不再展示二次勾选", () => {
@@ -188,8 +106,8 @@ describe("SourcesSubPage", () => {
   });
 
   it("按原型密度格式化真实 Agent 路径和记忆数量", () => {
-    expect(formatSourceDataPath("/Users/zongy/Library/Application Support/Cursor/User/workspaceStorage")).toBe(
-      "~/Library/Application Support/Cursor/User/workspaceStorage"
+    expect(formatSourceDataPath("/Users/zongy/.codex/sessions/2026")).toBe(
+      "~/.codex/sessions/2026"
     );
     expect(formatSourceDataPath("/Users/zongy/.codex/sessions")).toBe("~/.codex/sessions");
     expect(formatSourceDataPath("~/.claude")).toBe("~/.claude");
@@ -206,11 +124,11 @@ describe("SourcesSubPage", () => {
 
   it("接入源不可用时展示用户文案而不是 HTTP 调试信息", () => {
     const message = formatAgentSourceActionError(
-      new ApiRequestError("Request /api/agent-sources/opencode/skill failed with status 500", 409, "agent_source_unavailable", "req-1"),
+      new ApiRequestError("Request /api/agent-sources/codex/plugin failed with status 500", 409, "agent_source_unavailable", "req-1"),
       {
-        sourceId: "opencode",
-        displayName: "Opencode",
-        dataPath: "~/.local/share/opencode/opencode.db",
+        sourceId: "codex",
+        displayName: "Codex",
+        dataPath: "~/.codex/sessions",
         builtin: true,
         available: false,
         status: "not_connected",
@@ -220,8 +138,8 @@ describe("SourcesSubPage", () => {
       (key, values) => `${key}:${values?.agent ?? ""}`
     );
 
-    expect(message).toBe("memory.agentSourceUnavailable:Opencode");
-    expect(message).not.toContain("/api/agent-sources/opencode/skill");
+    expect(message).toBe("memory.agentSourceUnavailable:Codex");
+    expect(message).not.toContain("/api/agent-sources/codex/plugin");
     expect(message).not.toContain("status 500");
   });
 
@@ -235,7 +153,7 @@ describe("SourcesSubPage", () => {
   it("暂停后的扫描进度尾部不重复显示已停止", () => {
     expect(formatScanProgressTail({
       jobId: "job-stopped",
-      sourceId: "openclaw",
+      sourceId: "codex",
       phase: "stopped",
       current: 0,
       total: 0
@@ -244,16 +162,16 @@ describe("SourcesSubPage", () => {
 
   it("暂停后继续扫描沿用原 source 而不是回退全量扫描", () => {
     expect(resolveScanContinueSourceId({
-      jobId: "job-openclaw",
-      sourceId: "openclaw",
+      jobId: "job-codex",
+      sourceId: "codex",
       phase: "stopped",
       current: 10,
       total: 20
-    })).toBe("openclaw");
+    })).toBe("codex");
     expect(resolveScanContinueSourceId(null)).toBe("all");
     expect(resolveScanContinueSourceId({
       jobId: "job-running",
-      sourceId: "openclaw",
+      sourceId: "codex",
       phase: "scan",
       current: 0,
       total: 0
@@ -261,16 +179,8 @@ describe("SourcesSubPage", () => {
   });
 
   it("按 Agent 类型固定接入按钮逻辑，避免回退到移除 Agent", () => {
-    expect(resolveAgentSourceConnectionAction(createSource("openclaw", "not_connected"))).toBe("install_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("hermes", "skill_installed"))).toBe("install_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("hermes", "plugin_installed"))).toBe("remove_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("opencode", "plugin_installed"))).toBe("remove_plugin");
     expect(resolveAgentSourceConnectionAction(createSource("codex", "skill_installed"))).toBe("install_hook");
     expect(resolveAgentSourceConnectionAction(createSource("claude_code", "plugin_installed"))).toBe("remove_hook");
-    expect(resolveAgentSourceConnectionAction(createSource("opencode", "not_connected"))).toBe("install_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("opencode", "skill_installed"))).toBe("install_plugin");
-    expect(resolveAgentSourceConnectionAction(createSource("workbuddy", "not_connected"))).toBe("install_skill");
-    expect(resolveAgentSourceConnectionAction(createSource("workbuddy", "skill_installed"))).toBe("remove_skill");
     expect(resolveAgentSourceConnectionAction({
       ...createSource("manual-1", "not_connected"),
       builtin: false
@@ -278,11 +188,9 @@ describe("SourcesSubPage", () => {
   });
 
   it("未检测到 Agent 框架时禁用安装类接入按钮，但保留卸载按钮", () => {
-    expect(isAgentSourceConnectionActionDisabled({ available: false }, "install_plugin")).toBe(true);
     expect(isAgentSourceConnectionActionDisabled({ available: false }, "install_hook")).toBe(true);
-    expect(isAgentSourceConnectionActionDisabled({ available: false }, "install_skill")).toBe(true);
-    expect(isAgentSourceConnectionActionDisabled({ available: false }, "remove_plugin")).toBe(false);
-    expect(isAgentSourceConnectionActionDisabled({ available: true }, "install_plugin")).toBe(false);
+    expect(isAgentSourceConnectionActionDisabled({ available: false }, "remove_hook")).toBe(false);
+    expect(isAgentSourceConnectionActionDisabled({ available: true }, "install_hook")).toBe(false);
   });
 
   it("按安装类型展示接入源状态，不再把未安装误写成未接入", () => {
@@ -290,14 +198,9 @@ describe("SourcesSubPage", () => {
 
     expect(resolveAgentSourceStatusLabelKey(createSource("claude_code", "not_connected"))).toBe("memory.hookNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "not_connected"))).toBe("memory.hookNotInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("openclaw", "not_connected"))).toBe("memory.pluginNotInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("opencode", "not_connected"))).toBe("memory.pluginNotInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "skill_installed"))).toBe("memory.skillInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("claude_code", "plugin_installed"))).toBe("memory.hookInstalled");
     expect(resolveAgentSourceStatusLabelKey(createSource("codex", "plugin_installed"))).toBe("memory.hookInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("hermes", "plugin_installed"))).toBe("memory.pluginInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("opencode", "plugin_installed"))).toBe("memory.pluginInstalled");
-    expect(resolveAgentSourceStatusLabelKey(createSource("workbuddy", "not_connected"))).toBe("memory.skillNotInstalled");
     expect(source).toContain('props.source.status === "skill_installed" || props.source.status === "plugin_installed"');
     expect(source).not.toContain("memory.notConnected");
   });
