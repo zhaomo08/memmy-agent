@@ -20,11 +20,30 @@ const CONFIG_URL = new URL("./memmy-memory-config.json", import.meta.url);
 const STATE_URL = new URL("./memmy-resume-state.json", import.meta.url);
 const DEFAULT_MEMMY_CONFIG_PATH = join(homedir(), ".memmy", "config.yaml");
 const FETCH_TIMEOUT_MS = 45000;
-const SEARCH_LIMIT = 20;
+/**
+ * Reads a positive integer tuning knob from the environment.
+ *
+ * @param name Environment variable name.
+ * @param fallback Value used when unset or out of range.
+ * @param min Lowest accepted value.
+ * @param max Highest accepted value.
+ * @returns The resolved value.
+ */
+function envInt(name, fallback, min, max) {
+  const parsed = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+const SEARCH_LIMIT = envInt("MEMMY_SEARCH_LIMIT", 20, 1, 200);
+// Character budget the service applies when building the per-turn injected context.
+// Injection happens on every prompt, so this is the main knob on what memory costs
+// in tokens; the service default is 1800 and is mirrored here so it can be tuned
+// without rebuilding the app.
+const CONTEXT_BUDGET = envInt("MEMMY_CONTEXT_BUDGET", 1800, 200, 24000);
 const DISPLAY_LIMIT = 5;
 const STATE_TTL_MS = 10 * 60 * 1000;
 const TURN_STATE_TTL_MS = 24 * 60 * 60 * 1000;
-const RESUME_CONTEXT_MAX_CHARS = 24000;
+const RESUME_CONTEXT_MAX_CHARS = envInt("MEMMY_RESUME_CONTEXT_MAX_CHARS", 24000, 1000, 200000);
 
 async function main() {
   const input = await readStdin();
@@ -90,6 +109,7 @@ async function main() {
       query,
       layers: ["L1"],
       limit: SEARCH_LIMIT,
+      contextBudget: CONTEXT_BUDGET,
       verbose: true
     });
     const candidates = await buildEpisodeCandidates(client, query, result);
@@ -204,7 +224,8 @@ async function startCapturedTurn(payload, prompt) {
     requestId: SOURCE + "-start:" + requestedTurnId,
     sessionId,
     turnId: requestedTurnId,
-    query
+    query,
+    contextBudget: CONTEXT_BUDGET
   });
   const state = {
     createdAt: new Date().toISOString(),
