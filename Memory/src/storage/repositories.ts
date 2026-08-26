@@ -60,10 +60,25 @@ const BUNDLE_TABLES = [
 ] as const;
 type BundleTableName = typeof BUNDLE_TABLES[number];
 const LOG_TABLE_RETENTION_LIMIT = 10_000;
+/**
+ * Byte ceiling per log table.
+ *
+ * A row cap alone does not bound size: these rows carry full before/after JSON
+ * snapshots, so ten thousand of them have been observed at 110 MB (single rows
+ * reaching 800 KB). Old rows are dropped whole rather than truncated, because the
+ * repair paths that read this log need complete snapshots for the entries they touch.
+ */
+const LOG_TABLE_RETENTION_BYTES = 24 * 1024 * 1024;
 const LOG_TABLE_RETENTION_ORDER = {
   api_logs: "called_at DESC, id DESC",
   memory_change_log: "seq DESC",
   audit_logs: "created_at DESC, id DESC"
+} as const;
+/** Payload columns that dominate each log row's size. */
+const LOG_TABLE_PAYLOAD_COLUMNS = {
+  api_logs: ["input_json", "output_json"],
+  memory_change_log: ["before_json", "after_json"],
+  audit_logs: ["actor_json", "before_json", "after_json", "meta_json"]
 } as const;
 type LogTableName = keyof typeof LOG_TABLE_RETENTION_ORDER;
 
@@ -3770,7 +3785,31 @@ export class RuntimeRepository {
          )`
       )
       .run(LOG_TABLE_RETENTION_LIMIT);
-    return result.changes;
+    return result.changes + this.pruneLogTableBySize(table);
+  }
+
+  /**
+   * Drops the oldest rows of a log table until it fits the byte budget.
+   *
+   * @param table Log table to trim.
+   * @returns Number of rows deleted.
+   */
+  private pruneLogTableBySize(table: LogTableName): number {
+    const size = LOG_TABLE_PAYLOAD_COLUMNS[table]
+      .map((column) => `length(coalesce(${column}, ''))`)
+      .join(" + ");
+    return this.db
+      .prepare(
+        `DELETE FROM ${table}
+         WHERE rowid IN (
+           SELECT rowid FROM (
+             SELECT rowid, SUM(${size}) OVER (ORDER BY ${LOG_TABLE_RETENTION_ORDER[table]}) AS running_bytes
+             FROM ${table}
+           )
+           WHERE running_bytes > ?
+         )`
+      )
+      .run(LOG_TABLE_RETENTION_BYTES).changes;
   }
 
   insertArtifact(input: {
