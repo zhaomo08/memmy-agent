@@ -1416,15 +1416,10 @@ function hideMacDockForPreparedUpdateInstall(): void {
  * @returns True when it is a packaged app and the current platform supports background install.
  */
 function shouldManageRequiredUpdates(): boolean {
-  if (!app.isPackaged) {
-    return false;
-  }
-
-  if (process.platform === "darwin") {
-    return isInstalledApplicationsApp();
-  }
-
-  return process.platform === "win32";
+  // This fork is built and installed by hand. A managed background update would fetch
+  // the upstream release and replace the local build on quit or next boot, silently
+  // discarding the fork's own fixes; updates here are applied by rebuilding instead.
+  return false;
 }
 
 /**
