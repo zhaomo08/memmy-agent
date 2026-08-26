@@ -1479,6 +1479,47 @@ export class RuntimeRepository {
     return session;
   }
 
+  /**
+   * Lists the projects that memories have been captured for.
+   *
+   * Ids come from sessions rather than memories so the readable label recorded at session
+   * open travels with them; memories only carry the opaque app_id.
+   *
+   * @returns One row per project, most recently active first.
+   */
+  listProjects(): Array<{ projectId: string; label: string; memoryCount: number; lastSeenAt: string }> {
+    const rows = this.db
+      .prepare(
+        `SELECT s.project_id AS projectId,
+                MAX(json_extract(s.meta_json, '$.projectLabel')) AS label,
+                MAX(s.workspace_path) AS workspacePath,
+                (SELECT COUNT(*) FROM memories m
+                  WHERE m.app_id = s.project_id AND m.deleted_at IS NULL) AS memoryCount,
+                MAX(s.last_seen_at) AS lastSeenAt
+           FROM sessions s
+          WHERE s.project_id IS NOT NULL AND s.project_id <> ''
+          GROUP BY s.project_id
+          HAVING memoryCount > 0
+          ORDER BY lastSeenAt DESC`
+      )
+      .all() as Array<{
+        projectId: string;
+        label: string | null;
+        workspacePath: string | null;
+        memoryCount: number;
+        lastSeenAt: string;
+      }>;
+
+    // Sessions opened by the desktop agent carry an explicit id and no label, so fall back to
+    // the workspace folder name before showing a bare hash nobody can read.
+    return rows.map((row) => ({
+      projectId: row.projectId,
+      label: row.label ?? row.workspacePath?.split("/").filter(Boolean).pop() ?? row.projectId,
+      memoryCount: row.memoryCount,
+      lastSeenAt: row.lastSeenAt
+    }));
+  }
+
   getSession(id: string): SessionRecord | undefined {
     const row = this.db
       .prepare(`SELECT * FROM sessions WHERE id = ?`)

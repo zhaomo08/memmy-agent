@@ -54,6 +54,7 @@ export const API_ROUTES = [
   "GET /api/v1/panel/overview",
   "GET /api/v1/panel/analysis",
   "GET /api/v1/panel/items",
+  "GET /api/v1/panel/projects",
   "GET /api/v1/panel/tasks",
   "DELETE /api/v1/panel/tasks/:id"
 ] as const;
@@ -621,6 +622,11 @@ async function routeRequest(
     });
   }
 
+  if (method === "GET" && path === "/api/v1/panel/projects") {
+    requirePanelRead(principal);
+    return service.panelProjects();
+  }
+
   if (method === "GET" && path === "/api/v1/panel/items") {
     requirePanelRead(principal);
     return publicPanelItemsResponse(service.panelItems({
@@ -631,6 +637,7 @@ async function routeRequest(
       q: url.searchParams.get("q") ?? undefined,
       sourceAgent: url.searchParams.get("sourceAgent") ?? undefined,
       excludedSourceAgents: url.searchParams.getAll("excludedSourceAgents"),
+      projectId: url.searchParams.get("projectId") ?? undefined,
       page: parseNumber(url.searchParams.get("page"))
     }));
   }

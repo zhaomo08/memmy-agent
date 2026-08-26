@@ -1632,6 +1632,15 @@ export class MemoryService {
     return this.panelReadModel.panelAnalysis(input);
   }
 
+  /**
+   * Lists the projects memories have been captured for, for the panel's project filter.
+   *
+   * @returns Projects with a readable label and memory count, most recently active first.
+   */
+  panelProjects(): { projects: Array<{ projectId: string; label: string; memoryCount: number; lastSeenAt: string }>; serverTime: string } {
+    return { projects: this.repos.runtime.listProjects(), serverTime: nowIso() };
+  }
+
   panelItems(input: RequestEnvelope & {
     userId?: string;
     layer?: RecallMemoryLayer;
@@ -1640,6 +1649,7 @@ export class MemoryService {
     tags?: string[];
     sourceAgent?: string;
     excludedSourceAgents?: string[];
+    projectId?: string;
     page?: number;
     limit?: number;
     cursor?: string | number;
