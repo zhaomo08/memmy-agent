@@ -515,7 +515,24 @@ function llmFilterFallbackCap(hits: RecallHit[], maxKeep: number): RecallHit[] {
 }
 
 
-function estimateTokens(text: string): number { return Math.ceil(text.length / 4); }
+/**
+ * Estimates tokens for a rendered section.
+ *
+ * Latin text averages ~4 characters per token, but CJK runs closer to one token per
+ * character; counting everything at /4 under-measured Chinese context by roughly 4x
+ * and let the injection budget through far more than it allowed.
+ */
+function estimateTokens(text: string): number {
+  let cjk = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if ((code >= 0x3040 && code <= 0x30ff) || (code >= 0x3400 && code <= 0x9fff) ||
+        (code >= 0xf900 && code <= 0xfaff) || (code >= 0x20000 && code <= 0x2fa1f)) {
+      cjk += 1;
+    }
+  }
+  return Math.ceil(cjk + (text.length - cjk) / 4);
+}
 function stringArray(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
 function stringValue(value: unknown): string | undefined { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function uniq<T>(values: readonly T[]): T[] { return [...new Set(values)]; }
@@ -582,10 +599,9 @@ export function buildInjectedContext(
       )
     : rendered;
 
-  void budget;
-  const sections: InjectedContext["sections"] = memories.map((section) => section.section);
-  const renderedSections: RenderedInjectedSection[] = [...memories];
-  const sourceMemoryIds: string[] = memories.flatMap((section) => section.section.memoryIds);
+  const sections: InjectedContext["sections"] = [];
+  const renderedSections: RenderedInjectedSection[] = [];
+  const sourceMemoryIds: string[] = [];
   const droppedDueToBudget: Array<{
     id: string;
     kind: MemoryKind;
@@ -593,26 +609,47 @@ export function buildInjectedContext(
     reason: "token_budget";
     tokenEstimate?: number;
   }> = [];
-  let used = sections.reduce((sum, section) => sum + (section.tokenEstimate ?? 0), 0);
+  // Sections arrive ranked, so spending the budget in order keeps the best ones.
+  // The first section is always kept: an empty packet is worse than an oversized one.
+  let used = 0;
+  for (const rendered of memories) {
+    const estimate = rendered.section.tokenEstimate ?? 0;
+    if (sections.length > 0 && used + estimate > budget) {
+      droppedDueToBudget.push({
+        id: rendered.section.memoryIds[0] ?? "",
+        kind: rendered.section.kind,
+        memoryLayer: rendered.section.memoryLayer,
+        reason: "token_budget",
+        tokenEstimate: estimate
+      });
+      continue;
+    }
+    sections.push(rendered.section);
+    renderedSections.push(rendered);
+    sourceMemoryIds.push(...rendered.section.memoryIds);
+    used += estimate;
+  }
   const guidance = decisionGuidanceSection(
     contextMemoriesForInjectedSources(contextMemories, sourceMemoryIds)
   );
   const avoidance = failureAvoidanceSection(
     contextMemoriesForInjectedSources(contextMemories, sourceMemoryIds)
   );
-  if (guidance) {
-    const estimate = guidance.tokenEstimate ?? 0;
-    sections.push(guidance);
-    sourceMemoryIds.push(...guidance.memoryIds);
+  // Guidance and avoidance are appended last, so they answer to the same budget
+  // rather than riding past it.
+  const fits = (section?: InjectedContext["sections"][number]): boolean => {
+    if (!section) return false;
+    const estimate = section.tokenEstimate ?? 0;
+    if (sections.length > 0 && used + estimate > budget) return false;
+    sections.push(section);
+    sourceMemoryIds.push(...section.memoryIds);
     used += estimate;
-  }
-  if (avoidance) {
-    sections.push(avoidance);
-    sourceMemoryIds.push(...avoidance.memoryIds);
-    used += avoidance.tokenEstimate ?? 0;
-  }
+    return true;
+  };
+  const keptGuidance = fits(guidance) ? guidance : undefined;
+  const keptAvoidance = fits(avoidance) ? avoidance : undefined;
 
-  const markdown = renderInjectedMarkdown(renderedSections, guidance, avoidance, retrievalMode, options);
+  const markdown = renderInjectedMarkdown(renderedSections, keptGuidance, keptAvoidance, retrievalMode, options);
 
   return {
     injectedContext: {
