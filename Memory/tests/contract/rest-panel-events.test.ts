@@ -48,7 +48,7 @@ describe("REST panel contract", () => {
         adapterId: "contract",
         requestId: "session",
         sessionId: "contract-session",
-        source: "openclaw"
+        source: "codex"
       }) as { sessionId: string };
       const completed = await client.completeTurn("turn-contract", {
         adapterId: "contract",
@@ -56,7 +56,7 @@ describe("REST panel contract", () => {
         sessionId: session.sessionId,
         query: "check panel items",
         answer: "panel items are backed by memory rows",
-        source: "openclaw"
+        source: "codex"
       }) as { l1MemoryId: string; changeSeq: number };
       expect(completed.changeSeq).toBeGreaterThan(0);
       const workerResponse = await fetch(`${endpoint}/api/v1/worker/run`, {
@@ -72,14 +72,14 @@ describe("REST panel contract", () => {
       const search = await client.search({
         query: "panel items",
         sessionId: session.sessionId,
-        source: "openclaw"
+        source: "codex"
       }) as { injectedContext: string };
       expect(search.injectedContext).toContain(completed.l1MemoryId);
       const overview = await client.panelOverview() as { counts: { memories: number } };
       expect(overview.counts.memories).toBeGreaterThan(0);
       const items = await client.panelItems({ layer: "L1" }) as { items: Array<{ id: string; metadata?: { source?: string } }> };
       expect(items.items.map((item) => item.id)).toContain(completed.l1MemoryId);
-      expect(items.items.find((item) => item.id === completed.l1MemoryId)?.metadata?.source).toBe("openclaw");
+      expect(items.items.find((item) => item.id === completed.l1MemoryId)?.metadata?.source).toBe("codex");
       const detail = await client.getMemory(completed.l1MemoryId) as { item: { id: string } };
       expect(detail.item.id).toBe(completed.l1MemoryId);
       const deleted = await client.deleteMemory(completed.l1MemoryId) as {

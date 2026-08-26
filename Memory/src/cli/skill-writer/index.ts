@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const SUPPORTED_MEMMY_AGENT_IDS = ["codex", "claude", "opencode", "openclaw", "hermes"] as const;
+export const SUPPORTED_MEMMY_AGENT_IDS = ["codex", "claude"] as const;
 export type MemmyAgentId = typeof SUPPORTED_MEMMY_AGENT_IDS[number];
 
 export interface AgentSkillInstallOptions {
@@ -42,18 +42,6 @@ const AGENT_TARGETS: Record<MemmyAgentId, Omit<AgentTarget, "id" | "root">> = {
   },
   claude: {
     injectRelativePath: "CLAUDE.md",
-    skillsRelativePath: "skills"
-  },
-  opencode: {
-    injectRelativePath: "AGENTS.md",
-    skillsRelativePath: "skills"
-  },
-  openclaw: {
-    injectRelativePath: join("workspace", "AGENTS.md"),
-    skillsRelativePath: "skills"
-  },
-  hermes: {
-    injectRelativePath: "SOUL.md",
     skillsRelativePath: "skills"
   }
 };
@@ -128,9 +116,6 @@ export function normalizeAgentIds(agents: string[]): MemmyAgentId[] {
 function normalizeAgentId(agent: string): MemmyAgentId {
   switch (agent) {
     case "codex":
-    case "opencode":
-    case "openclaw":
-    case "hermes":
       return agent;
     case "claude":
     case "claude_code":
@@ -157,14 +142,6 @@ function defaultAgentRoot(agent: MemmyAgentId): string {
       return configuredDirectory("CODEX_HOME", join(homeDirectory(), ".codex"));
     case "claude":
       return configuredDirectory("CLAUDE_CONFIG_DIR", join(homeDirectory(), ".claude"));
-    case "opencode": {
-      const xdgConfigRoot = configuredDirectory("XDG_CONFIG_HOME", join(homeDirectory(), ".config"));
-      return configuredDirectory("OPENCODE_CONFIG_DIR", join(xdgConfigRoot, "opencode"));
-    }
-    case "openclaw":
-      return configuredDirectory("OPENCLAW_STATE_DIR", join(homeDirectory(), ".openclaw"));
-    case "hermes":
-      return configuredDirectory("HERMES_HOME", join(homeDirectory(), ".hermes"));
   }
 }
 

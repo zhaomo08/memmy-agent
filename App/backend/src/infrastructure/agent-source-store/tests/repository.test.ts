@@ -31,61 +31,42 @@ describe("agent source repository", () => {
     const scannedAt = "2026-05-28T10:00:00.000Z";
 
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
-      dataPath: "/Users/test/Library/Application Support/Cursor",
-      builtin: true,
-      syncRecipe: {
-        version: 1,
-        format: "jsonl",
-        path: "/Users/test/.cursor/history.jsonl",
-        fields: {
-          messageId: "id",
-          conversationId: "conversation_id",
-          role: "role",
-          content: "content",
-          createdAt: "created_at"
-        },
-        timestampFormat: "auto"
-      }
+      sourceId: "codex",
+      displayName: "Codex",
+      dataPath: "/Users/test/.codex/sessions",
+      builtin: true
     });
-    repository.setStatus("cursor", "skill_installed");
-    repository.setLastScannedAt("cursor", scannedAt);
+    repository.setStatus("codex", "skill_installed");
+    repository.setLastScannedAt("codex", scannedAt);
 
     expect(repository.listSources()).toEqual([
       {
-        sourceId: "cursor",
-        displayName: "Cursor",
-        dataPath: "/Users/test/Library/Application Support/Cursor",
+        sourceId: "codex",
+        displayName: "Codex",
+        dataPath: "/Users/test/.codex/sessions",
         builtin: true,
         status: "skill_installed",
         messageCount: 0,
-        lastScannedAt: scannedAt,
-        syncRecipe: expect.objectContaining({
-          version: 1,
-          format: "jsonl",
-          path: "/Users/test/.cursor/history.jsonl"
-        })
+        lastScannedAt: scannedAt
       }
     ]);
 
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor Stable",
-      dataPath: "/Users/test/Cursor",
+      sourceId: "codex",
+      displayName: "Codex Stable",
+      dataPath: "/Users/test/.codex",
       builtin: true
     });
 
     expect(repository.listSources()[0]).toMatchObject({
-      sourceId: "cursor",
-      displayName: "Cursor Stable",
-      dataPath: "/Users/test/Cursor",
+      sourceId: "codex",
+      displayName: "Codex Stable",
+      dataPath: "/Users/test/.codex",
       status: "skill_installed",
-      lastScannedAt: scannedAt,
-      syncRecipe: expect.objectContaining({ format: "jsonl" })
+      lastScannedAt: scannedAt
     });
 
-    repository.removeSource("cursor");
+    repository.removeSource("codex");
 
     expect(repository.listSources()).toEqual([]);
   });
@@ -93,39 +74,39 @@ describe("agent source repository", () => {
   it("tracks ingestion dedupe keys without double-counting repeated marks", () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
+      sourceId: "claude_code",
+      displayName: "Claude Code",
       dataPath: "/Users/test/Library/Application Support/Cursor",
       builtin: true
     });
 
     expect(repository.hasSeen("dedup-key-1")).toBe(false);
-    expect(repository.markSeen("dedup-key-1", "cursor")).toBe(true);
+    expect(repository.markSeen("dedup-key-1", "claude_code")).toBe(true);
     expect(repository.hasSeen("dedup-key-1")).toBe(true);
-    expect(repository.markSeen("dedup-key-1", "cursor")).toBe(false);
+    expect(repository.markSeen("dedup-key-1", "claude_code")).toBe(false);
   });
 
   it("persists scan watermarks per agent source", () => {
     const repository = createRepository();
     repository.upsertSource({
-      sourceId: "cursor",
-      displayName: "Cursor",
+      sourceId: "claude_code",
+      displayName: "Claude Code",
       dataPath: "/Users/test/Library/Application Support/Cursor",
       builtin: true
     });
 
-    expect(repository.getScanWatermark("cursor")).toBeNull();
+    expect(repository.getScanWatermark("claude_code")).toBeNull();
 
     repository.upsertScanWatermark({
-      sourceId: "cursor",
+      sourceId: "claude_code",
       mode: "initial_subset",
       baselineAt: "2026-06-01T00:00:00.000Z",
       latestSeenCreatedAt: "2026-06-01T01:00:00.000Z",
       updatedAt: "2026-06-01T02:00:00.000Z"
     });
 
-    expect(repository.getScanWatermark("cursor")).toEqual({
-      sourceId: "cursor",
+    expect(repository.getScanWatermark("claude_code")).toEqual({
+      sourceId: "claude_code",
       mode: "initial_subset",
       baselineAt: "2026-06-01T00:00:00.000Z",
       latestSeenCreatedAt: "2026-06-01T01:00:00.000Z",
@@ -143,12 +124,12 @@ describe("agent source repository", () => {
       uuid: "cloud-account-a"
     });
     store.repositories.agentSources.upsertSource({
-      sourceId: "cursor",
+      sourceId: "claude_code",
       displayName: "Cursor A",
       dataPath: "/Users/test/a/Cursor",
       builtin: true
     });
-    expect(store.repositories.agentSources.markSeen("dedup-shared", "cursor")).toBe(true);
+    expect(store.repositories.agentSources.markSeen("dedup-shared", "claude_code")).toBe(true);
 
     store.repositories.accountSession.upsert({
       profile: accountProfile("user-b", "b@example.com", "Account B"),
@@ -156,7 +137,7 @@ describe("agent source repository", () => {
     });
     expect(store.repositories.agentSources.listSources()).toEqual([
       {
-        sourceId: "cursor",
+        sourceId: "claude_code",
         displayName: "Cursor A",
         dataPath: "/Users/test/a/Cursor",
         builtin: true,

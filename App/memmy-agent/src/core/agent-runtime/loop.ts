@@ -2009,9 +2009,6 @@ export class AgentLoop {
     this.scheduleBackground(this.consolidator.maybeConsolidateByTokens(session, { replayMaxMessages: this.maxMessages }));
 
     const metadata: Record<string, any> = {};
-    if (channel === "slack" && key.startsWith("slack:") && key.split(":").length >= 3) {
-      metadata.slack = { thread_ts: key.split(":", 3)[2] };
-    }
     const originMessageId = msg.metadata?.originMessageId;
     if (originMessageId) metadata.originMessageId = originMessageId;
     return new OutboundMessage({

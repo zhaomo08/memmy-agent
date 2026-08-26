@@ -134,6 +134,7 @@ export interface AgentState {
   operationErrorNotice: AgentOperationError | null;
   operationErrorsBySurface: Record<AgentOperationSurface, AgentOperationError | null>;
   connectionGeneration: number;
+  hasConnectedSinceStartup: boolean;
   recoveringGeneration: number | null;
   recoveringChatId: string | null;
   recoveringChatSelectionEpoch: number | null;
@@ -267,6 +268,7 @@ export const initialAgentState: AgentState = {
   operationErrorNotice: null,
   operationErrorsBySurface: { chat: null, sidebar: null },
   connectionGeneration: 0,
+  hasConnectedSinceStartup: false,
   recoveringGeneration: null,
   recoveringChatId: null,
   recoveringChatSelectionEpoch: null,
@@ -1899,7 +1901,8 @@ function reduceWsEvent(state: AgentState, event: MemmyAgentWsEvent): AgentState 
           ...base,
           connectionStatus: "connected",
           connectionError: null,
-          connectionGeneration: readyGeneration
+          connectionGeneration: readyGeneration,
+          hasConnectedSinceStartup: true
         });
       }
       const pendingCanonicalHydrateByChatId = { ...base.pendingCanonicalHydrateByChatId };
@@ -1914,6 +1917,7 @@ function reduceWsEvent(state: AgentState, event: MemmyAgentWsEvent): AgentState 
         connectionStatus: "connected",
         connectionError: null,
         connectionGeneration: readyGeneration,
+        hasConnectedSinceStartup: true,
         recoveringGeneration: readyGeneration,
         recoveringChatId: base.currentChatId,
         recoveringChatSelectionEpoch: base.currentChatId ? base.chatSelectionEpoch : null,

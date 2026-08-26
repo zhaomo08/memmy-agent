@@ -90,8 +90,8 @@ describe("config path helpers", () => {
 
     expect(getMediaDir()).toBe(path.join(dataDir, "media"));
     expectDirectory(path.join(dataDir, "media"));
-    expect(getMediaDir("telegram")).toBe(path.join(dataDir, "media", "telegram"));
-    expectDirectory(path.join(dataDir, "media", "telegram"));
+    expect(getMediaDir("cli")).toBe(path.join(dataDir, "media", "cli"));
+    expectDirectory(path.join(dataDir, "media", "cli"));
   });
 
   it("creates explicit runtime directories from MEMMY_AGENT_DATA_DIR", () => {

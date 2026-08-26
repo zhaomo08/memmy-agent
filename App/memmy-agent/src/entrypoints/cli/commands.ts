@@ -22,7 +22,7 @@ import {
   errorJson,
 } from "../openai-like-api/server.js";
 import { ChannelManager } from "../../integrations/channels/manager.js";
-import { discoverAll, discoverChannelNames } from "../../integrations/channels/registry.js";
+import { discoverAll } from "../../integrations/channels/registry.js";
 import {
   WebSocketChannel,
   publishRuntimeModelUpdate,
@@ -55,7 +55,6 @@ import {
   formatRestartCompletedMessage,
   shouldShowCliRestartNotice,
 } from "../../utils/restart.js";
-import { createChannelAdmin } from "../frontend-bridge/channels-api.js";
 import { ProjectStore } from "../frontend-bridge/projects.js";
 import { getQuestionary, runOnboard } from "./onboard.js";
 import { StreamRenderer, ThinkingSpinner } from "./stream.js";
@@ -328,35 +327,6 @@ export async function main(argv: string[] = process.argv): Promise<void> {
       console.log(`${result.key}: ${result.value}`);
     });
 
-  const channelsCommand = app.command("channels").description("Manage channels.");
-  channelsCommand
-    .command("status")
-    .option("-c, --config <path>", "Path to config file")
-    .action((opts) => {
-      for (const line of channelsStatus({ config: opts.config })) console.log(line);
-    });
-  channelsCommand
-    .command("login <channelName>")
-    .option("-f, --force", "Force re-authentication", false)
-    .option("-c, --config <path>", "Path to config file")
-    .action(async (channelName, opts) => {
-      const ok = await channelsLogin(channelName, {
-        force: Boolean(opts.force),
-        config: opts.config,
-      });
-      if (!ok) process.exitCode = 1;
-    });
-
-  const pluginsCommand = app.command("plugins").description("Manage channel plugins.");
-  pluginsCommand.action(() => {
-    for (const line of pluginsList()) console.log(line);
-  });
-  pluginsCommand
-    .command("list")
-    .description("List channel plugins.")
-    .action(() => {
-      for (const line of pluginsList()) console.log(line);
-    });
 
   const providerCommand = app.command("provider").description("Manage providers.");
   providerCommand
@@ -773,7 +743,6 @@ export async function gateway({
       cronService: cron,
       sessionDagQueue: loop.sessionDagQueue,
     });
-    webuiChannel.setChannelAdmin(createChannelAdmin(manager));
     webuiChannel.setWebuiTitleService(
       new WebuiTitleService({
         bus,
@@ -1785,55 +1754,6 @@ export function responseRenderable(
   metadata: Record<string, any> = {},
 ): Text | Markdown {
   return renderMarkdown && metadata.renderAs !== "text" ? new Markdown(text) : new Text(text);
-}
-
-export function pluginsListRows(): Array<Record<string, any>> {
-  const config = loadConfig();
-  const builtinNames = new Set(discoverChannelNames());
-  return Object.entries(discoverAll())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, cls]) => {
-      const section = (config.channels as any)?.[name];
-      const enabled = section && typeof section === "object" ? Boolean(section.enabled) : false;
-      return {
-        name,
-        display_name: (cls as any).displayName ?? cls.name,
-        source: builtinNames.has(name) ? "builtin" : "plugin",
-        enabled,
-      };
-    });
-}
-
-export function pluginsList(): string[] {
-  return pluginsListRows().map(
-    (row) => `${row.name}\t${row.source}\t${row.enabled ? "yes" : "no"}`,
-  );
-}
-export function channelsStatus({
-  configPath = null,
-  config = null,
-}: { configPath?: string | null; config?: string | null } = {}): string[] {
-  const loaded = loadRuntimeConfig(configPath ?? config, null);
-  return Object.entries(discoverAll())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, cls]) => {
-      const section = (loaded.channels as any)[name] ?? {};
-      const enabled = section && typeof section === "object" ? Boolean(section.enabled) : false;
-      const label = (cls as any).displayName ?? cls.name ?? name;
-      return `${name}\t${label}\t${enabled ? "enabled" : "disabled"}`;
-    });
-}
-
-export async function channelsLogin(
-  channelName: string,
-  { force = false, config = null }: { force?: boolean; config?: string | null } = {},
-): Promise<boolean> {
-  const loaded = loadRuntimeConfig(config, null);
-  const cls = discoverAll()[channelName] ?? discoverAll()[channelName.replaceAll("-", "_")];
-  if (!cls) throw new Error(`Unknown channel: ${channelName}`);
-  const section = (loaded.channels as any)[channelName] ?? {};
-  const channel = new cls(section, new MessageBus());
-  return Boolean(await channel.login(force));
 }
 
 type OAuthHandler = () => void | Promise<void>;

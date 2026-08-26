@@ -444,23 +444,21 @@ describe("local app contracts", () => {
 
   it("parses tool integration contracts", () => {
     const listItem = IntegrationListItemSchema.parse({
-      id: "wechat",
-      name: "微信",
-      iconText: "微",
-      category: "Chat",
-      isChannel: true,
-      authKind: "qrCode",
-      brand: "#07C160",
+      id: "github",
+      name: "GitHub",
+      iconText: "G",
+      category: "Platform",
+      authKind: "oauth",
+      brand: "#181717",
       iconKind: "svg",
       status: "not_configured"
     });
 
     expect(listItem).toMatchObject({
-      id: "wechat",
-      iconText: "微",
-      isChannel: true,
-      authKind: "qrCode",
-      brand: "#07C160",
+      id: "github",
+      iconText: "G",
+      authKind: "oauth",
+      brand: "#181717",
       iconKind: "svg",
       status: "not_configured"
     });
@@ -471,16 +469,14 @@ describe("local app contracts", () => {
 
     const detail = IntegrationDetailSchema.parse({
       ...listItem,
-      summary: "Connect WeChat as a default message channel.",
-      description: "Use QR code authorization to connect WeChat.\n\nBackend channel APIs are pending.",
-      permissions: ["Read incoming messages", "Send replies"],
-      authKind: "qrCode",
-      requiresQrCode: true
+      summary: "Connect GitHub for repository workflows.",
+      description: "Use OAuth authorization to connect GitHub.",
+      permissions: ["Read repositories", "Manage issues"],
+      authKind: "oauth"
     });
 
-    expect(detail.requiresQrCode).toBe(true);
-    expect(detail.permissions).toContain("Send replies");
-    expect(ConnectIntegrationInputSchema.parse({ id: "wechat" })).toEqual({ id: "wechat" });
+    expect(detail.permissions).toContain("Manage issues");
+    expect(ConnectIntegrationInputSchema.parse({ id: "github" })).toEqual({ id: "github" });
     expect(ConnectIntegrationInputSchema.parse({ id: "github", apiKey: "ghp_test" })).toEqual({
       id: "github",
       apiKey: "ghp_test"

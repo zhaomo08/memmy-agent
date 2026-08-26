@@ -1,14 +1,10 @@
 import { useState } from "react";
-import { MessageCircle } from "lucide-react";
 import type { IntegrationAuthKind, IntegrationCategory } from "@memmy/local-api-contracts";
 import { ALL_INTEGRATION_CATALOG } from "./toolkit-catalog.js";
-import feishuLogoUrl from "../assets/channel-logos/feishu.svg";
-import dingtalkLogoUrl from "../assets/channel-logos/dingtalk.svg";
-import wechatLogoUrl from "../assets/channel-logos/wechat.svg";
 
 export const CATEGORY_TABS = ["All", "Chat", "Productivity", "Tools & Automation", "Social", "Platform"] as const;
 export type IntegrationCategoryTab = (typeof CATEGORY_TABS)[number];
-export type IntegrationSurface = "channel" | "integration";
+export type IntegrationSurface = "integration";
 
 export interface IntegrationMeta {
   slug: string;
@@ -20,7 +16,6 @@ export interface IntegrationMeta {
   logoUrl: string;
   permissionLabel: string;
   authKind: IntegrationAuthKind;
-  isChannel: boolean;
   authProvider?: string;
 }
 
@@ -80,21 +75,6 @@ const platformKeywords = [
   "zoho"
 ];
 
-interface ChannelIconDefinition {
-  Icon: typeof MessageCircle;
-  className: string;
-}
-
-const channelIconBySlug: Record<string, ChannelIconDefinition> = {
-  imessage: { Icon: MessageCircle, className: "channel-integration-icon-imessage" }
-};
-
-const channelLogoBySlug: Record<string, string> = {
-  feishu: feishuLogoUrl,
-  dingtalk: dingtalkLogoUrl,
-  wechat: wechatLogoUrl
-};
-
 export function composioLogoUrl(slug: string): string {
   return `https://logos.composio.dev/api/${slug}`;
 }
@@ -131,17 +111,17 @@ export function guessIntegrationCategory(slug: string, name: string): Integratio
 /**
  * Get the display metadata for all integrations.
  *
- * @returns the 5 channels plus the full managed-auth table.
+ * @returns the full managed-auth integration table.
  */
 export function getAllIntegrationMeta(): IntegrationMeta[] {
-  return ALL_INTEGRATION_CATALOG.map((item) => createIntegrationMeta(item.slug, item.name, item.authKind, item.isChannel, item.authProvider));
+  return ALL_INTEGRATION_CATALOG.map((item) => createIntegrationMeta(item.slug, item.name, item.authKind, item.authProvider));
 }
 
 /**
  * Look up integration metadata by slug.
  *
  * @param slug the integration slug.
- * @param surface an optional tools page surface; when provided, disambiguates channel vs integration for the same slug.
+ * @param surface an optional tools page surface.
  * @returns the matching display metadata; undefined when not found.
  */
 export function getIntegrationMeta(slug: string, surface?: IntegrationSurface): IntegrationMeta | undefined {
@@ -153,29 +133,12 @@ export function getIntegrationMeta(slug: string, surface?: IntegrationSurface): 
  *
  * @param props.slug the integration slug.
  * @param props.name the display name.
- * @param props.surface the tools page surface; only the channel surface uses Memmy's own channel icons.
+ * @param props.surface the integration surface.
  * @returns the logo badge node, falling back to a generic icon when the image fails to load.
  */
 export function IntegrationLogoBadge(props: { slug: string; name: string; surface?: IntegrationSurface; sizeClassName?: string }) {
   const [failed, setFailed] = useState(false);
   const sizeClassName = props.sizeClassName ?? "h-8 w-8";
-  const channelLogo = props.surface === "channel" ? channelLogoBySlug[props.slug] : undefined;
-  const channelIcon = props.surface === "channel" ? channelIconBySlug[props.slug] : undefined;
-
-  if (channelLogo) {
-    return (
-      <span className={`integration-logo-slot flex ${sizeClassName} items-center justify-center`}>
-        <span className="integration-logo-badge">
-          <img src={channelLogo} alt={`${props.name} logo`} className="integration-logo-image" loading="lazy" />
-        </span>
-      </span>
-    );
-  }
-
-  if (channelIcon) {
-    return <ChannelIntegrationIcon name={props.name} icon={channelIcon} sizeClassName={sizeClassName} />;
-  }
-
   if (failed) {
     return <GenericIntegrationIcon name={props.name} sizeClassName={sizeClassName} />;
   }
@@ -190,26 +153,6 @@ export function IntegrationLogoBadge(props: { slug: string; name: string; surfac
           loading="lazy"
           onError={() => setFailed(true)}
         />
-      </span>
-    </span>
-  );
-}
-
-/**
- * Render a channel-specific icon.
- *
- * @param props.name the channel display name.
- * @param props.icon the channel icon component and color class.
- * @param props.sizeClassName the outer slot's size class.
- * @returns the channel icon node.
- */
-function ChannelIntegrationIcon(props: { name: string; icon: ChannelIconDefinition; sizeClassName: string }) {
-  const Icon = props.icon.Icon;
-
-  return (
-    <span className={`channel-integration-icon flex ${props.sizeClassName} items-center justify-center`} aria-label={`${props.name} logo`}>
-      <span className={`channel-integration-icon-badge ${props.icon.className}`}>
-        <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
       </span>
     </span>
   );
@@ -245,12 +188,11 @@ export function GenericIntegrationIcon(props: { name: string; sizeClassName?: st
  * @param slug the integration slug.
  * @param name the display name.
  * @param authKind the authorization method.
- * @param isChannel whether it is a channel.
  * @returns the integration display metadata.
  */
-function createIntegrationMeta(slug: string, name: string, authKind: IntegrationAuthKind, isChannel: boolean, authProvider?: string): IntegrationMeta {
-  const category = isChannel ? "Chat" : guessIntegrationCategory(slug, name);
-  const surface: IntegrationSurface = isChannel ? "channel" : "integration";
+function createIntegrationMeta(slug: string, name: string, authKind: IntegrationAuthKind, authProvider?: string): IntegrationMeta {
+  const category = guessIntegrationCategory(slug, name);
+  const surface: IntegrationSurface = "integration";
 
   return {
     slug,
@@ -262,8 +204,7 @@ function createIntegrationMeta(slug: string, name: string, authKind: Integration
     logoUrl: composioLogoUrl(slug),
     permissionLabel: permissionLabelFor(category),
     authKind,
-    isChannel,
-    authProvider: authProvider ?? (isChannel ? undefined : "Composio")
+    authProvider: authProvider ?? "Composio"
   };
 }
 

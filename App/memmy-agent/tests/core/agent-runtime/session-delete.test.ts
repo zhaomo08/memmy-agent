@@ -12,7 +12,7 @@ function tempRoot(): string {
   return root;
 }
 
-function seed(root = tempRoot(), key = "telegram:abc"): SessionManager {
+function seed(root = tempRoot(), key = "cli:abc"): SessionManager {
   const manager = new SessionManager(root);
   const session = new Session({ key });
   session.addMessage("user", "hello");
@@ -29,17 +29,17 @@ afterEach(() => {
 
 describe("SessionManager delete", () => {
   it("removes the file and invalidates the cache", () => {
-    const manager = seed(tempRoot(), "telegram:abc");
-    const filePath = manager.pathFor("telegram:abc");
+    const manager = seed(tempRoot(), "cli:abc");
+    const filePath = manager.pathFor("cli:abc");
     expect(fs.existsSync(filePath)).toBe(true);
 
-    const cached = manager.getOrCreate("telegram:abc");
+    const cached = manager.getOrCreate("cli:abc");
     expect(cached.messages.length).toBeGreaterThan(0);
 
-    expect(manager.deleteSession("telegram:abc")).toBe(true);
+    expect(manager.deleteSession("cli:abc")).toBe(true);
     expect(fs.existsSync(filePath)).toBe(false);
 
-    const fresh = manager.getOrCreate("telegram:abc");
+    const fresh = manager.getOrCreate("cli:abc");
     expect(fresh.messages).toEqual([]);
   });
 
@@ -50,12 +50,12 @@ describe("SessionManager delete", () => {
   });
 
   it("reads session file metadata and messages", () => {
-    const manager = seed(tempRoot(), "telegram:abc");
+    const manager = seed(tempRoot(), "cli:abc");
 
-    const data = manager.readSessionFile("telegram:abc");
+    const data = manager.readSessionFile("cli:abc");
 
     expect(data).not.toBeNull();
-    expect(data?.key).toBe("telegram:abc");
+    expect(data?.key).toBe("cli:abc");
     expect(Array.isArray(data?.messages)).toBe(true);
     expect(data?.messages.map((message: Record<string, unknown>) => message.role)).toEqual(["user", "assistant"]);
     expect(data?.createdAt).toBeTruthy();
@@ -63,13 +63,13 @@ describe("SessionManager delete", () => {
   });
 
   it("does not populate the session cache when reading a session file", () => {
-    const manager = seed(tempRoot(), "telegram:abc");
-    manager.invalidate("telegram:abc");
-    expect(manager.sessions.has("telegram:abc")).toBe(false);
+    const manager = seed(tempRoot(), "cli:abc");
+    manager.invalidate("cli:abc");
+    expect(manager.sessions.has("cli:abc")).toBe(false);
 
-    manager.readSessionFile("telegram:abc");
+    manager.readSessionFile("cli:abc");
 
-    expect(manager.sessions.has("telegram:abc")).toBe(false);
+    expect(manager.sessions.has("cli:abc")).toBe(false);
   });
 
   it("returns null when reading a missing session file", () => {
@@ -80,7 +80,7 @@ describe("SessionManager delete", () => {
 
   it("uses safeKey consistently with the internal file path", () => {
     const manager = new SessionManager(tempRoot());
-    const key = "telegram:abc/def";
+    const key = "cli:abc/def";
     const expected = path.basename(manager.pathFor(key));
 
     expect(`${SessionManager.safeKey(key)}.jsonl`).toBe(expected);

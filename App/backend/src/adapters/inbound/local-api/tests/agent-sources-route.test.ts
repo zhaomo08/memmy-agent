@@ -1,6 +1,4 @@
 /** Agent sources route tests. */
-import { randomUUID } from "node:crypto";
-import { MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH } from "@memmy/local-api-contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import { createProgressBus, type ProgressBus } from "../../../../services/progress-bus.js";
 import { createLocalApiServer } from "../server.js";
@@ -30,7 +28,7 @@ describe("agent sources local api routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual([
       expect.objectContaining({
-        sourceId: "cursor",
+        sourceId: "codex",
         status: "not_connected"
       })
     ]);
@@ -43,9 +41,9 @@ describe("agent sources local api routes", () => {
         async detectMemoryPluginConflicts() {
           return [
             {
-              sourceId: "openclaw",
-              displayName: "OpenClaw",
-              configPath: "/tmp/openclaw/openclaw.json",
+              sourceId: "claude_code",
+              displayName: "Claude Code",
+              configPath: "/tmp/claude/settings.json",
               installedPluginId: "memory-core"
             }
           ];
@@ -64,9 +62,9 @@ describe("agent sources local api routes", () => {
     expect(response.json()).toEqual({
       conflicts: [
         {
-          sourceId: "openclaw",
-          displayName: "OpenClaw",
-          configPath: "/tmp/openclaw/openclaw.json",
+          sourceId: "claude_code",
+          displayName: "Claude Code",
+          configPath: "/tmp/claude/settings.json",
           installedPluginId: "memory-core"
         }
       ]
@@ -82,7 +80,7 @@ describe("agent sources local api routes", () => {
           return {
             ok: true,
             skipped: false,
-            installed: ["cursor"],
+            installed: ["codex"],
             failed: []
           };
         }
@@ -100,30 +98,17 @@ describe("agent sources local api routes", () => {
     expect(response.json()).toEqual({
       ok: true,
       skipped: false,
-      installed: ["cursor"],
+      installed: ["codex"],
       failed: []
     });
     expect(calls).toEqual(["run"]);
   });
 
-  it("adds, removes, installs plugin, installs skill, and uninstalls agent sources", async () => {
+  it("removes stale sources and manages Codex/Claude Code skills and hooks", async () => {
     const calls: string[] = [];
     const { server } = createServer({
       agentSources: {
         ...createFakeAgentSourceService(),
-        async addManual(input) {
-          calls.push(`add:${input.displayName}`);
-          return {
-            sourceId: "manual-1",
-            displayName: input.displayName,
-            dataPath: MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH,
-            builtin: false,
-            available: true,
-            status: "not_connected",
-            messageCount: 0,
-            lastScannedAt: null
-          };
-        },
         async remove(sourceId) {
           calls.push(`remove:${sourceId}`);
         },
@@ -143,155 +128,38 @@ describe("agent sources local api routes", () => {
     });
     app = server;
 
-    const addResponse = await server.inject({
-      method: "POST",
-      url: "/api/agent-sources/manual",
-      headers: { "x-memmy-local-token": "test-token" },
-      payload: {
-        displayName: "Manual Agent"
-      }
-    });
     const removeResponse = await server.inject({
       method: "DELETE",
-      url: "/api/agent-sources/manual-1",
+      url: "/api/agent-sources/legacy-source",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const installResponse = await server.inject({
       method: "POST",
-      url: "/api/agent-sources/cursor/skill",
+      url: "/api/agent-sources/codex/skill",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const installPluginResponse = await server.inject({
       method: "POST",
-      url: "/api/agent-sources/openclaw/plugin",
+      url: "/api/agent-sources/claude_code/plugin",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const uninstallPluginResponse = await server.inject({
       method: "DELETE",
-      url: "/api/agent-sources/openclaw/plugin",
+      url: "/api/agent-sources/claude_code/plugin",
       headers: { "x-memmy-local-token": "test-token" }
     });
     const uninstallResponse = await server.inject({
       method: "DELETE",
-      url: "/api/agent-sources/cursor/skill",
+      url: "/api/agent-sources/codex/skill",
       headers: { "x-memmy-local-token": "test-token" }
     });
 
-    expect(addResponse.statusCode).toBe(200);
     expect(removeResponse.json()).toEqual({ ok: true });
     expect(installResponse.json()).toEqual({ ok: true });
     expect(installPluginResponse.json()).toEqual({ ok: true });
     expect(uninstallPluginResponse.json()).toEqual({ ok: true });
     expect(uninstallResponse.json()).toEqual({ ok: true });
-    expect(calls).toEqual(["add:Manual Agent", "remove:manual-1", "install:cursor", "plugin:openclaw", "unplugin:openclaw", "uninstall:cursor"]);
-  });
-
-  it("accepts AI-normalized history batches and managed Skill status updates", async () => {
-    const calls: string[] = [];
-    const { server } = createServer({
-      agentSources: {
-        ...createFakeAgentSourceService(),
-        async importManaged(sourceId, input) {
-          calls.push(`import:${sourceId}:${input.mode}:${input.messages.length}:${input.final}`);
-          return {
-            sourceId,
-            attempted: input.messages.length,
-            written: input.messages.length,
-            deduped: 0,
-            failed: 0,
-            memoryIds: ["memory-1"],
-            syncBoundaryAt: input.syncBoundaryAt ?? null,
-            errors: []
-          };
-        },
-        async syncManaged(sourceId) {
-          calls.push(`sync:${sourceId}`);
-          return {
-            sourceId,
-            attempted: 2,
-            written: 1,
-            deduped: 1,
-            failed: 0,
-            memoryIds: ["memory-2"],
-            syncBoundaryAt: "2026-07-01T10:00:00.000Z",
-            errors: []
-          };
-        },
-        async updateManaged(sourceId, input) {
-          calls.push(`update:${sourceId}:${input.skillInstalled}`);
-          return {
-            sourceId,
-            displayName: "Aider",
-            dataPath: input.dataPath ?? "/tmp/aider",
-            builtin: false,
-            available: true,
-            status: input.skillInstalled ? "skill_installed" : "not_connected",
-            messageCount: 2,
-            lastScannedAt: null,
-            syncBoundaryAt: null
-          };
-        }
-      }
-    });
-    app = server;
-
-    const importResponse = await server.inject({
-      method: "POST",
-      url: "/api/agent-sources/manual-1/managed/import",
-      headers: { "x-memmy-local-token": "test-token" },
-      payload: {
-        mode: "initial_subset",
-        messages: [
-          {
-            messageId: "message-1",
-            conversationId: "conversation-1",
-            role: "user",
-            content: "question",
-            createdAt: "2026-07-01T10:00:00.000Z"
-          }
-        ],
-        syncBoundaryAt: "2026-07-01T10:00:00.000Z",
-        final: true
-      }
-    });
-    const updateResponse = await server.inject({
-      method: "PATCH",
-      url: "/api/agent-sources/manual-1/managed",
-      headers: { "x-memmy-local-token": "test-token" },
-      payload: {
-        dataPath: "/tmp/aider",
-        skillInstalled: true
-      }
-    });
-    const syncResponse = await server.inject({
-      method: "POST",
-      url: "/api/agent-sources/manual-1/managed/sync",
-      headers: { "x-memmy-local-token": "test-token" }
-    });
-
-    expect(importResponse.statusCode).toBe(200);
-    expect(importResponse.json()).toMatchObject({
-      sourceId: "manual-1",
-      attempted: 1,
-      syncBoundaryAt: "2026-07-01T10:00:00.000Z"
-    });
-    expect(updateResponse.statusCode).toBe(200);
-    expect(updateResponse.json()).toMatchObject({
-      sourceId: "manual-1",
-      status: "skill_installed",
-      dataPath: "/tmp/aider"
-    });
-    expect(syncResponse.json()).toMatchObject({
-      sourceId: "manual-1",
-      attempted: 2,
-      written: 1,
-      deduped: 1
-    });
-    expect(calls).toEqual([
-      "import:manual-1:initial_subset:1:true",
-      "update:manual-1:true",
-      "sync:manual-1"
-    ]);
+    expect(calls).toEqual(["remove:legacy-source", "install:codex", "plugin:claude_code", "unplugin:claude_code", "uninstall:codex"]);
   });
 
   it("returns a structured user-actionable error when skill target is unavailable", async () => {
@@ -299,7 +167,7 @@ describe("agent sources local api routes", () => {
       agentSources: {
         ...createFakeAgentSourceService(),
         async installSkill() {
-          throw Object.assign(new Error("Opencode is not installed or its directory is unavailable"), {
+          throw Object.assign(new Error("Codex is not installed or its directory is unavailable"), {
             code: "agent_source_unavailable"
           });
         }
@@ -309,16 +177,16 @@ describe("agent sources local api routes", () => {
 
     const response = await server.inject({
       method: "POST",
-      url: "/api/agent-sources/opencode/skill",
-      headers: { "x-memmy-local-token": "test-token", "x-request-id": "req-opencode-skill" }
+      url: "/api/agent-sources/codex/skill",
+      headers: { "x-memmy-local-token": "test-token", "x-request-id": "req-codex-skill" }
     });
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: {
         code: "agent_source_unavailable",
-        message: "Opencode is not installed or its directory is unavailable",
-        requestId: "req-opencode-skill"
+        message: "Codex is not installed or its directory is unavailable",
+        requestId: "req-codex-skill"
       }
     });
   });
@@ -328,7 +196,7 @@ describe("agent sources local api routes", () => {
       agentSources: {
         ...createFakeAgentSourceService(),
         async installPlugin() {
-          throw Object.assign(new Error("Hermes is not installed or its directory is unavailable"), {
+          throw Object.assign(new Error("Claude Code is not installed or its directory is unavailable"), {
             code: "agent_source_unavailable"
           });
         }
@@ -338,16 +206,16 @@ describe("agent sources local api routes", () => {
 
     const response = await server.inject({
       method: "POST",
-      url: "/api/agent-sources/hermes/plugin",
-      headers: { "x-memmy-local-token": "test-token", "x-request-id": "req-hermes-plugin" }
+      url: "/api/agent-sources/claude_code/plugin",
+      headers: { "x-memmy-local-token": "test-token", "x-request-id": "req-claude-plugin" }
     });
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: {
         code: "agent_source_unavailable",
-        message: "Hermes is not installed or its directory is unavailable",
-        requestId: "req-hermes-plugin"
+        message: "Claude Code is not installed or its directory is unavailable",
+        requestId: "req-claude-plugin"
       }
     });
   });
@@ -411,15 +279,7 @@ describe("agent sources local api routes", () => {
     expect(calls).toEqual(["collectAll"]);
   });
 
-  it.each([
-    "cursor",
-    "claude_code",
-    "codex",
-    "opencode",
-    "openclaw",
-    "hermes",
-    "workbuddy"
-  ])("starts a source-scoped scan job for %s", async (sourceId) => {
+  it.each(["claude_code", "codex"])("starts a source-scoped scan job for %s", async (sourceId) => {
     const calls: string[] = [];
     const { server } = createServer({
       agentSources: {
@@ -581,20 +441,20 @@ describe("agent sources local api routes", () => {
       url: "/api/agent-sources/scan/status",
       headers: { "x-memmy-local-token": "test-token" }
     });
-    const openclawResponse = await server.inject({
+    const codexResponse = await server.inject({
       method: "POST",
       url: "/api/agent-sources/scan",
       headers: { "x-memmy-local-token": "test-token" },
-      payload: { sourceId: "openclaw" }
+      payload: { sourceId: "codex" }
     });
 
     expect(scanResponse.statusCode).toBe(200);
     expect(cancelResponse.json()).toEqual({ ok: true });
     expect(statusResponse.json()).toEqual({ active: false, progress: null });
-    expect(openclawResponse.statusCode).toBe(200);
-    expect(openclawResponse.json()).not.toEqual(scanResponse.json());
-    await waitFor(() => calls.includes("collectOne:openclaw"));
-    expect(calls).toContain("ingest:openclaw");
+    expect(codexResponse.statusCode).toBe(200);
+    expect(codexResponse.json()).not.toEqual(scanResponse.json());
+    await waitFor(() => calls.includes("collectOne:codex"));
+    expect(calls).toContain("ingest:codex");
   });
 
   it("resumes a stopped add phase without collecting sources again", async () => {
@@ -610,7 +470,7 @@ describe("agent sources local api routes", () => {
         async collectAll(options) {
           collectCalls += 1;
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "scan",
             current: 2,
             total: 2,
@@ -621,7 +481,7 @@ describe("agent sources local api routes", () => {
         async ingestCollected(collected, options) {
           ingestCalls += 1;
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: ingestCalls === 1 ? 1 : 2,
             total: 2,
@@ -686,7 +546,7 @@ describe("agent sources local api routes", () => {
         },
         async ingestCollected(_collected, options) {
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: 2,
             total: 5,
@@ -721,7 +581,7 @@ describe("agent sources local api routes", () => {
       active: true,
       progress: {
         jobId: scanResponse.json().jobId,
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "add",
         current: 2,
         total: 5,
@@ -743,7 +603,7 @@ describe("agent sources local api routes", () => {
         },
         async ingestCollected(_collected, options) {
           options?.onProgress?.({
-            sourceId: "cursor",
+            sourceId: "claude_code",
             phase: "add",
             current: 2,
             total: 5,
@@ -751,7 +611,7 @@ describe("agent sources local api routes", () => {
           });
           options?.signal?.addEventListener("abort", () => {
             options.onProgress?.({
-              sourceId: "cursor",
+              sourceId: "claude_code",
               phase: "add",
               current: 4,
               total: 5,
@@ -794,7 +654,7 @@ describe("agent sources local api routes", () => {
       active: false,
       progress: expect.objectContaining({
         jobId: scanResponse.json().jobId,
-        sourceId: "cursor",
+        sourceId: "claude_code",
         phase: "stopped",
         current: 2,
         total: 5
@@ -811,7 +671,7 @@ describe("agent sources local api routes", () => {
         async collectAll(options) {
           for (let index = 1; index <= 120; index += 1) {
             options?.onProgress?.({
-              sourceId: "cursor",
+              sourceId: "claude_code",
               phase: index % 2 === 0 ? "emit" : "redact",
               current: index,
               total: 120
@@ -921,7 +781,7 @@ function createServer(
 function createFakeAgentSourceService(): AgentSourceService {
   async function collectAll(options?: Parameters<AgentSourceService["collectAll"]>[0]) {
     options?.onProgress?.({
-      sourceId: "cursor",
+      sourceId: "claude_code",
       phase: "read",
       current: 1,
       total: 1,
@@ -943,9 +803,9 @@ function createFakeAgentSourceService(): AgentSourceService {
     async list() {
       return [
         {
-          sourceId: "cursor",
-          displayName: "Cursor",
-          dataPath: "/tmp/cursor",
+          sourceId: "codex",
+          displayName: "Codex",
+          dataPath: "/tmp/codex",
           builtin: true,
           available: true,
           status: "not_connected",
@@ -972,55 +832,6 @@ function createFakeAgentSourceService(): AgentSourceService {
         sourceId
       });
     },
-    async addManual(input) {
-      return {
-        sourceId: randomUUID(),
-        displayName: input.displayName,
-        dataPath: MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH,
-        builtin: false,
-        available: true,
-        status: "not_connected",
-        messageCount: 0,
-        lastScannedAt: null
-      };
-    },
-    async importManaged(sourceId, input) {
-      return {
-        sourceId,
-        attempted: input.messages.length,
-        written: input.messages.length,
-        deduped: 0,
-        failed: 0,
-        memoryIds: [],
-        syncBoundaryAt: input.syncBoundaryAt ?? null,
-        errors: []
-      };
-    },
-    async syncManaged(sourceId) {
-      return {
-        sourceId,
-        attempted: 0,
-        written: 0,
-        deduped: 0,
-        failed: 0,
-        memoryIds: [],
-        syncBoundaryAt: null,
-        errors: []
-      };
-    },
-    async updateManaged(sourceId, input) {
-      return {
-        sourceId,
-        displayName: "Manual Agent",
-        dataPath: input.dataPath ?? MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH,
-        builtin: false,
-        available: true,
-        status: input.skillInstalled ? "skill_installed" : "not_connected",
-        messageCount: 0,
-        lastScannedAt: null,
-        syncBoundaryAt: null
-      };
-    },
     async remove() {
       return undefined;
     },
@@ -1042,7 +853,7 @@ function createFakeAgentSourceService(): AgentSourceService {
   };
 }
 
-function createCollectedFixture(messageCount = 1, sourceId = "cursor"): CollectedSourceScan {
+function createCollectedFixture(messageCount = 1, sourceId = "claude_code"): CollectedSourceScan {
   const conversationId = `${sourceId}-conversation-1`;
   return {
     sourceId,

@@ -1,9 +1,7 @@
 /** Repository module. */
 import {
-  ManagedAgentSyncRecipeSchema,
   type AgentSourceScanMode,
-  type AgentSourceStatus,
-  type ManagedAgentSyncRecipe
+  type AgentSourceStatus
 } from "@memmy/local-api-contracts";
 import type { DatabaseSync } from "node:sqlite";
 
@@ -18,7 +16,6 @@ export interface AgentSourceRecord {
   status: AgentSourceStatus;
   messageCount: number;
   lastScannedAt: string | null;
-  syncRecipe?: ManagedAgentSyncRecipe;
 }
 
 export interface AgentSourceScanWatermark {
@@ -52,7 +49,6 @@ export interface UpsertAgentSourceInput {
   displayName: string;
   dataPath: string;
   builtin: boolean;
-  syncRecipe?: ManagedAgentSyncRecipe;
 }
 
 /** Contract for agent source repository. */
@@ -78,7 +74,6 @@ interface AgentSourceRow {
   status: AgentSourceStatus;
   message_count: number;
   last_scanned_at: string | null;
-  sync_recipe_json: string | null;
 }
 
 interface AgentSourceWatermarkRow {
@@ -116,7 +111,6 @@ export function createAgentSourceRepository(
               source.builtin,
               source.status,
               source.last_scanned_at,
-              source.sync_recipe_json,
               COUNT(seen.dedup_key) AS message_count
             FROM account_agent_sources source
             LEFT JOIN account_ingestion_seen seen ON seen.uuid = source.uuid AND seen.source_id = source.source_id
@@ -134,14 +128,13 @@ export function createAgentSourceRepository(
       db.prepare(
         `
             INSERT INTO account_agent_sources (
-              uuid, source_id, display_name, data_path, builtin, sync_recipe_json, updated_at
+              uuid, source_id, display_name, data_path, builtin, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(uuid, source_id) DO UPDATE SET
               display_name = excluded.display_name,
               data_path = excluded.data_path,
               builtin = excluded.builtin,
-              sync_recipe_json = COALESCE(excluded.sync_recipe_json, account_agent_sources.sync_recipe_json),
               updated_at = excluded.updated_at
           `
       ).run(
@@ -150,7 +143,6 @@ export function createAgentSourceRepository(
         input.displayName,
         input.dataPath,
         input.builtin ? 1 : 0,
-        input.syncRecipe ? JSON.stringify(input.syncRecipe) : null,
         new Date().toISOString()
       );
     },
@@ -276,10 +268,7 @@ function toAgentSourceRecord(row: AgentSourceRow): AgentSourceRecord {
     builtin: row.builtin === 1,
     status: row.status,
     messageCount: row.message_count,
-    lastScannedAt: row.last_scanned_at,
-    ...(row.sync_recipe_json
-      ? { syncRecipe: ManagedAgentSyncRecipeSchema.parse(JSON.parse(row.sync_recipe_json) as unknown) }
-      : {})
+    lastScannedAt: row.last_scanned_at
   };
 }
 

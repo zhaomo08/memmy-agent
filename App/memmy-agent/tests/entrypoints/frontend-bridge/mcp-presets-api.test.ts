@@ -553,11 +553,6 @@ describe("mcp presets api", () => {
 
     expect(() => customMcpAction("import", { config: ['{"mcpServers":{"bad":{"transport":"stdio"}}}'] })).toThrow(McpPresetError);
 
-    payload = customMcpAction("import-cursor", {
-      config: ['{"cursor-docs":{"command":"node","args":["server.js"]}}'],
-    });
-    expect(payload.last_action.message).toBe("Imported 1 MCP server(s).");
-    expect(loadConfig().tools.mcpServers["cursor-docs"].command).toBe("node");
   });
 
   it("attaches hot reload results for settings actions", async () => {

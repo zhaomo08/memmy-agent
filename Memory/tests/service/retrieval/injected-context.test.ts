@@ -23,7 +23,7 @@ describe("MemoryService / retrieval / injected context", () => {
   it("injects only the latest complete Memmy first report for bilingual handoff queries", async () => {
     const { db, service } = createTestService();
     const namespace = {
-      source: "hermes",
+      source: "claude_code",
       profileId: "jiang",
       userId: "user-first-report-handoff"
     };
@@ -463,8 +463,11 @@ describe("MemoryService / retrieval / injected context", () => {
     });
 
     expect(prepared.hits.length).toBeGreaterThan(1);
-    expect(prepared.sourceMemoryIds.length).toBeGreaterThanOrEqual(prepared.hits.length);
-    expect(prepared.droppedDueToBudget).toEqual([]);
+    // contextBudget: 5 is far below one section, so only the top-ranked section survives
+    // and everything after it is reported as dropped rather than silently injected.
+    expect(prepared.sourceMemoryIds.length).toBeGreaterThanOrEqual(1);
+    expect(prepared.droppedDueToBudget.length).toBe(prepared.hits.length - 1);
+    expect(prepared.droppedDueToBudget.every((dropped) => dropped.reason === "token_budget")).toBe(true);
 
     expect(db.db.prepare(
       `SELECT turn_id, json_extract(request_json, '$.retrievalMode') AS retrieval_mode

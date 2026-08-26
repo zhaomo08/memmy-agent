@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_NAMESPACE_SOURCE } from "../types.js";
 import { MemoryService } from "../service/memory-service.js";
 import { MemoryServiceError, statusForCode } from "../utils/error.js";
+import { resolveTimeZone } from "../utils/time.js";
 import {
   createPluginRuntimeAnalytics,
   hitCountFromGetResponse,
@@ -41,6 +42,7 @@ export const API_ROUTES = [
   "POST /api/v1/turns/start",
   "POST /api/v1/turns/:turnId/complete",
   "POST /api/v1/memory/search",
+  "GET /api/v1/memory/recalls/:queryId",
   "POST /api/v1/memory/add",
   "POST /api/v1/memory/processing/status",
   "POST /api/v1/memory/:id/processing/retry",
@@ -52,12 +54,15 @@ export const API_ROUTES = [
   "GET /api/v1/panel/overview",
   "GET /api/v1/panel/analysis",
   "GET /api/v1/panel/items",
+  "GET /api/v1/panel/projects",
   "GET /api/v1/panel/tasks",
   "DELETE /api/v1/panel/tasks/:id"
 ] as const;
 
 export interface MemoryHttpServerOptions {
   service: MemoryService;
+  /** 已配置的用户时区；未配置时才读取请求头。 */
+  timeZone?: string;
   apiKey?: string;
   auth?: MemoryHttpAuthOptions;
   workerStartupFallbackMs?: number;
@@ -82,6 +87,7 @@ interface AuthPrincipal {
   tokenId?: string;
   namespace?: RuntimeNamespace;
   scopes: string[];
+  timeZone?: string;
 }
 
 interface AutoWorkerDrain {
@@ -123,7 +129,10 @@ export function createMemoryHttpServer(options: MemoryHttpServerOptions): Server
         writeHtml(response, memoryPanelHtml());
         return;
       }
-      const principal = authenticate(request, url, options);
+      const principal = {
+        ...authenticate(request, url, options),
+        timeZone: requestTimeZone(request, options.timeZone)
+      };
       const body = await readJson(request);
       const result = await routeRequest(
         options.service,
@@ -468,7 +477,8 @@ async function routeRequest(
       artifacts: request.artifacts,
       sourceMemoryIds: request.sourceMemoryIds,
       usage: request.usage,
-      status: request.status
+      status: request.status,
+      userMemoryCorrection: request.userMemoryCorrection
     };
     const result = await trackExternalHookCapture(
       pluginRuntimeAnalytics,
@@ -518,6 +528,14 @@ async function routeRequest(
     ));
   }
 
+  const recallEvidence = match(path, /^\/api\/v1\/memory\/recalls\/([^/]+)$/);
+  if (method === "GET" && recallEvidence) {
+    requireMemoryRead(principal);
+    const queryId = decodeMatchSegment(recallEvidence, 1);
+    const request = envelopeWithPrincipal({}, principal) as RequestEnvelope;
+    return service.recallEvidence(queryId, request);
+  }
+
   if (method === "POST" && path === "/api/v1/memory/add") {
     requireMemoryWrite(principal);
     const request = requestWithPrincipal<MemoryAddRequest>(body, "memory.add", principal);
@@ -534,7 +552,12 @@ async function routeRequest(
       sessionId: request.sessionId,
       turnId: request.turnId,
       createdAt: typeof request.createdAt === "string" ? request.createdAt : undefined,
-      deferProcessing: request.deferProcessing === true
+      deferProcessing: request.deferProcessing === true,
+      sourceAgentId: typeof request.sourceAgentId === "string" ? request.sourceAgentId : undefined,
+      sourceSkillId: typeof request.sourceSkillId === "string" ? request.sourceSkillId : undefined,
+      sourceSkillPath: typeof request.sourceSkillPath === "string" ? request.sourceSkillPath : undefined,
+      sourceSkillVersion: typeof request.sourceSkillVersion === "string" ? request.sourceSkillVersion : undefined,
+      sourceContentHash: typeof request.sourceContentHash === "string" ? request.sourceContentHash : undefined
     };
     const result = await trackExternalToolCall(
       pluginRuntimeAnalytics,
@@ -599,15 +622,22 @@ async function routeRequest(
     });
   }
 
+  if (method === "GET" && path === "/api/v1/panel/projects") {
+    requirePanelRead(principal);
+    return service.panelProjects();
+  }
+
   if (method === "GET" && path === "/api/v1/panel/items") {
     requirePanelRead(principal);
     return publicPanelItemsResponse(service.panelItems({
       namespace: principal.namespace,
-      layer: parseLayer(url.searchParams.get("layer")),
+      timeZone: principal.timeZone,
+      layer: parseRecallLayer(url.searchParams.get("layer")),
       status: parseStatus(url.searchParams.get("status")),
       q: url.searchParams.get("q") ?? undefined,
       sourceAgent: url.searchParams.get("sourceAgent") ?? undefined,
       excludedSourceAgents: url.searchParams.getAll("excludedSourceAgents"),
+      projectId: url.searchParams.get("projectId") ?? undefined,
       page: parseNumber(url.searchParams.get("page"))
     }));
   }
@@ -740,6 +770,8 @@ function publicCompleteTurnResponse(result: unknown): Record<string, unknown> {
     sessionId: record.sessionId,
     episodeId: record.episodeId,
     rawTurnId: record.rawTurnId,
+    userMemoryId: record.userMemoryId,
+    userMemoryIds: record.userMemoryIds,
     l1MemoryId: record.l1MemoryId,
     l1MemoryIds: record.l1MemoryIds,
     closedEpisodeIds: record.closedEpisodeIds,
@@ -1011,6 +1043,17 @@ function namespaceFromRequest(request: IncomingMessage, url: URL): RuntimeNamesp
   };
 }
 
+function requestTimeZone(request: IncomingMessage, configuredTimeZone?: string): string {
+  try {
+    return resolveTimeZone(configuredTimeZone ?? headerString(request, "x-memmy-time-zone"));
+  } catch (error) {
+    throw new MemoryServiceError(
+      "invalid_argument",
+      error instanceof Error ? error.message : "invalid timezone"
+    );
+  }
+}
+
 function sourceString(value: string | null | undefined): string | undefined {
   return value && value.trim() ? value.trim() : undefined;
 }
@@ -1087,7 +1130,8 @@ function envelopeWithPrincipal<T extends Record<string, unknown>>(
   assertNamespaceScope(existing, principal.namespace);
   return {
     ...body,
-    namespace
+    namespace,
+    timeZone: principal.timeZone ?? (typeof body.timeZone === "string" ? body.timeZone : undefined)
   } as T & RequestEnvelope;
 }
 
@@ -1154,7 +1198,8 @@ function setCors(response: ServerResponse): void {
       "x-memmy-workspace-path",
       "x-memmy-profile-id",
       "x-memmy-profile-label",
-      "x-memmy-session-key"
+      "x-memmy-session-key",
+      "x-memmy-time-zone"
     ].join(",")
   );
 }
@@ -1209,6 +1254,10 @@ function parseApiLogTools(value: string | null): Array<"memory_add" | "memory_se
 
 function parseLayer(value: string | null): MemoryLayer | undefined {
   return parseLayerValue(value);
+}
+
+function parseRecallLayer(value: string | null): MemoryLayer | "UserMemory" | undefined {
+  return value === "UserMemory" ? value : parseLayerValue(value);
 }
 
 function parseLayerValue(value: unknown): MemoryLayer | undefined {

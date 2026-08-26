@@ -182,7 +182,7 @@ describe("SubagentManager", () => {
       "label",
       "do task",
       "result text",
-      { channel: "telegram", chatId: "123", sessionKey: "telegram:123:thread" },
+      { channel: "cli", chatId: "123", sessionKey: "cli:123:thread" },
       "ok",
       "msg-1",
     );
@@ -193,7 +193,7 @@ describe("SubagentManager", () => {
     expect(msg.metadata.injectedEvent).toBe("subagentResult");
     expect(msg.metadata.subagentTaskId).toBe("t1");
     expect(msg.metadata.originMessageId).toBe("msg-1");
-    expect(msg.sessionKeyOverride).toBe("telegram:123:thread");
+    expect(msg.sessionKeyOverride).toBe("cli:123:thread");
     expect(msg.content).toContain("completed successfully");
   });
 

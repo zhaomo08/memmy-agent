@@ -13,6 +13,7 @@ import type {
   PanelItemsInput,
   PanelItemsOutput,
   PanelOverviewOutput,
+  RecallEvidenceOutput,
   RecallHit,
   SearchOutput,
   StartTurnOutput,
@@ -210,14 +211,14 @@ export const mockMemoryDetails: Record<string, GetMemoryOutput> = {
 export const mockPanelOverview: PanelOverviewOutput = {
   counts: {
     memories: 9,
+    userMemories: 5,
     skills: 2,
     experiences: 4,
     worldModels: 3
   },
   sourceDistribution: [
-    { source: "Cursor", count: 6, percentage: 33.3 },
+    { source: "Claude Code", count: 10, percentage: 55.5 },
     { source: "Codex", count: 5, percentage: 27.8 },
-    { source: "Claude Code", count: 4, percentage: 22.2 },
     { source: "Manual", count: 3, percentage: 16.7 }
   ],
   dailyActivity: mockDailyActivity
@@ -411,6 +412,17 @@ export function createMockMemoryRuntimeClient(): MemoryRuntimeClient {
       };
     },
 
+    async recallEvidence(queryId): Promise<RecallEvidenceOutput> {
+      return {
+        recallEventId: "recall-event-1",
+        queryId,
+        query: "mock query",
+        hits: [],
+        createdAt: now,
+        serverTime: now
+      };
+    },
+
     async getMemoryProcessingStatus(memoryIds) {
       return {
         items: mockMemoryItems
@@ -511,6 +523,9 @@ export function createMockMemoryRuntimeClient(): MemoryRuntimeClient {
     async listPanelItems(input): Promise<PanelItemsOutput> {
       return filterMemoryItems(input);
     },
+    async listPanelProjects() {
+      return { projects: [], serverTime: new Date().toISOString() };
+    },
     async listPanelTasks(input) {
       const page = Math.max(1, Math.floor(input.page ?? 1));
       return {
@@ -557,12 +572,8 @@ function filterMemoryItems(input: PanelItemsInput): PanelItemsOutput {
       const sourceAgent = metadataSource || item.tags.find((tag) => [
         "memmy",
         "memmy_agent",
-        "cursor",
         "claude_code",
-        "codex",
-        "opencode",
-        "openclaw",
-        "hermes"
+        "codex"
       ].includes(normalizeSourceAgentKey(tag))) || "";
       if (input.sourceAgent) {
         return normalizeSourceAgentKey(sourceAgent) === normalizeSourceAgentKey(input.sourceAgent);

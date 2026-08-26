@@ -747,37 +747,6 @@ describe("AgentLoop turn persistence", () => {
     ]);
   });
 
-  it("routes system subagent followups back to Slack thread metadata", async () => {
-    const loop = makeLoop();
-    prepareProcessLoop(loop);
-    (loop as any).runAgentLoop = vi.fn(async (initialMessages: Record<string, any>[], opts: Record<string, any>) => {
-      expect(opts.channel).toBe("slack");
-      expect(opts.chatId).toBe("C123");
-      expect(opts.sessionKey).toBe("slack:C123:1700.42");
-      return ["thread done", [], [...initialMessages, { role: "assistant", content: "thread done" }], "stop", false];
-    });
-
-    const response = await loop.processMessage(new InboundMessage({
-      channel: "system",
-      senderId: "subagent",
-      chatId: "slack:C123",
-      content: "subagent result",
-      sessionKeyOverride: "slack:C123:1700.42",
-      metadata: { subagentTaskId: "sub-2", originMessageId: "msg-123" },
-    }));
-
-    expect(response).toMatchObject({
-      channel: "slack",
-      chatId: "C123",
-      content: "thread done",
-      metadata: {
-        slack: { thread_ts: "1700.42" },
-        originMessageId: "msg-123",
-      },
-    });
-    expect(loop.sessions.getOrCreate("slack:C123:1700.42").messages.some((message) => message.subagentTaskId === "sub-2")).toBe(true);
-  });
-
   it("skips early persistence when a user turn has no text or media", () => {
     const loop = makeLoop();
     const session = new Session({ key: "empty-turn" });

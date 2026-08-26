@@ -108,7 +108,7 @@ describe("skill creator quick validator", () => {
     const legacy = writeSkill(root, "legacy-metadata", [
       "name: legacy-metadata",
       "description: Reject legacy metadata namespaces.",
-      `metadata: ${JSON.stringify({ openclaw: { always: true }, memmy_agent: { always: true } })}`,
+      `metadata: ${JSON.stringify({ codex: { always: true }, memmy_agent: { always: true } })}`,
     ]);
 
     const result = runValidator(legacy);

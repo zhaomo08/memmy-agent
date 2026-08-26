@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import type { Server } from "node:http";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { createStorageBackend } from "../storage/backend.js";
+import { createStorageBackend, type StorageBackend } from "../storage/backend.js";
 import { loadMemmyConfig } from "../config/index.js";
 import { createMemoryLogger, memoryErrorFields } from "../logging/logger.js";
 import { MemoryService } from "../service/memory-service.js";
@@ -34,9 +35,16 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     const serverLock = config.storage.backend === "openmem-cloud-rest"
         ? undefined
         : acquireSqliteServerLock({ sqlitePath, host, port });
+    let backend: StorageBackend | undefined;
+    let server: Server | undefined;
+    let requestShutdown: (() => void) | undefined;
+    const shutdownRequested = new Promise<void>((resolveShutdown) => {
+        requestShutdown = resolveShutdown;
+    });
+    const handleShutdownSignal = () => requestShutdown?.();
 
     try {
-        const backend = createStorageBackend({
+        backend = createStorageBackend({
             mode: config.storage.mode,
             backend: config.storage.backend,
             sqlitePath,
@@ -49,15 +57,16 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
             configPath: options.configPath,
             config
         });
-        const { url } = await listenMemoryHttpServer({
+        const listening = await listenMemoryHttpServer({
             service,
             host,
             port,
-            onShutdownRequested: () => {
-                setTimeout(() => process.kill(process.pid, "SIGTERM"), 0);
-            },
+            timeZone: config.timeZone,
+            onShutdownRequested: () => requestShutdown?.(),
             auth
         });
+        server = listening.server;
+        const { url } = listening;
         if (configPath) {
             writeCurrentEndpoint(configPath, url);
         }
@@ -67,12 +76,17 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
             mode: config.storage.mode,
             storageBackend: config.storage.backend
         });
-        await new Promise<void>(() => {
-            // Keep the process alive while the HTTP server owns the service lifecycle.
-        });
-    } catch (error) {
+        process.once("SIGINT", handleShutdownSignal);
+        process.once("SIGTERM", handleShutdownSignal);
+        await shutdownRequested;
+    } finally {
+        process.off("SIGINT", handleShutdownSignal);
+        process.off("SIGTERM", handleShutdownSignal);
+        if (server) {
+            await closeHttpServer(server);
+        }
+        backend?.close();
         serverLock?.release();
-        throw error;
     }
 }
 
@@ -98,6 +112,14 @@ function isLoopbackHost(host: string): boolean {
         normalized === "::1" ||
         normalized === "[::1]" ||
         /^127(?:\.[0-9]{1,3}){3}$/.test(normalized);
+}
+
+async function closeHttpServer(server: Server): Promise<void> {
+    if (!server.listening) return;
+    await new Promise<void>((resolveClose, rejectClose) => {
+        server.close((error) => error ? rejectClose(error) : resolveClose());
+        server.closeAllConnections();
+    });
 }
 
 export interface SqliteServerLock {
@@ -256,7 +278,7 @@ function numberEnv(name: string): number | undefined {
     return parsePort(value);
 }
 
-function writeCurrentEndpoint(configPath: string, endpoint: string): void {
+export function writeCurrentEndpoint(configPath: string, endpoint: string): void {
     try {
         const root = existsSync(configPath)
             ? mutableRecord(parseYaml(readFileSync(configPath, "utf8")))

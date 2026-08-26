@@ -1,24 +1,9 @@
 ---
-title: FAQ
-icon: MessageCircleQuestionMark
+title: 常见问题
 ---
 
-**How is Memmy different from a regular chatbot?**
+Memmy 当前只为 Codex 与 Claude Code 安装 Hook 和 Skill，并扫描这两个客户端的本地历史。
 
-A regular chatbot only handles the current conversation. Memmy maintains local memory, scans external Agent history, installs Agent Skills, and puts the desktop app, CLI, Memory service, and tool connections in one runtime environment.
+DeepSeek 是可选的 BYOK 模型提供商，不是历史同步客户端。API Key 通过桌面设置或本地配置填写，不应提交到 Git。
 
-**Do I have to register an account?**
-
-Not necessarily. The desktop app supports both account mode and API Key mode; API Key mode uses your own model quota, and data is still stored local-first.
-
-**Can I use Memmy without configuring ASR or an image generation model?**
-
-Yes. They only affect voice input and Agent image generation — both optional capabilities that never block normal chat or memory features.
-
-**How do external Agents use Memmy's memory?**
-
-First run the Memory service, then install the CLI, and finally install the corresponding Skill for Codex, Claude Code, Opencode, OpenClaw, or Hermes.
-
-**Where is my data stored? Does scanning upload it?**
-
-Everything defaults to `~/.memmy`, including config, workspace, the Memory SQLite database, and runtime files. Scanning and ingestion happen entirely locally, with memories written to local SQLite. Participation in the "memory improvement program" is explicitly controlled by a toggle in privacy settings.
+默认本地数据目录是 `~/.memmy`，Codex 与 Claude Code 的 Skill 分别安装到各自配置目录。

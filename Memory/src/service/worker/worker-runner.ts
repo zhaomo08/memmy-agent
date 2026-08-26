@@ -23,6 +23,7 @@ import type {
   EmbeddingJobProcessor,
   PreparedEmbeddingJob
 } from "../embedding/embedding-job-processor.js";
+import type { PolicyEvidencePreflightReport } from "../evolution/evolution-job-processor.js";
 import {
   embeddingTextForMemory,
   embeddingRetryBackoffMs,
@@ -79,6 +80,8 @@ export interface WorkerStartupReconciliation {
   requeuedJobs: number;
   requeuedEmbeddingRetries: number;
   restartedFailedProcessing: number;
+  reconciledOrphanPolicies: number;
+  policyEvidencePreflight: PolicyEvidencePreflightReport;
   enqueuedImportSummaries: number;
   enqueuedEmbeddingRepairs: number;
   enqueuedRetrievalReindexes: number;
@@ -101,7 +104,7 @@ type EmbeddingRetryResult = {
  * that the scheduler invokes.
  */
 export interface WorkerRunnerDeps {
-  repos: Pick<Repositories, "transaction" | "memories" | "processing" | "runtime">;
+  repos: Pick<Repositories, "transaction" | "memories" | "userMemories" | "processing" | "runtime">;
   embedder: Embedder;
   capture: { embedAfterCapture: boolean };
   embeddingRetryWorkerId: string;
@@ -112,6 +115,8 @@ export interface WorkerRunnerDeps {
   namespaceIdFromMemory: (memory: MemoryRow) => string;
   runWorkerNoWrite: (request: RequestEnvelope) => Promise<WorkerRunSummary>;
   restartFailedProcessing: (at: string, limit: number) => number;
+  previewPolicyEvidenceReconciliation: (limit: number) => PolicyEvidencePreflightReport;
+  reconcileOrphanedPolicies: (at: string, limit: number) => number;
   enqueueJob: (input: EnqueueJobInput) => EvolutionJobRecord;
   enqueueEmbeddingRetry: (
     memory: MemoryRow,
@@ -156,6 +161,8 @@ export class WorkerRunner {
         requeuedJobs: 0,
         requeuedEmbeddingRetries: 0,
         restartedFailedProcessing: 0,
+        reconciledOrphanPolicies: 0,
+        policyEvidencePreflight: emptyPolicyEvidencePreflight(),
         enqueuedImportSummaries: 0,
         enqueuedEmbeddingRepairs: 0,
         enqueuedRetrievalReindexes: 0
@@ -163,6 +170,9 @@ export class WorkerRunner {
     }
 
     const at = this.deps.nowIso();
+    for (const job of this.deps.repos.runtime.listJobs("dead_letter", limit)) {
+      if (this.jobTargetWasDeleted(job)) this.completeDeletedTargetJob(job);
+    }
     const interruptedJobs = this.deps.repos.runtime.requeueLeasedJobsAfterRestart(at);
     const failedJobs = this.deps.repos.runtime.requeueFailedJobs(limit, at);
     for (const { before, after } of [...interruptedJobs, ...failedJobs]) {
@@ -174,6 +184,8 @@ export class WorkerRunner {
       this.deps.appendEmbeddingRetryChange(after, "queued", before);
     }
     const restartedFailedProcessing = this.deps.restartFailedProcessing(at, limit);
+    const policyEvidencePreflight = this.deps.previewPolicyEvidenceReconciliation(limit);
+    const reconciledOrphanPolicies = this.deps.reconcileOrphanedPolicies(at, limit);
 
     let enqueuedImportSummaries = 0;
     let enqueuedEmbeddingRepairs = 0;
@@ -294,6 +306,8 @@ export class WorkerRunner {
       requeuedJobs: interruptedJobs.length + failedJobs.length,
       requeuedEmbeddingRetries: embeddingRetries.length,
       restartedFailedProcessing,
+      reconciledOrphanPolicies,
+      policyEvidencePreflight,
       enqueuedImportSummaries,
       enqueuedEmbeddingRepairs,
       enqueuedRetrievalReindexes
@@ -385,10 +399,16 @@ export class WorkerRunner {
     this.deps.appendJobChange(job, "leased");
     this.markProcessingJobLeased(job);
     workerLogger.info("job.started", workerJobLogFields(job));
+    if (this.jobTargetWasDeleted(job)) {
+      return this.completeDeletedTargetJob(job);
+    }
     try {
       await this.deps.jobHandlers.processJob(job);
       return this.completeLeasedWorkerJob(job);
     } catch (error) {
+      if (this.jobTargetWasDeleted(job)) {
+        return this.completeDeletedTargetJob(job);
+      }
       return this.failLeasedWorkerJob(job, error);
     }
   }
@@ -401,6 +421,10 @@ export class WorkerRunner {
       this.deps.appendJobChange(job, "leased");
       this.markProcessingJobLeased(job);
       workerLogger.info("job.started", workerJobLogFields(job));
+      if (this.jobTargetWasDeleted(job)) {
+        results.push(this.completeDeletedTargetJob(job));
+        continue;
+      }
       try {
         const item = this.deps.embeddingJobs.prepareEmbeddingJob(job);
         if (item) {
@@ -424,12 +448,16 @@ export class WorkerRunner {
             this.deps.embeddingJobs.applyEmbeddingVector(item, vectors[index] ?? []);
             results.push(this.completeLeasedWorkerJob(item.job));
           } catch (error) {
-            results.push(this.failLeasedWorkerJob(item.job, error));
+            results.push(this.jobTargetWasDeleted(item.job)
+              ? this.completeDeletedTargetJob(item.job)
+              : this.failLeasedWorkerJob(item.job, error));
           }
         }
       } catch (error) {
         for (const item of batch) {
-          if (!this.deps.embeddingJobs.enqueueEmbeddingRetryAfterFailure(item, error)) {
+          if (this.jobTargetWasDeleted(item.job)) {
+            results.push(this.completeDeletedTargetJob(item.job));
+          } else if (!this.deps.embeddingJobs.enqueueEmbeddingRetryAfterFailure(item, error)) {
             results.push(this.failLeasedWorkerJob(item.job, error));
           } else {
             results.push(this.completeLeasedWorkerJob(item.job));
@@ -455,6 +483,21 @@ export class WorkerRunner {
       failed: 0,
       ref: { ...jobToRef(job), status: "succeeded" }
     };
+  }
+
+  completeDeletedTargetJob(job: EvolutionJobRecord): WorkerJobRunResult {
+    if (job.targetMemoryId) this.deps.repos.processing.delete(job.targetMemoryId);
+    const result = this.completeLeasedWorkerJob(job);
+    workerLogger.info("job.skipped_deleted_target", workerJobLogFields(job));
+    return result;
+  }
+
+  jobTargetWasDeleted(job: EvolutionJobRecord): boolean {
+    if (!job.targetMemoryId) return false;
+    const memory = this.deps.repos.memories.getIncludingDeleted(job.targetMemoryId);
+    if (memory) return memory.status === "deleted" || Boolean(memory.deletedAt);
+    const userMemory = this.deps.repos.userMemories.getIncludingDeleted(job.targetMemoryId);
+    return userMemory?.status === "deleted" || Boolean(userMemory?.deletedAt);
   }
 
   failLeasedWorkerJob(job: EvolutionJobRecord, error: unknown): WorkerJobRunResult {
@@ -554,6 +597,10 @@ export class WorkerRunner {
         results.push({ succeeded: 0, failed: 0, item: null });
         continue;
       }
+      if (this.embeddingRetryTargetWasDeleted(retry)) {
+        results.push(this.completeDeletedEmbeddingRetry(retry, claim));
+        continue;
+      }
       claimed.push({ retry, claim, attemptNo: retry.attempts + 1 });
     }
 
@@ -595,6 +642,9 @@ export class WorkerRunner {
   ): EmbeddingRetryResult {
     const memory = this.deps.repos.memories.get(retry.targetId);
     if (!memory) {
+      if (this.embeddingRetryTargetWasDeleted(retry)) {
+        return this.completeDeletedEmbeddingRetry(retry, claim);
+      }
       throw new Error(`embedding retry target not found: ${retry.targetKind}:${retry.targetId}`);
     }
     if ((memory.memoryLayer === "Skill" || memory.memoryLayer === "L3") && embeddingTextForMemory(memory) !== retry.sourceText) {
@@ -636,6 +686,25 @@ export class WorkerRunner {
       return { succeeded: 1, failed: 0, item: embeddingRetryToRunItem(completed) };
     }
     return { succeeded: 0, failed: 0, item: null };
+  }
+
+  embeddingRetryTargetWasDeleted(retry: EmbeddingRetryRecord): boolean {
+    const memory = this.deps.repos.memories.getIncludingDeleted(retry.targetId);
+    return memory?.status === "deleted" || Boolean(memory?.deletedAt);
+  }
+
+  completeDeletedEmbeddingRetry(
+    retry: EmbeddingRetryRecord,
+    claim: EmbeddingRetryClaim
+  ): EmbeddingRetryResult {
+    const completed = this.deps.repos.runtime.markEmbeddingRetrySucceededClaimed(retry.id, {
+      ...claim,
+      now: this.nowMs()
+    });
+    if (!completed) return { succeeded: 0, failed: 0, item: null };
+    this.deps.appendEmbeddingRetryChange(completed, "succeeded", retry);
+    workerLogger.info("embedding_retry.skipped_deleted_target", embeddingRetryLogFields(completed));
+    return { succeeded: 1, failed: 0, item: embeddingRetryToRunItem(completed) };
   }
 
   failClaimedEmbeddingRetry(
@@ -680,6 +749,15 @@ export class WorkerRunner {
   private nowMs(): number {
     return this.deps.nowMs?.() ?? Date.now();
   }
+}
+
+function emptyPolicyEvidencePreflight(): PolicyEvidencePreflightReport {
+  return {
+    orphanPolicyIds: [],
+    affectedWorldModelIds: [],
+    affectedSkillIds: [],
+    restorablePolicyIds: []
+  };
 }
 
 function workerJobLogFields(job: EvolutionJobRecord): Record<string, unknown> {

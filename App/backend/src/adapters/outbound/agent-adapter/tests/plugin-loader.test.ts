@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe("agent adapter plugin loader", () => {
   it("loads an adapter from a named factory export", async () => {
-    const manifest = createManifest("cursor");
+    const manifest = createManifest("claude_code");
     const loader = createAgentAdapterPluginLoader({
       moduleLoader: createFakeModuleLoader({
         createAdapter: () => createAdapter(manifest)
@@ -33,7 +33,7 @@ describe("agent adapter plugin loader", () => {
     });
 
     await expect(loader.loadAdapter(manifest)).resolves.toMatchObject({
-      kind: "cursor"
+      kind: "claude_code"
     });
   });
 
@@ -76,7 +76,7 @@ describe("agent adapter plugin loader", () => {
   });
 
   it("rejects modules without a plugin factory", async () => {
-    const manifest = createManifest("cursor");
+    const manifest = createManifest("claude_code");
     const loader = createAgentAdapterPluginLoader({
       moduleLoader: createFakeModuleLoader({})
     });
@@ -85,7 +85,7 @@ describe("agent adapter plugin loader", () => {
   });
 
   it("rejects non-object plugin modules", async () => {
-    const manifest = createManifest("cursor");
+    const manifest = createManifest("claude_code");
     const loader = createAgentAdapterPluginLoader({
       moduleLoader: createFakeModuleLoader(undefined)
     });
@@ -94,7 +94,7 @@ describe("agent adapter plugin loader", () => {
   });
 
   it("rejects adapters with a different kind than the manifest", async () => {
-    const manifest = createManifest("cursor");
+    const manifest = createManifest("claude_code");
     const wrongManifest = createManifest("codex");
     const loader = createAgentAdapterPluginLoader({
       moduleLoader: createFakeModuleLoader({
@@ -102,11 +102,11 @@ describe("agent adapter plugin loader", () => {
       })
     });
 
-    await expect(loader.loadAdapter(manifest)).rejects.toThrow("created kind codex, expected cursor");
+    await expect(loader.loadAdapter(manifest)).rejects.toThrow("created kind codex, expected claude_code");
   });
 
   it("rejects adapters with a different descriptor id than the manifest", async () => {
-    const manifest = createManifest("cursor");
+    const manifest = createManifest("claude_code");
     const loader = createAgentAdapterPluginLoader({
       moduleLoader: createFakeModuleLoader({
         createAdapter: () => ({
@@ -133,7 +133,7 @@ function createFakeModuleLoader(moduleValue: unknown): AgentAdapterModuleLoader 
 }
 
 /** Creates create manifest. */
-function createManifest(kind: "cursor" | "codex" | "custom"): AgentAdapterPluginManifest {
+function createManifest(kind: "claude_code" | "codex" | "custom"): AgentAdapterPluginManifest {
   return {
     id: kind,
     kind,

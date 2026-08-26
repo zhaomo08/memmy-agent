@@ -17,8 +17,8 @@ describe("api log source Agent filter", () => {
       repos.runtime.insertApiLog(apiLog("memory_add", "memmy-agent", {
         details: [{ summary: "queued" }, { sourceAgent: "memmy-agent", summary: "stored by Memmy" }]
       }, "2026-07-12T10:03:00.000Z"));
-      repos.runtime.insertApiLog(apiLog("memory_add", "openclaw", {
-        details: [{ sourceAgent: "openclaw", summary: "stored by OpenClaw" }]
+      repos.runtime.insertApiLog(apiLog("memory_add", "codex", {
+        details: [{ sourceAgent: "codex", summary: "stored by Codex" }]
       }, "2026-07-12T10:02:00.000Z"));
       repos.runtime.insertApiLog(apiLog("memory_add", undefined, {
         details: [{ summary: "stored directly through CLI" }]
@@ -46,7 +46,7 @@ describe("api log source Agent filter", () => {
 
       const other = repos.runtime.listApiLogs({
         toolNames: ["memory_add", "memory_search"],
-        excludedSourceAgents: ["memmy-agent", "openclaw"],
+        excludedSourceAgents: ["memmy-agent", "codex"],
         limit: 20,
         offset: 0
       });
@@ -61,7 +61,7 @@ describe("api log source Agent filter", () => {
       })).toMatchObject({ logs: [{ toolName: "memory_search" }], total: 1 });
       expect(repos.runtime.listApiLogs({
         toolNames: ["memory_search"],
-        excludedSourceAgents: ["memmy-agent", "openclaw"]
+        excludedSourceAgents: ["memmy-agent", "codex"]
       })).toMatchObject({ logs: [{ sourceAgent: "test_agent" }, { toolName: "memory_search" }], total: 2 });
     } finally {
       db.close();

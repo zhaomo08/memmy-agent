@@ -23,12 +23,6 @@ const claudeSource = createSource({
   displayName: "Claude Code",
   dataPath: "C:\\Users\\10970\\.claude\\projects"
 });
-const cursorSource = createSource({
-  sourceId: "cursor",
-  displayName: "Cursor",
-  dataPath: "C:\\Users\\10970\\AppData\\Roaming\\Cursor\\User\\workspaceStorage"
-});
-
 describe("Agent source scan errors", () => {
   it("shows a localized path-not-found message without Node.js details", () => {
     const results = [
@@ -49,25 +43,25 @@ describe("Agent source scan errors", () => {
 
   it("uses the configured source path when an unavailable error has no path", () => {
     const results = [
-      failedScan("cursor", "Cursor is not installed or its directory is unavailable")
+      failedScan("claude_code", "Claude Code is not installed or its directory is unavailable")
     ];
 
-    expect(formatScanCompletedError(results, [cursorSource], translator("zh-CN"))).toBe(
-      "找不到路径：C:\\Users\\10970\\AppData\\Roaming\\Cursor\\User\\workspaceStorage"
+    expect(formatScanCompletedError(results, [claudeSource], translator("zh-CN"))).toBe(
+      "找不到路径：C:\\Users\\10970\\.claude\\projects"
     );
-    expect(formatScanCompletedError(results, [cursorSource], translator("en-US"))).toBe(
-      "Path not found: C:\\Users\\10970\\AppData\\Roaming\\Cursor\\User\\workspaceStorage"
+    expect(formatScanCompletedError(results, [claudeSource], translator("en-US"))).toBe(
+      "Path not found: C:\\Users\\10970\\.claude\\projects"
     );
   });
 
   it("hides non-path technical details behind a localized scan failure", () => {
-    const results = [failedScan("cursor", "SQLITE_CORRUPT: database disk image is malformed")];
+    const results = [failedScan("claude_code", "SQLITE_CORRUPT: database disk image is malformed")];
 
-    const zhMessage = formatScanCompletedError(results, [cursorSource], translator("zh-CN"));
-    const enMessage = formatScanCompletedError(results, [cursorSource], translator("en-US"));
+    const zhMessage = formatScanCompletedError(results, [claudeSource], translator("zh-CN"));
+    const enMessage = formatScanCompletedError(results, [claudeSource], translator("en-US"));
 
-    expect(zhMessage).toBe("扫描 Cursor 失败，请稍后重试。");
-    expect(enMessage).toBe("Failed to scan Cursor. Please try again.");
+    expect(zhMessage).toBe("扫描 Claude Code 失败，请稍后重试。");
+    expect(enMessage).toBe("Failed to scan Claude Code. Please try again.");
     expect(zhMessage).not.toContain("SQLITE_CORRUPT");
     expect(enMessage).not.toContain("database disk image");
   });

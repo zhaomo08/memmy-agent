@@ -559,9 +559,6 @@ describe("AccountService", () => {
         async writeActiveMemoryProfile() {
           calls.push("write-active-profile");
           return projectionResult();
-        },
-        async patchChannelConfig() {
-          calls.push("patch-channel");
         }
       }
     });

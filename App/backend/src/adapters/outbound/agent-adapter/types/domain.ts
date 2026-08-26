@@ -1,7 +1,7 @@
 /** Domain module. */
 import type { JsonObject, JsonValue } from "./json.js";
 
-export type BuiltinAgentKind = "codex" | "claude_code" | "opencode" | "openclaw" | "hermes" | "workbuddy";
+export type BuiltinAgentKind = "codex" | "claude_code";
 export type AgentKind = BuiltinAgentKind | (string & {});
 
 export type AgentMessageRole = "system" | "user" | "assistant" | "tool";

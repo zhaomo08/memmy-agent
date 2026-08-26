@@ -15,8 +15,7 @@ const github: IntegrationMeta = {
   permissionLabel: "Repos, records, tickets, and system data",
   authKind: "oauth",
   surface: "integration",
-  identity: "integration:github",
-  isChannel: false
+  identity: "integration:github"
 };
 
 describe("IntegrationCard", () => {

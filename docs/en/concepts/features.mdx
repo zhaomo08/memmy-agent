@@ -1,48 +1,9 @@
 ---
-title: Full Feature List
-icon: List
+title: 功能范围
 ---
 
-## Highlights
-
-- Six external Agent sources — scanned, deduped, ingested
-- Multi-session, attachments, voice, slash commands
-- A transparent always-on-top mini window, on call anytime
-- 20+ managed integrations + custom MCP
-- 6 IM channels
-- 15+ providers with your own quota
-
-## Full List
-
-### Memory
-
-- External source scanning: Claude Code, Codex, Opencode, OpenClaw, Hermes
-- Memory panel: overview, entries, tasks, policies, world model, skills, analytics, logs
-- Dream consolidation: manual / scheduled, with logs and rollback
-- memmy-memory CLI and the Memory Runtime HTTP API
-- External Agent Skill installation (active memory read/write)
-
-### Desktop
-
-- Multi-session task list: grouping, pinning, archiving, search, unread indicators
-- Streaming output, stop / restart, Agent status panel
-- Attachments (images + common office documents), voice input (ASR)
-- Slash commands, Agent artifact preview
-- Pet mode: input bubble, multi-task badge, answer preview, session continuation
-
-### Models & Auth
-
-- Account mode (platform tokens) and API Key mode (BYOK)
-- Six independently configurable model slots: primary, Embedding, memory summary, skill evolution, ASR, image generation
-- 15+ providers, including OAuth sign-in
-
-### Tools & Automation
-
-- Built-in tools: files, shell, web search and fetching, scheduled tasks, long tasks, image generation, and more
-- Composio managed integrations + custom MCP servers (stdio / sse / streamableHttp)
-- 6 messaging channels
-
-### APIs
-
-- OpenAI-compatible API (`memmy serve`)
-- Memory Runtime API, desktop local API, SSE event stream
+- 扫描 Codex 与 Claude Code 的本地会话历史。
+- 通过 Hook 在请求前召回记忆、回合后采集记忆。
+- 安装 `memmy-memory` Skill，支持主动搜索、读取和纠正记忆。
+- 在桌面应用中配置模型、启动服务、同步来源并管理记忆。
+- 保留记忆正确性、数据库、本地 API、BYOK、安全、性能和 macOS 生命周期等通用能力。

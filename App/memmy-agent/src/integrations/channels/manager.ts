@@ -499,7 +499,7 @@ export class ChannelManager {
     return Object.fromEntries(
       Object.entries(this.channels).map(([name, channel]) => [
         name,
-        // lastError currently mainly carries Feishu permission errors and similar user-actionable failures for frontend reminders.
+        // Surface internal transport failures for the desktop runtime.
         {
           enabled: true,
           running: channel.isRunning,

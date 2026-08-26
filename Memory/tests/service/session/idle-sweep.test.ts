@@ -293,7 +293,7 @@ describe("MemoryService / session / idle sweep", () => {
 
     const triggerSession = service.openSession({
       namespace: {
-        source: "openclaw",
+        source: "codex",
         profileId: "default",
         userId: "local-user-active-tool-trigger",
         sessionKey: "active-tool-trigger-session"

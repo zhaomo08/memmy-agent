@@ -1,3 +1,4 @@
+import type { AgentGatewayStartupIssue } from "@memmy/local-api-contracts";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -13,6 +14,7 @@ const DEFAULT_MEMORY_URL = "http://127.0.0.1:18960";
 const DEFAULT_AGENT_GATEWAY_HEALTH_PORT = 18970;
 const DEFAULT_AGENT_WEBSOCKET_PORT = 18980;
 const STARTUP_TIMEOUT_MS = 30_000;
+const MEMORY_STARTUP_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 250;
 const HTTP_TIMEOUT_MS = 1_000;
 const STOP_MANAGED_CHILD_GRACE_MS = 1_000;
@@ -26,11 +28,14 @@ export interface PackagedRuntimeServices {
     token: string;
     databasePath: string;
     configPath: string;
+    ready: Promise<void>;
   };
   agentGateway: {
     baseUrl: string;
     bootstrapSecret: string;
     configPath: string;
+    workspace: string;
+    startupIssue?: AgentGatewayStartupIssue;
   };
   restartMemory(): Promise<void>;
   close(): Promise<void>;
@@ -110,6 +115,13 @@ interface DesktopManagedRestartNotice {
 
 type HttpProbeResult = "ready" | "unreachable" | "unexpected";
 
+export interface MemoryServerLock {
+  pid: number;
+  host?: string;
+  port?: number;
+  sqlitePath?: string;
+}
+
 export async function startPackagedRuntimeServices(
   options: StartPackagedRuntimeServicesOptions
 ): Promise<PackagedRuntimeServices> {
@@ -126,6 +138,7 @@ export async function startPackagedRuntimeServices(
     browserPreparationAttemptId
   );
   let memoryRestart: Promise<void> | null = null;
+  let memoryStartup: Promise<void> | null = null;
   let browserPreparation: PackagedBrowserPreparation | null = null;
   let closing = false;
 
@@ -141,22 +154,32 @@ export async function startPackagedRuntimeServices(
       spawn,
       browserPreparationAttemptId
     );
-    await ensureMemoryService(entries, runtimeConfig, children, options);
-    await gatewaySupervisor.ensureStarted();
+    const memoryReady = ensureMemoryService(entries, runtimeConfig, children, options);
+    memoryStartup = memoryReady.catch((error) => {
+      console.warn(`Memory service unavailable during desktop startup: ${errorMessage(error)}`);
+    });
+    const agentGatewayStartupIssue = await startAgentGatewayWithRecovery(gatewaySupervisor);
 
     return {
       memory: {
         baseUrl: runtimeConfig.memoryBaseUrl,
         token: runtimeConfig.memoryToken,
         databasePath: runtimeConfig.memoryDatabasePath,
-        configPath: runtimeConfig.configPath
+        configPath: runtimeConfig.configPath,
+        ready: memoryReady
       },
       agentGateway: {
         baseUrl: runtimeConfig.agentGatewayBaseUrl,
         bootstrapSecret: runtimeConfig.agentGatewayBootstrapSecret,
-        configPath: runtimeConfig.configPath
+        configPath: runtimeConfig.configPath,
+        workspace: runtimeConfig.agentWorkspace,
+        ...(agentGatewayStartupIssue ? { startupIssue: agentGatewayStartupIssue } : {})
       },
       async restartMemory() {
+        if (closing) {
+          throw new Error("Memmy is shutting down");
+        }
+        await memoryStartup;
         if (closing) {
           throw new Error("Memmy is shutting down");
         }
@@ -518,7 +541,7 @@ async function copyDirectoryContents(sourceDirectory: string, targetDirectory: s
   }
 }
 
-async function ensureMemoryService(
+export async function ensureMemoryService(
   entries: RuntimeEntryPaths,
   runtimeConfig: PackagedRuntimeConfig,
   children: ManagedChild[],
@@ -532,6 +555,12 @@ async function ensureMemoryService(
   }
   if (probe === "unexpected") {
     throw new Error(`Memory endpoint is occupied by an unexpected service: ${healthUrl}`);
+  }
+
+  const existingLock = readLiveMemoryServerLock(runtimeConfig.memoryDatabasePath);
+  if (existingLock) {
+    await waitForExistingMemoryService(healthUrl, healthHeaders, existingLock);
+    return;
   }
 
   const memoryChild = spawnNodeService("memory", entries.memoryEntry, [
@@ -556,7 +585,21 @@ async function ensureMemoryService(
     logLevel: options.logLevel
   });
   children.push(memoryChild);
-  await waitForHttpService("memory", healthUrl, memoryChild, healthHeaders);
+  try {
+    await waitForHttpService(
+      "memory",
+      healthUrl,
+      memoryChild,
+      healthHeaders,
+      MEMORY_STARTUP_TIMEOUT_MS
+    );
+  } catch (error) {
+    const lockOwner = readLiveMemoryServerLock(runtimeConfig.memoryDatabasePath);
+    if (!lockOwner || lockOwner.pid === memoryChild.process.pid) {
+      throw error;
+    }
+    await waitForExistingMemoryService(healthUrl, healthHeaders, lockOwner);
+  }
 }
 
 async function restartManagedMemoryService(
@@ -580,6 +623,8 @@ async function restartManagedMemoryService(
       });
     } else if (probe === "unexpected") {
       throw new Error(`Memory endpoint is occupied by an unexpected service: ${healthUrl}`);
+    } else {
+      await stopLockedMemoryService(runtimeConfig.memoryDatabasePath, entries.memoryEntry);
     }
   }
 
@@ -634,6 +679,26 @@ export interface AgentGatewaySupervisorDependencies {
   clearTimer?: typeof clearTimeout;
 }
 
+export async function startAgentGatewayWithRecovery(
+  supervisor: Pick<AgentGatewaySupervisor, "ensureStarted" | "startRecovery">
+): Promise<AgentGatewayStartupIssue | null> {
+  try {
+    await supervisor.ensureStarted();
+    return null;
+  } catch (error) {
+    console.warn(`Agent gateway unavailable during desktop startup: ${errorMessage(error)}`);
+    supervisor.startRecovery();
+    return classifyAgentGatewayStartupIssue(error);
+  }
+}
+
+function classifyAgentGatewayStartupIssue(error: unknown): AgentGatewayStartupIssue | null {
+  const message = errorMessage(error);
+  return /failed to load config[\s\S]*\b(providers|modelPresets|modelAssignments|agents\.defaults)\b/i.test(message)
+    ? "model_config_invalid"
+    : null;
+}
+
 export class AgentGatewaySupervisor {
   ownership: "external" | "owned" | null = null;
   ownedChild: ManagedChild | null = null;
@@ -680,6 +745,11 @@ export class AgentGatewaySupervisor {
       this.startPromise = null;
     });
     return this.startPromise;
+  }
+
+  startRecovery(): void {
+    if (this.stopping || this.hasReachedReady) return;
+    this.scheduleReplacement();
   }
 
   async close(): Promise<void> {
@@ -861,6 +931,9 @@ export class AgentGatewaySupervisor {
     }
     try {
       await this.spawnOwnedGateway(false);
+      if (!this.hasReachedReady) {
+        this.scheduleReplacement();
+      }
     } catch {
       this.scheduleReplacement();
     }
@@ -989,9 +1062,10 @@ async function waitForHttpServiceStop(url: string, headers: Record<string, strin
 async function waitForHttpServiceReady(
   name: string,
   url: string,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
+  timeoutMs = STARTUP_TIMEOUT_MS
 ): Promise<void> {
-  const deadline = Date.now() + STARTUP_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
   let lastProbe: HttpProbeResult = "unreachable";
   while (Date.now() < deadline) {
     lastProbe = await probeHttpService(url, headers);
@@ -1003,13 +1077,127 @@ async function waitForHttpServiceReady(
   throw new Error(`${name} did not restart at ${url} (last probe: ${lastProbe})`);
 }
 
+export function readLiveMemoryServerLock(databasePath: string): MemoryServerLock | null {
+  const lockPath = `${resolve(databasePath)}.server.lock`;
+  try {
+    const parsed = JSON.parse(readFileSync(lockPath, "utf8")) as Record<string, unknown>;
+    if (typeof parsed.pid !== "number" || !Number.isInteger(parsed.pid) || parsed.pid <= 0) {
+      return null;
+    }
+    if (typeof parsed.sqlitePath === "string" && resolve(parsed.sqlitePath) !== resolve(databasePath)) {
+      return null;
+    }
+    if (!isProcessAlive(parsed.pid)) {
+      return null;
+    }
+    return {
+      pid: parsed.pid,
+      ...(typeof parsed.host === "string" ? { host: parsed.host } : {}),
+      ...(typeof parsed.port === "number" ? { port: parsed.port } : {}),
+      ...(typeof parsed.sqlitePath === "string" ? { sqlitePath: parsed.sqlitePath } : {})
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function waitForExistingMemoryService(
+  healthUrl: string,
+  healthHeaders: Record<string, string>,
+  lock: MemoryServerLock
+): Promise<void> {
+  try {
+    await waitForHttpServiceReady(
+      "existing memory",
+      healthUrl,
+      healthHeaders,
+      MEMORY_STARTUP_TIMEOUT_MS
+    );
+  } catch (error) {
+    throw new Error(
+      `Existing Memory service pid ${lock.pid} did not become ready at ${healthUrl}: ${errorMessage(error)}`
+    );
+  }
+}
+
+async function stopLockedMemoryService(databasePath: string, memoryEntry: string): Promise<void> {
+  const lock = readLiveMemoryServerLock(databasePath);
+  if (!lock) return;
+  if (lock.pid === process.pid) {
+    throw new Error("Memory server lock unexpectedly belongs to the desktop process");
+  }
+  if (!isPackagedMemoryServiceProcess(lock.pid, memoryEntry)) {
+    throw new Error(`Refusing to stop unverified process pid ${lock.pid} from the Memory server lock`);
+  }
+
+  terminateProcessByPid(lock.pid, false);
+  if (await waitForProcessExit(lock.pid, STOP_MANAGED_CHILD_GRACE_MS)) return;
+  terminateProcessByPid(lock.pid, true);
+  if (!(await waitForProcessExit(lock.pid, STOP_MANAGED_CHILD_GRACE_MS))) {
+    throw new Error(`Memory service pid ${lock.pid} did not exit`);
+  }
+}
+
+function isPackagedMemoryServiceProcess(pid: number, memoryEntry: string): boolean {
+  try {
+    const command = process.platform === "win32"
+      ? execFileSync("powershell.exe", [
+        "-NoProfile",
+        "-Command",
+        `(Get-CimInstance Win32_Process -Filter \"ProcessId = ${pid}\").CommandLine`
+      ], { encoding: "utf8", windowsHide: true })
+      : execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" });
+    const normalizedCommand = command.replaceAll("\\", "/");
+    const normalizedEntry = resolve(memoryEntry).replaceAll("\\", "/");
+    return normalizedCommand.includes(normalizedEntry)
+      || normalizedCommand.includes("/dist/runtime/memory/src/server/index.js");
+  } catch {
+    return false;
+  }
+}
+
+function terminateProcessByPid(pid: number, force: boolean): void {
+  try {
+    if (process.platform === "win32") {
+      execFileSync("taskkill", [...(force ? ["/F"] : []), "/T", "/PID", String(pid)], { stdio: "ignore" });
+    } else {
+      process.kill(pid, force ? "SIGKILL" : "SIGTERM");
+    }
+  } catch {
+    // The process may already have exited.
+  }
+}
+
+async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!isProcessAlive(pid)) return true;
+    await sleep(50);
+  }
+  return !isProcessAlive(pid);
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return isNodeError(error) && error.code === "EPERM";
+  }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
+}
+
 async function waitForHttpService(
   name: string,
   url: string,
   child: ManagedChild,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
+  timeoutMs = STARTUP_TIMEOUT_MS
 ): Promise<void> {
-  const deadline = Date.now() + STARTUP_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
 
   while (Date.now() < deadline) {
@@ -1098,7 +1286,7 @@ function terminateProcessTreeSync(child: ChildProcess): void {
   }
 }
 
-async function stopManagedChild(child: ManagedChild): Promise<void> {
+export async function stopManagedChild(child: ManagedChild): Promise<void> {
   if (child.exitDescription || child.process.exitCode !== null || child.process.signalCode !== null) {
     return;
   }
@@ -1116,18 +1304,29 @@ async function stopManagedChild(child: ManagedChild): Promise<void> {
         // The process may already have exited or we may lack permission; ignore.
       }
     }
+    await waitForManagedChildExit(child, STOP_MANAGED_CHILD_GRACE_MS);
     return;
   }
 
   child.process.kill();
-  await Promise.race([
-    new Promise<void>((resolveStop) => child.process.once("exit", () => resolveStop())),
-    sleep(STOP_MANAGED_CHILD_GRACE_MS).then(() => {
-      if (!child.exitDescription && child.process.exitCode === null && child.process.signalCode === null) {
-        child.process.kill("SIGKILL");
-      }
-    })
-  ]);
+  if (await waitForManagedChildExit(child, STOP_MANAGED_CHILD_GRACE_MS)) return;
+  child.process.kill("SIGKILL");
+  await waitForManagedChildExit(child, STOP_MANAGED_CHILD_GRACE_MS);
+}
+
+async function waitForManagedChildExit(child: ManagedChild, timeoutMs: number): Promise<boolean> {
+  if (!isManagedChildRunning(child)) return true;
+  return new Promise<boolean>((resolveExit) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolveExit(true);
+    };
+    const timer = setTimeout(() => {
+      child.process.off("exit", onExit);
+      resolveExit(!isManagedChildRunning(child));
+    }, timeoutMs);
+    child.process.once("exit", onExit);
+  });
 }
 
 async function readConfig(configPath: string): Promise<ConfigRecord> {

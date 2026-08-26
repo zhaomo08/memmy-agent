@@ -49,7 +49,6 @@ export interface ModalState {
   scanPermission: boolean;
   improvement: boolean;
   modelConfig: boolean;
-  manualSource: boolean;
 }
 
 export interface InvitationToastState {
@@ -140,8 +139,7 @@ export function createInitialAppState(): AppState {
       nickname: false,
       scanPermission: false,
       improvement: false,
-      modelConfig: false,
-      manualSource: false
+      modelConfig: false
     },
     invitationToast: null,
     tools: initialToolsState

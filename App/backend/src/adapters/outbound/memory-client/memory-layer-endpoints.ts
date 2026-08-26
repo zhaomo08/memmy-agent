@@ -11,6 +11,7 @@ export const MEMORY_LAYER_PATHS = Object.freeze({
   addMemory: "/api/v1/memory/add",
   getMemory: "/api/v1/memory/:id",
   deleteMemory: "/api/v1/memory/:id",
+  recallEvidence: "/api/v1/memory/recalls/:queryId",
   runWorker: "/api/v1/worker/run",
   enqueueImportSummaries: "/api/v1/worker/import-summaries/enqueue",
   memoryProcessingStatus: "/api/v1/memory/processing/status",
@@ -19,6 +20,7 @@ export const MEMORY_LAYER_PATHS = Object.freeze({
   panelOverview: "/api/v1/panel/overview",
   panelAnalysis: "/api/v1/panel/analysis",
   panelItems: "/api/v1/panel/items",
+  panelProjects: "/api/v1/panel/projects",
   panelTasks: "/api/v1/panel/tasks",
   deletePanelTask: "/api/v1/panel/tasks/:id"
 } as const);

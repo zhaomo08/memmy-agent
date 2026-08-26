@@ -1,7 +1,6 @@
 /** Tools page tests. */
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ChannelsClient } from "../../api/channels-client.js";
 import type { IntegrationsClient } from "../../api/integrations-client.js";
 import { AppProviders } from "../../app/providers.js";
 import type { IntegrationConnection } from "../../integrations/connection-state.js";
@@ -16,33 +15,9 @@ describe("ToolsPageView", () => {
   it("只读取连接记录，工具网格使用本地静态目录", async () => {
     const connection: IntegrationConnection = { id: "conn-github", toolkit: "github", status: "ACTIVE" };
     const client = createClient([connection]);
-    const channelsClient = createChannelsClient([]);
-
-    await expect(loadConnectionsForPage(client, channelsClient)).resolves.toEqual([{ ...connection, surface: "integration" }]);
+    await expect(loadConnectionsForPage(client)).resolves.toEqual([{ ...connection, surface: "integration" }]);
     expect(client.listCapabilities).not.toHaveBeenCalled();
     expect(client.listConnections).toHaveBeenCalledTimes(1);
-    expect(channelsClient.listConnections).toHaveBeenCalledTimes(1);
-  });
-
-  it("合并 integrations 和 channels 连接态，渠道状态转换成卡片可读记录", async () => {
-    await expect(
-      loadConnectionsForPage(
-        createClient([{ id: "conn-github", toolkit: "github", status: "ACTIVE" }]),
-        createChannelsClient([
-          {
-            id: "channel-wechat-local",
-            provider: "wechat",
-            runtimeChannel: "weixin",
-            status: "connected",
-            running: true,
-            displayName: "WeChat"
-          }
-        ])
-      )
-    ).resolves.toEqual([
-      { id: "conn-github", toolkit: "github", status: "ACTIVE", surface: "integration" },
-      { id: "channel-wechat-local", toolkit: "wechat", status: "connected", surface: "channel", lastError: null }
-    ]);
   });
 
   it("只有空闲态会自动拉取 connections，避免错误态反复重试导致提示条抖动", () => {
@@ -62,16 +37,12 @@ describe("ToolsPageView", () => {
     expect(html).toContain("工具连接");
   });
 
-  it("渲染渠道 5 项和 managed 全表", () => {
+  it("只渲染 managed 集成表", () => {
     const html = renderView(initialToolsState);
     const catalog = getAllIntegrationMeta();
 
-    expect(catalog.filter((item) => item.isChannel)).toHaveLength(6);
-    expect(catalog.filter((item) => !item.isChannel)).toHaveLength(118);
-    expect(html).toContain("Telegram");
-    expect(html).toContain("WeChat");
+    expect(catalog).toHaveLength(118);
     expect(html).toContain("GitHub");
-    expect(html).toContain("integration-card-channel");
     expect(html).toContain("integration-card-integration");
     expect(html).not.toContain("ToolDetailDrawer");
     expect(html).not.toContain("modal-right");
@@ -152,30 +123,14 @@ describe("ToolsPageView", () => {
     expect(html).toContain("Connect your GitHub account.");
   });
 
-  it("打开 WeChat modal 时显示一键扫码连接，不走 OAuth integration modal", () => {
-    const state = toolsReducer(initialToolsState, { type: "tools/openToolModal", surface: "channel", slug: "wechat" });
-    const html = renderView(state);
-
-    expect(html).toContain("Connect WeChat");
-    expect(html).toContain("Scan with WeChat to connect this message channel.");
-    expect(html).not.toContain("This channel connection is coming soon; awaiting backend");
-    expect(html).not.toContain("open a browser window");
-  });
-
-  it("同名 Discord 在渠道区和集成区打开不同连接逻辑", () => {
+  it("Discord 使用 OAuth integration 连接逻辑", () => {
     const integrationState = toolsReducer(initialToolsState, { type: "tools/openToolModal", surface: "integration", slug: "discord" });
-    const channelState = toolsReducer(initialToolsState, { type: "tools/openToolModal", surface: "channel", slug: "discord" });
     const integrationHtml = renderView(integrationState);
-    const channelHtml = renderView(channelState);
 
     expect(integrationHtml).toContain("Connect Discord");
     expect(integrationHtml).toContain("Connect your Discord account.");
     expect(integrationHtml).toContain("open a browser window");
     expect(integrationHtml).not.toContain("Bot Token");
-    expect(channelHtml).toContain("Connect Discord");
-    expect(channelHtml).toContain("Bot Token");
-    expect(channelHtml).not.toContain("This channel connection is coming soon; awaiting backend");
-    expect(channelHtml).not.toContain("open a browser window");
   });
 
   it("mock 模式打开 modal 时不显示额外 mock 提示", () => {
@@ -188,7 +143,7 @@ describe("ToolsPageView", () => {
 
 function renderView(
   tools: ReturnType<typeof toolsReducer>,
-  options: { search?: string; client?: IntegrationsClient | null; channelsClient?: ChannelsClient | null } = {}
+  options: { search?: string; client?: IntegrationsClient | null } = {}
 ): string {
   return renderToString(
     <TaskBusProvider>
@@ -197,7 +152,6 @@ function renderView(
           <ToolsPageView
             tools={tools}
             client={options.client === undefined ? createClient([]) : (options.client ?? undefined)}
-            channelsClient={options.channelsClient === undefined ? createChannelsClient([]) : (options.channelsClient ?? undefined)}
             search={options.search}
             onSearchChange={() => undefined}
             onCategoryChange={() => undefined}
@@ -217,21 +171,5 @@ function createClient(connections: IntegrationConnection[]): IntegrationsClient 
     listCapabilities: vi.fn(async () => ({ toolkits: ["github"] })),
     listConnections: vi.fn(async () => ({ connections })),
     deleteConnection: vi.fn(async () => undefined)
-  };
-}
-
-/**
- * Creates a channels client for page tests.
- *
- * @param connections The current channel connection records.
- * @returns A ChannelsClient test instance.
- */
-function createChannelsClient(connections: Awaited<ReturnType<ChannelsClient["listConnections"]>>["connections"]): ChannelsClient {
-  return {
-    listDefinitions: vi.fn(async () => ({ channels: [] })),
-    listConnections: vi.fn(async () => ({ connections })),
-    connect: vi.fn(async () => ({ status: "connected" as const, connectionId: "channel-test-local" })),
-    pollConnect: vi.fn(async () => ({ status: "connected" as const, connectionId: "channel-test-local" })),
-    disconnect: vi.fn(async () => undefined)
   };
 }

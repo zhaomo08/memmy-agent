@@ -314,7 +314,7 @@ describe("MemoryService / session / lifecycle", () => {
 
   it("refreshes explicit source when reopening an existing session", () => {
     const { db, service } = createTestService();
-    const sessionId = "openclaw-memory-default";
+    const sessionId = "codex-memory-default";
     const stale = service.openSession({
       sessionId,
       namespace: {
@@ -326,26 +326,26 @@ describe("MemoryService / session / lifecycle", () => {
     const refreshed = service.openSession({
       sessionId,
       namespace: {
-        source: "openclaw",
+        source: "codex",
         profileId: "main",
         userId: "user-session-source-refresh"
       },
-      workspacePath: "/tmp/openclaw-workspace"
+      workspacePath: "/tmp/codex-workspace"
     });
     expect(stale.source).toBe("memmy");
     expect(refreshed.resumed).toBe(true);
-    expect(refreshed.source).toBe("openclaw");
+    expect(refreshed.source).toBe("codex");
 
     const sessionRow = db.db
       .prepare(`SELECT source, profile_id, workspace_path FROM sessions WHERE id = ?`)
       .get(sessionId) as { source: string; profile_id: string; workspace_path: string };
     expect(sessionRow).toMatchObject({
-      source: "openclaw",
+      source: "codex",
       profile_id: "main",
-      workspace_path: "/tmp/openclaw-workspace"
+      workspace_path: "/tmp/codex-workspace"
     });
 
-    const complete = service.completeTurn("turn-openclaw-source-refresh", {
+    const complete = service.completeTurn("turn-codex-source-refresh", {
       sessionId,
       query: "remember source refresh",
       answer: "source refresh captured"
@@ -353,7 +353,7 @@ describe("MemoryService / session / lifecycle", () => {
     const memoryRow = db.db
       .prepare(`SELECT agent_id FROM memories WHERE id = ?`)
       .get(complete.l1MemoryId) as { agent_id: string };
-    expect(memoryRow.agent_id).toBe("openclaw");
+    expect(memoryRow.agent_id).toBe("codex");
     db.close();
   });
 

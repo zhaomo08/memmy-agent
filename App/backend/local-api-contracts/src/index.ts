@@ -5,8 +5,6 @@ export * from "./memory-runtime.js";
 export * from "./endpoints.js";
 export * from "./cloud-service.js";
 
-export const MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH = "memmy-agent://history-discovery-pending";
-
 export const UserModeSchema = z.enum(["unset", "byok", "account"]);
 export type UserMode = z.infer<typeof UserModeSchema>;
 
@@ -169,9 +167,13 @@ export const ByokTokenUsageSummarySchema = z.object({
 });
 export type ByokTokenUsageSummary = z.infer<typeof ByokTokenUsageSummarySchema>;
 
+export const AgentGatewayStartupIssueSchema = z.enum(["model_config_invalid"]);
+export type AgentGatewayStartupIssue = z.infer<typeof AgentGatewayStartupIssueSchema>;
+
 export const AgentGatewayRuntimeConfigSchema = z.object({
     baseUrl: z.string().url(),
-    bootstrapSecret: z.string().min(1).optional()
+    bootstrapSecret: z.string().min(1).optional(),
+    startupIssue: AgentGatewayStartupIssueSchema.optional()
 });
 export type AgentGatewayRuntimeConfig = z.infer<typeof AgentGatewayRuntimeConfigSchema>;
 
@@ -227,96 +229,6 @@ export const AgentSourceMemoryPluginConflictsResponseSchema = z.object({
     conflicts: z.array(AgentSourceMemoryPluginConflictSchema)
 });
 export type AgentSourceMemoryPluginConflictsResponse = z.infer<typeof AgentSourceMemoryPluginConflictsResponseSchema>;
-
-/** Schema for add manual input. */
-export const AddManualInputSchema = z.object({
-    displayName: z.string().trim().min(1).max(120)
-});
-export type AddManualInput = z.infer<typeof AddManualInputSchema>;
-
-export const ManagedAgentSourceMessageSchema = z.object({
-    messageId: z.string().min(1),
-    conversationId: z.string().min(1),
-    role: z.enum(["user", "assistant", "tool", "system"]),
-    content: z.string().min(1),
-    createdAt: z.string().datetime(),
-    workspacePath: z.string().nullable().optional(),
-    gitRoot: z.string().nullable().optional(),
-    rawMeta: z.record(z.string(), z.unknown()).optional()
-});
-export type ManagedAgentSourceMessage = z.infer<typeof ManagedAgentSourceMessageSchema>;
-
-export const ManagedAgentSourceImportInputSchema = z.object({
-    mode: z.enum(["initial_subset", "incremental"]),
-    messages: z.array(ManagedAgentSourceMessageSchema).max(2_000),
-    dataPath: z.string().trim().min(1).optional(),
-    syncBoundaryAt: z.string().datetime().nullable().optional(),
-    latestSeenAt: z.string().datetime().nullable().optional(),
-    final: z.boolean().default(false)
-});
-export type ManagedAgentSourceImportInput = z.infer<typeof ManagedAgentSourceImportInputSchema>;
-
-export const ManagedAgentSourceImportResultSchema = z.object({
-    sourceId: z.string().min(1),
-    attempted: z.number().int().nonnegative(),
-    written: z.number().int().nonnegative(),
-    deduped: z.number().int().nonnegative(),
-    failed: z.number().int().nonnegative(),
-    memoryIds: z.array(z.string()),
-    syncBoundaryAt: z.string().datetime().nullable(),
-    errors: z.array(z.object({
-        conversationId: z.string().min(1),
-        reason: z.string().min(1)
-    }))
-});
-export type ManagedAgentSourceImportResult = z.infer<typeof ManagedAgentSourceImportResultSchema>;
-
-const ManagedAgentSyncFieldMapSchema = z.object({
-    messageId: z.string().trim().min(1).optional(),
-    conversationId: z.string().trim().min(1).optional(),
-    role: z.string().trim().min(1),
-    content: z.string().trim().min(1),
-    createdAt: z.string().trim().min(1),
-    workspacePath: z.string().trim().min(1).optional(),
-    gitRoot: z.string().trim().min(1).optional()
-});
-
-const ManagedAgentSyncRecipeBaseSchema = z.object({
-    version: z.literal(1),
-    path: z.string().trim().min(1),
-    fields: ManagedAgentSyncFieldMapSchema,
-    roleMap: z.record(z.string(), z.enum(["user", "assistant", "tool", "system"])).optional(),
-    timestampFormat: z.enum(["auto", "iso", "unix_seconds", "unix_milliseconds"]).default("auto")
-});
-
-export const ManagedAgentSyncRecipeSchema = z.discriminatedUnion("format", [
-    ManagedAgentSyncRecipeBaseSchema.extend({
-        format: z.literal("jsonl"),
-        fileSuffix: z.string().min(1).optional()
-    }),
-    ManagedAgentSyncRecipeBaseSchema.extend({
-        format: z.literal("json"),
-        fileSuffix: z.string().min(1).optional(),
-        recordsPath: z.string().trim().min(1).optional()
-    }),
-    ManagedAgentSyncRecipeBaseSchema.extend({
-        format: z.literal("sqlite"),
-        query: z.string().trim().min(1)
-    })
-]);
-export type ManagedAgentSyncRecipe = z.infer<typeof ManagedAgentSyncRecipeSchema>;
-
-export const ManagedAgentSourceUpdateInputSchema = z.object({
-    dataPath: z.string().trim().min(1).optional(),
-    skillInstalled: z.boolean().optional(),
-    syncRecipe: ManagedAgentSyncRecipeSchema.optional()
-}).refine((input) =>
-    input.dataPath !== undefined ||
-    input.skillInstalled !== undefined ||
-    input.syncRecipe !== undefined, {
-    message: "At least one managed Agent source field is required"
-});
-export type ManagedAgentSourceUpdateInput = z.infer<typeof ManagedAgentSourceUpdateInputSchema>;
 
 /** Schema for agent source id params. */
 export const AgentSourceIdParamsSchema = z.object({
@@ -997,7 +909,7 @@ export const IntegrationStatusSchema = z.enum(["not_configured", "requesting_url
 export type IntegrationStatus = z.infer<typeof IntegrationStatusSchema>;
 
 /** Schema for integration auth kind. */
-export const IntegrationAuthKindSchema = z.enum(["oauth", "apiKey", "qrCode", "none"]);
+export const IntegrationAuthKindSchema = z.enum(["oauth", "apiKey"]);
 export type IntegrationAuthKind = z.infer<typeof IntegrationAuthKindSchema>;
 
 /** Schema for integration icon kind. */
@@ -1010,7 +922,6 @@ export const IntegrationListItemSchema = z.object({
     name: z.string().min(1),
     iconText: z.string().min(1),
     category: IntegrationCategorySchema,
-    isChannel: z.boolean(),
     authKind: IntegrationAuthKindSchema,
     brand: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     iconKind: IntegrationIconKindSchema,
@@ -1026,7 +937,6 @@ export const IntegrationDetailSchema = IntegrationListItemSchema.extend({
     permissions: z.array(z.string().min(1)),
     authKind: IntegrationAuthKindSchema,
     docsUrl: z.string().url().optional(),
-    requiresQrCode: z.boolean().default(false),
     lastError: z.string().min(1).optional()
 });
 export type IntegrationDetail = z.infer<typeof IntegrationDetailSchema>;
@@ -1093,102 +1003,6 @@ export const IntegrationToolResultSchema = z
     })
     .passthrough();
 export type IntegrationToolResult = z.infer<typeof IntegrationToolResultSchema>;
-
-/** Schema for channel provider. */
-export const ChannelProviderSchema = z.enum(["telegram", "discord", "imessage", "wechat", "feishu", "dingtalk"]);
-export type ChannelProvider = z.infer<typeof ChannelProviderSchema>;
-
-/** Schema for channel runtime. */
-export const ChannelRuntimeSchema = z.enum(["telegram", "discord", "imessage", "weixin", "feishu", "dingtalk"]);
-export type ChannelRuntime = z.infer<typeof ChannelRuntimeSchema>;
-
-/** Schema for channel auth kind. */
-export const ChannelAuthKindSchema = z.enum(["qrCode", "form", "disabled", "local"]);
-export type ChannelAuthKind = z.infer<typeof ChannelAuthKindSchema>;
-
-/** Schema for channel status. */
-export const ChannelStatusSchema = z.enum([
-  "disabled",
-  "pendingQr",
-  "starting",
-  "connected",
-  "restarting",
-  "expired",
-  "error",
-  "unsupported"
-]);
-export type ChannelStatus = z.infer<typeof ChannelStatusSchema>;
-
-/** Schema for channel capability. */
-export const ChannelCapabilitySchema = z.enum(["receiveText", "sendText", "receiveMedia", "sendMedia", "streaming"]);
-export type ChannelCapability = z.infer<typeof ChannelCapabilitySchema>;
-
-/** Schema for channel field. */
-export const ChannelFieldSchema = z.object({
-  key: z.string().min(1),
-  label: z.string().min(1),
-  kind: z.enum(["text", "secret"]),
-  required: z.boolean()
-});
-export type ChannelField = z.infer<typeof ChannelFieldSchema>;
-
-/** Schema for channel definition. */
-export const ChannelDefinitionSchema = z.object({
-  id: ChannelProviderSchema,
-  runtimeChannel: ChannelRuntimeSchema,
-  name: z.string().min(1),
-  authKind: ChannelAuthKindSchema,
-  enabled: z.boolean(),
-  capabilities: z.array(ChannelCapabilitySchema),
-  fields: z.array(ChannelFieldSchema).default([])
-});
-export type ChannelDefinition = z.infer<typeof ChannelDefinitionSchema>;
-
-/** Schema for channel connection. */
-export const ChannelConnectionSchema = z.object({
-  id: z.string().min(1),
-  provider: ChannelProviderSchema,
-  runtimeChannel: ChannelRuntimeSchema,
-  status: ChannelStatusSchema,
-  running: z.boolean(),
-  displayName: z.string().min(1),
-  // Last error.
-  lastError: z.string().nullish(),
-  updatedAt: z.string().datetime().optional()
-});
-export type ChannelConnection = z.infer<typeof ChannelConnectionSchema>;
-
-export const ChannelDefinitionsResponseSchema = z.object({
-  channels: z.array(ChannelDefinitionSchema)
-});
-export type ChannelDefinitionsResponse = z.infer<typeof ChannelDefinitionsResponseSchema>;
-
-export const ChannelConnectionsResponseSchema = z.object({
-  connections: z.array(ChannelConnectionSchema)
-});
-export type ChannelConnectionsResponse = z.infer<typeof ChannelConnectionsResponseSchema>;
-
-/** Schema for connect channel input. */
-export const ConnectChannelInputSchema = z.object({
-  appId: z.string().min(1).optional(),
-  appSecret: z.string().min(1).optional(),
-  clientId: z.string().min(1).optional(),
-  clientSecret: z.string().min(1).optional(),
-  token: z.string().min(1).optional()
-});
-export type ConnectChannelInput = z.infer<typeof ConnectChannelInputSchema>;
-
-/** Schema for connect channel response. */
-export const ConnectChannelResponseSchema = z.object({
-  status: ChannelStatusSchema,
-  connectionId: z.string().min(1),
-  qrCodeDataUrl: z.string().min(1).optional(),
-  pollToken: z.string().min(1).optional()
-});
-export type ConnectChannelResponse = z.infer<typeof ConnectChannelResponseSchema>;
-
-export const PollChannelConnectResponseSchema = ConnectChannelResponseSchema;
-export type PollChannelConnectResponse = z.infer<typeof PollChannelConnectResponseSchema>;
 
 export const ConnectedSseEventSchema = z.object({
     id: z.string(),

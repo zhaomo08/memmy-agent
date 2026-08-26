@@ -281,7 +281,7 @@ describe("SubagentManager announcements", () => {
     const sm = manager();
     const published = capturePublished(sm);
 
-    await sm.announceResult("t1", "label", "task", "result", { channel: "telegram", chatId: "123", sessionKey: "s1" }, "ok");
+    await sm.announceResult("t1", "label", "task", "result", { channel: "cli", chatId: "123", sessionKey: "s1" }, "ok");
 
     expect(published[0].sessionKeyOverride).toBe("s1");
   });
@@ -290,9 +290,9 @@ describe("SubagentManager announcements", () => {
     const sm = manager();
     const published = capturePublished(sm);
 
-    await sm.announceResult("t1", "label", "task", "result", { channel: "telegram", chatId: "123" }, "ok");
+    await sm.announceResult("t1", "label", "task", "result", { channel: "cli", chatId: "123" }, "ok");
 
-    expect(published[0].sessionKeyOverride).toBe("telegram:123");
+    expect(published[0].sessionKeyOverride).toBe("cli:123");
   });
 
   it("renders successful status text", async () => {

@@ -303,8 +303,11 @@ describe("desktop packaged runtime boundaries", () => {
     const contractsSource = readFileSync(localApiContractsPath, "utf8");
 
     expect(contractsSource).toContain("bootstrapSecret: z.string().min(1).optional()");
+    expect(contractsSource).toContain("startupIssue: AgentGatewayStartupIssueSchema.optional()");
     expect(mainSource).toContain("if (agentGateway.bootstrapSecret) {");
     expect(mainSource).toContain("agentGatewayConfig.bootstrapSecret = agentGateway.bootstrapSecret;");
+    expect(mainSource).toContain("if (agentGateway.startupIssue) {");
+    expect(mainSource).toContain("agentGatewayConfig.startupIssue = agentGateway.startupIssue;");
     expect(mainSource).not.toContain("bootstrapSecret: agentGateway.bootstrapSecret");
   });
 
@@ -780,7 +783,7 @@ describe("desktop packaged runtime boundaries", () => {
     expect(mainSource).toContain("await services?.close()");
     expect(mainSource).toContain("app.quit()");
     expect(runtimeServicesSource).toContain("STOP_MANAGED_CHILD_GRACE_MS");
-    expect(runtimeServicesSource).toContain("sleep(STOP_MANAGED_CHILD_GRACE_MS)");
+    expect(runtimeServicesSource).toContain("waitForManagedChildExit(child, STOP_MANAGED_CHILD_GRACE_MS)");
     expect(interfaceSource).toContain("export type DesktopUpdateMode");
     expect(interfaceSource).toContain("export interface DesktopUpdateDownloadOptions");
     expect(interfaceSource).toContain("minSupportedVersion?: string");
@@ -859,8 +862,11 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).not.toContain("await preparePackagedBrowser(entries, runtimeConfig, options)");
     expect(source).toContain('[entries.agentEntry, "internal", "browser-prepare"]');
     expect(source.indexOf("browserPreparation = startPackagedBrowserPreparation")).toBeLessThan(
-      source.indexOf("await ensureMemoryService"),
+      source.indexOf("const memoryReady = ensureMemoryService"),
     );
+    expect(source).toContain("const memoryReady = ensureMemoryService");
+    expect(source).toContain("Memory service unavailable during desktop startup");
+    expect(source).toContain("readLiveMemoryServerLock(runtimeConfig.memoryDatabasePath)");
     expect(source).toContain("browserPreparation?.stop()");
     expect(source).toContain("terminateProcessTreeSync(child)");
     expect(source).toContain('detached: process.platform !== "win32"');
@@ -878,6 +884,25 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).not.toContain(legacyApplicationSupportDir);
     expect(source).not.toContain("dist/src/server/index.js");
     expect(source).not.toContain("App/memmy-agent/dist/main.js");
+  });
+
+  it("publishes managed runtime services while Memory continues initializing", () => {
+    const source = readFileSync(runtimeServicesPath, "utf8");
+    const startupIndex = source.indexOf("const memoryReady = ensureMemoryService");
+    const gatewayIndex = source.indexOf(
+      "const agentGatewayStartupIssue = await startAgentGatewayWithRecovery",
+      startupIndex,
+    );
+    const returnIndex = source.indexOf("return {", gatewayIndex);
+
+    expect(startupIndex).toBeGreaterThan(-1);
+    expect(gatewayIndex).toBeGreaterThan(startupIndex);
+    expect(returnIndex).toBeGreaterThan(gatewayIndex);
+    expect(source.slice(startupIndex, returnIndex)).not.toContain("await memoryReady");
+    expect(source.slice(startupIndex, returnIndex)).not.toContain("await memoryStartup");
+    expect(source.slice(returnIndex, source.indexOf("agentGateway:", returnIndex))).toContain("ready: memoryReady");
+    expect(source).toContain("const MEMORY_STARTUP_TIMEOUT_MS = 120_000;");
+    expect(readFileSync(mainSourcePath, "utf8")).toContain("memoryReady: services?.memory.ready");
   });
 
   it("exports shared config and workspace paths from dev-start", () => {
@@ -959,6 +984,7 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).toContain('cp -R "$MEMORY_DIR/dist/src" "$RUNTIME_DIR/memory/src"');
     expect(source).toContain('npm ci --prefix "$RUNTIME_DIR/memory" --omit=dev --os=darwin --cpu="$TARGET_CPU"');
     expect(source).toContain("node_modules/.bin/electron-rebuild");
+    expect(source).toContain('createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH)');
     expect(source).toContain('-m "$RUNTIME_DIR/memory"');
     expect(source).not.toContain('cp -R "$ROOT_DIR/dist/src" "$RUNTIME_DIR/memory/src"');
   });
@@ -1006,22 +1032,17 @@ describe("desktop packaged runtime boundaries", () => {
     const winSource = readFileSync(packageWinX64Path, "utf8");
 
     expect(macSource).toContain("verify_mac_memory_native_artifacts");
-    expect(macSource).toContain("verify_mac_agent_native_artifacts");
     expect(macSource).toContain("verify_packaged_mac_unpacked_artifacts");
     expect(macSource).toContain("libonnxruntime*.dylib");
     expect(macSource).toContain("sharp-libvips-darwin-$target_cpu/lib/libvips*.dylib");
-    expect(macSource).toContain("node-pty-darwin-$target_cpu/prebuilds/darwin-$target_cpu");
     expect(macSource).toContain("app.asar.unpacked/dist/runtime");
-    expect(macSource).toContain("spawn-helper");
     expect(winSource).toContain("verify_windows_onnxruntime_module");
     expect(winSource).toContain("verify_windows_sharp_module");
-    expect(winSource).toContain("verify_windows_agent_native_artifacts");
     expect(winSource).toContain("verify_packaged_windows_unpacked_artifacts");
     expect(winSource).toContain('onnxruntime_dir="$(dirname "$onnxruntime_node")"');
     expect(winSource).toContain("onnxruntime.dll");
     expect(winSource).toContain("sharp-win32-x64/lib");
     expect(winSource).toContain("win-unpacked/resources/app.asar.unpacked/dist/runtime");
-    expect(winSource).toContain("conpty/OpenConsole.exe");
     expect(winSource).toContain("sqlite-vec-windows-x64/vec0.*");
   });
 
@@ -1064,9 +1085,8 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source).toContain("to_node_readable_path");
     expect(source).toContain("cygpath -w");
     expect(source).toContain('DESKTOP_VERSION="${MEMMY_DESKTOP_VERSION:-$(read_package_version "$DESKTOP_DIR/package.json")}"');
-    expect(source).toContain(
-      'electron_version="${MEMMY_ELECTRON_VERSION:-$(read_package_version "$DESKTOP_DIR/node_modules/electron/package.json")}"'
-    );
+    expect(source).toContain('desktop_package_path="$(to_node_readable_path "$DESKTOP_DIR/package.json")"');
+    expect(source).toContain('createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH)');
     expect(source).not.toContain("require('$DESKTOP_DIR/package.json')");
     expect(source).not.toContain("require('$DESKTOP_DIR/node_modules/electron/package.json')");
   });

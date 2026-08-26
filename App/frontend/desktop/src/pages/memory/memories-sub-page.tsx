@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { PanelProject } from "@memmy/local-api-contracts";
+import { MemoryProjectFilter } from "./memory-project-filter.js";
 import type { GetMemoryOutput, MemoryProcessingRecord, PanelItemsInput, PanelItemsOutput } from "@memmy/local-api-contracts";
 import type { MemoryRuntimeClient } from "../../api/memory-runtime-client.js";
 import {
@@ -69,6 +71,7 @@ type ProcessingRetryFeedback =
 export interface MemorySearchFilters {
   query?: string;
   sourceAgent?: string;
+  projectId?: string;
   page?: number;
 }
 
@@ -84,6 +87,9 @@ export function buildPanelItemsInput(filters: MemorySearchFilters): PanelItemsIn
   } else if (filters.sourceAgent) {
     input.sourceAgent = filters.sourceAgent;
   }
+  if (filters.projectId) {
+    input.projectId = filters.projectId;
+  }
 
   return input;
 }
@@ -96,9 +102,9 @@ export function loadMemoryDetail(client: MemoryRuntimeClient, item: PanelItemsOu
   return client.getMemory(item.id);
 }
 
-function memoriesCacheKeys(query: string, sourceAgent: string, page: number): string[] {
+function memoriesCacheKeys(query: string, sourceAgent: string, projectId: string, page: number): string[] {
   return [
-    memoryPanelCacheKey(MEMORIES_CACHE_SECTION, query.trim(), sourceAgent, normalizePage(page))
+    memoryPanelCacheKey(MEMORIES_CACHE_SECTION, query.trim(), `${sourceAgent}|${projectId}`, normalizePage(page))
   ];
 }
 
@@ -108,6 +114,8 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
   const memoriesFilterLayer = (sourceAgent = "") => buildMemoryUiFilterLayer("L1", sourceAgent || undefined);
   const [query, setQuery] = useState("");
   const [sourceAgent, setSourceAgent] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [projects, setProjects] = useState<PanelProject[]>([]);
   const [page, setPage] = useState(1);
   const [state, setState] = useState<RemoteData<PanelItemsOutput>>({ status: "loading" });
   const [detail, setDetail] = useState<DetailState>(null);
@@ -118,7 +126,12 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
   const retryRequestIdRef = useRef(0);
   const retryResetTimerRef = useRef<number | null>(null);
 
-  function refresh(nextPage = page, nextSourceAgent = sourceAgent, options: { useCache?: boolean } = {}): Promise<PanelItemsOutput | undefined> {
+  function refresh(
+    nextPage = page,
+    nextSourceAgent = sourceAgent,
+    options: { useCache?: boolean; projectId?: string } = {}
+  ): Promise<PanelItemsOutput | undefined> {
+    const nextProjectId = options.projectId ?? projectId;
     if (!props.client) {
       const message = t("memory.clientNotReady");
       setState({ status: "error", message });
@@ -127,7 +140,7 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
 
     const normalizedPage = normalizePage(nextPage);
     const requestId = ++requestIdRef.current;
-    const cacheKeys = memoriesCacheKeys(query, nextSourceAgent, normalizedPage);
+    const cacheKeys = memoriesCacheKeys(query, nextSourceAgent, nextProjectId, normalizedPage);
     const useCache = options.useCache ?? true;
     const cached = useCache ? readMemoryPanelCacheFirst<PanelItemsOutput>(cacheKeys) : null;
     if (cached) {
@@ -136,7 +149,7 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
       setState((current) => current.status === "ready" ? current : { status: "loading" });
     }
 
-    return loadMemoriesData(props.client, buildPanelItemsInput({ query, sourceAgent: nextSourceAgent, page: normalizedPage }))
+    return loadMemoriesData(props.client, buildPanelItemsInput({ query, sourceAgent: nextSourceAgent, projectId: nextProjectId, page: normalizedPage }))
       .then((data) => {
         writeMemoryPanelCaches(cacheKeys, data);
         if (requestId !== requestIdRef.current) {
@@ -187,6 +200,14 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
   function changeSourceAgent(value: string) {
     detailRequestIdRef.current += 1;
     setSourceAgent(value);
+    setDetail(null);
+    setSelectedMemoryId(null);
+    setPage(1);
+  }
+
+  function changeProject(value: string) {
+    detailRequestIdRef.current += 1;
+    setProjectId(value);
     setDetail(null);
     setSelectedMemoryId(null);
     setPage(1);
@@ -334,9 +355,28 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
   }, []);
 
   useEffect(() => {
+    if (!props.client) {
+      return;
+    }
+    let cancelled = false;
+    void props.client.listPanelProjects()
+      .then((data) => {
+        if (!cancelled) setProjects(data.projects);
+      })
+      .catch((error) => {
+        // The filter hides itself when there are no projects, so a failure here is otherwise
+        // indistinguishable from "nothing to filter" -- say so instead of vanishing silently.
+        console.warn("[memory] project filter unavailable:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [props.client, state]);
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => void refresh().catch(() => undefined), 180);
     return () => window.clearTimeout(timeout);
-  }, [props.client, query, sourceAgent, page, t]);
+  }, [props.client, query, sourceAgent, projectId, page, t]);
 
   useEffect(() => {
     if (state.status !== "ready" || !state.data.items.some(memoryProcessingStatus)) {
@@ -345,7 +385,7 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
 
     const timeout = window.setTimeout(() => void refresh(page, sourceAgent, { useCache: false }).catch(() => undefined), PROCESSING_REFRESH_INTERVAL_MS);
     return () => window.clearTimeout(timeout);
-  }, [state, props.client, query, sourceAgent, page, t]);
+  }, [state, props.client, query, sourceAgent, projectId, page, t]);
 
   useEffect(() => {
     if (!props.client) {
@@ -353,7 +393,7 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
     }
     const interval = window.setInterval(() => void refresh(page, sourceAgent, { useCache: false }).catch(() => undefined), MEMORIES_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [props.client, query, sourceAgent, page, t]);
+  }, [props.client, query, sourceAgent, projectId, page, t]);
 
   return (
     <MemoriesSubPageView
@@ -362,6 +402,9 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
       sourceAgent={sourceAgent}
       onQueryChange={changeQuery}
       onSourceAgentChange={changeSourceAgent}
+      projectId={projectId}
+      projects={projects}
+      onProjectChange={changeProject}
       onSearch={runSearch}
       onPageChange={changePage}
       onRefresh={async () => {
@@ -393,8 +436,11 @@ export interface MemoriesSubPageViewProps {
   state: RemoteData<PanelItemsOutput> | ({ status: "ready"; data: PanelItemsOutput; detail: DetailState });
   query: string;
   sourceAgent: string;
+  projectId: string;
+  projects: PanelProject[];
   onQueryChange: (value: string) => void;
   onSourceAgentChange: (value: string) => void;
+  onProjectChange: (value: string) => void;
   onSearch: () => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void | Promise<void>;
@@ -447,6 +493,16 @@ export function MemoriesSubPageView(props: MemoriesSubPageViewProps) {
             allLabel={t("memory.logs.agentFilter.all")}
             otherLabel={t("memory.logs.agentFilter.other")}
           />
+          {props.projects.length > 0 && (
+            <MemoryProjectFilter
+              id="memory-l1-project-filter"
+              label={t("memory.memories.projectFilter.label")}
+              value={props.projectId}
+              projects={props.projects}
+              onValueChange={props.onProjectChange}
+              allLabel={t("memory.memories.projectFilter.all")}
+            />
+          )}
         </div>
       </div>
       <MemoryListState props={props} />

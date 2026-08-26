@@ -97,6 +97,13 @@ describe("HomePage", () => {
     expect(agentStatusText("connecting", null, (key) => key)).toBe("home.agent.connecting");
     expect(agentStatusText("reconnecting", null, (key) => key)).toBe("home.agent.reconnecting");
     expect(agentStatusText("error", null, (key) => key)).toBe("home.agent.failed");
+    expect(agentStatusText("error", null, (key) => key, {
+      startupIssue: "model_config_invalid"
+    })).toBe("home.modelSelector.unavailable");
+    expect(agentStatusText("error", null, (key) => key, {
+      startupIssue: "model_config_invalid",
+      hasConnected: true
+    })).toBe("home.agent.failed");
   });
 
   it("recovers slash commands after the initial command snapshot fails", () => {

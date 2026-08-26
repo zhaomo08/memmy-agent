@@ -54,7 +54,6 @@ import {
   readTranscriptLines,
   rewriteLocalMarkdownImages,
 } from "../../entrypoints/frontend-bridge/transcript.js";
-import type { ChannelAdminApi } from "../../entrypoints/frontend-bridge/channels-api.js";
 import {
   removeSessionDagFiles,
   type SessionDagQueueManager,
@@ -125,7 +124,6 @@ const MCP_PRESET_ACTIONS_BY_PATH: Record<string, string> = {
   "/api/settings/mcp-presets/test": "test",
   "/api/settings/mcp-presets/custom": "custom",
   "/api/settings/mcp-presets/import": "import",
-  "/api/settings/mcp-presets/import-cursor": "import-cursor",
   "/api/settings/mcp-presets/tools": "tools",
 };
 
@@ -541,7 +539,6 @@ export class WebSocketChannel extends BaseChannel {
   cancelActiveTasks: ((sessionKey: string) => Promise<number>) | null = null;
   closeBrowserChat: ((channel: string, chatId: string) => Promise<void>) | null = null;
   server: any = null;
-  channelAdmin: ChannelAdminApi | null = null;
   webuiTitleService: WebuiTitleService | null = null;
   projectStore: ProjectStore | null = null;
   inflightWebuiMessageRequests = new Map<string, InflightWebuiMessageRequest>();
@@ -564,10 +561,6 @@ export class WebSocketChannel extends BaseChannel {
     this.closeBrowserChat = options.closeBrowserChat ?? config?.closeBrowserChat ?? null;
     const workspacePath = options.workspacePath ?? config?.workspacePath ?? getWorkspacePath();
     this.workspacePath = path.resolve(String(workspacePath));
-  }
-
-  setChannelAdmin(admin: ChannelAdminApi | null): void {
-    this.channelAdmin = admin;
   }
 
   setWebuiTitleService(service: WebuiTitleService | null): void {
@@ -1269,31 +1262,6 @@ export class WebSocketChannel extends BaseChannel {
     }
   }
 
-  async handleChannelAdmin(request: any, action: string, value: string | null = null): Promise<HttpLikeResponse> {
-    if (!this.checkApiToken(request)) return httpError(401, "Unauthorized");
-    if (!this.channelAdmin) return httpError(503, "channel admin unavailable");
-    try {
-      switch (action) {
-        case "definitions":
-          return httpJsonResponse(this.channelAdmin.definitions());
-        case "status":
-          return httpJsonResponse(this.channelAdmin.status());
-        case "configure":
-          return httpJsonResponse(await this.channelAdmin.configure(String(value ?? "")));
-        case "stop":
-          return httpJsonResponse(await this.channelAdmin.stop(String(value ?? "")));
-        case "weixin-login-start":
-          return httpJsonResponse(await this.channelAdmin.startWeixinLogin());
-        case "weixin-login-poll":
-          return httpJsonResponse(await this.channelAdmin.pollWeixinLogin(String(value ?? "")));
-        default:
-          return httpError(404, "Not Found");
-      }
-    } catch (error: any) {
-      return httpError(error?.status ?? 500, error?.message ?? String(error));
-    }
-  }
-
   isWebsocketChannelSessionKey(key: string): boolean {
     return key.startsWith("websocket:");
   }
@@ -1967,15 +1935,6 @@ export class WebSocketChannel extends BaseChannel {
       return this.handleTokenIssueHttp(connection, request);
     }
     if (got === "/webui/bootstrap") return this.handleBootstrap(connection, request);
-    if (got === "/api/channels/definitions") return this.handleChannelAdmin(request, "definitions");
-    if (got === "/api/channels/status") return this.handleChannelAdmin(request, "status");
-    let channelAdminMatch = got.match(/^\/api\/channels\/([^/]+)\/configure$/);
-    if (channelAdminMatch) return this.handleChannelAdmin(request, "configure", decodeURIComponent(channelAdminMatch[1]));
-    channelAdminMatch = got.match(/^\/api\/channels\/([^/]+)\/stop$/);
-    if (channelAdminMatch) return this.handleChannelAdmin(request, "stop", decodeURIComponent(channelAdminMatch[1]));
-    if (got === "/api/channels/weixin/login/start") return this.handleChannelAdmin(request, "weixin-login-start");
-    channelAdminMatch = got.match(/^\/api\/channels\/weixin\/login\/([^/]+)$/);
-    if (channelAdminMatch) return this.handleChannelAdmin(request, "weixin-login-poll", decodeURIComponent(channelAdminMatch[1]));
     if (got === "/api/sessions") return this.handleSessionsList(request);
     if (got === "/api/projects") return this.handleProjectCreate(request);
     if (got === "/api/settings") return this.handleSettings(request);

@@ -8,7 +8,7 @@ Use this file to record project-specific preferences, recurring workflow convent
 
 Before scheduling reminders, check the available skills and follow the skill guidance.
 Use the built-in `cron` tool to create/list/remove tasks (do not call `memmy cron`, and do not call it through `exec`).
-Get USER_ID and CHANNEL from the current session (for example, `8281248569` and `telegram` come from `telegram:8281248569`).
+Use the current local session metadata when a scheduled task needs a destination.
 
 ## Heartbeat Tasks
 

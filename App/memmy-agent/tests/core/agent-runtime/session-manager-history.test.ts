@@ -104,7 +104,7 @@ describe("SessionManager history and previews", () => {
     const manager = new SessionManager(root, {
       legacyWebuiWorkspaceCwd: fs.realpathSync(root),
     });
-    const healthy = manager.getOrCreate("telegram:healthy");
+    const healthy = manager.getOrCreate("cli:healthy");
     healthy.addMessage("user", "keep this Session visible");
     manager.save(healthy);
     const invalid = manager.getOrCreate("websocket:invalid");
@@ -116,7 +116,7 @@ describe("SessionManager history and previews", () => {
 
     expect(rows).toEqual([
       expect.objectContaining({
-        key: "telegram:healthy",
+        key: "cli:healthy",
         preview: "keep this Session visible",
       }),
     ]);
@@ -156,12 +156,12 @@ describe("SessionManager history and previews", () => {
   });
 
   it("getHistory drops orphan tool results when the window cuts tool calls", () => {
-    const session = new Session({ key: "telegram:test" });
+    const session = new Session({ key: "cli:test" });
     session.messages.push({ role: "user", content: "old turn" });
     for (let i = 0; i < 20; i += 1) session.messages.push(...toolTurn("old", i));
     session.messages.push({ role: "user", content: "problem turn" });
     for (let i = 0; i < 25; i += 1) session.messages.push(...toolTurn("cur", i));
-    session.messages.push({ role: "user", content: "new telegram question" });
+    session.messages.push({ role: "user", content: "new cli question" });
 
     const history = session.getHistory({ maxMessages: 100 });
 

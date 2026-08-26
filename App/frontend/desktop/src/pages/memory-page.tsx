@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { buildMemorySubPageViewEvent } from "../analytics/page-view.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
 import { useApiClients } from "../app/providers.js";
@@ -16,6 +16,7 @@ import { PoliciesSubPage } from "./memory/policies-sub-page.js";
 import { SkillsSubPage } from "./memory/skills-sub-page.js";
 import { SourcesSubPage } from "./memory/sources-sub-page.js";
 import { TasksSubPage } from "./memory/tasks-sub-page.js";
+import { UserMemoriesSubPage } from "./memory/user-memories-sub-page.js";
 import { WorldModelSubPage } from "./memory/world-model-sub-page.js";
 import {
   ArrowLeft,
@@ -29,12 +30,14 @@ import {
   PanelLeftCollapsed,
   ScrollText,
   Sparkles,
+  UserRound,
   Wand2
 } from "./memory/memory-prototype-icons.js";
 
 export type MemorySubPageId =
   | "overview"
   | "memories"
+  | "user-memories"
   | "tasks"
   | "policies"
   | "world-model"
@@ -63,7 +66,8 @@ const memoryNavSections: MemoryNavSection[] = [
       { id: "tasks", labelKey: "memory.nav.tasks", icon: <ListChecks size={16} /> },
       { id: "policies", labelKey: "memory.nav.policies", icon: <Sparkles size={16} /> },
       { id: "world-model", labelKey: "memory.nav.worldModel", icon: <Globe2 size={16} /> },
-      { id: "skills", labelKey: "memory.nav.skills", icon: <Wand2 size={16} /> }
+      { id: "skills", labelKey: "memory.nav.skills", icon: <Wand2 size={16} /> },
+      { id: "user-memories", labelKey: "memory.nav.userMemories", icon: <UserRound size={16} /> }
     ]
   },
   {
@@ -94,9 +98,9 @@ export function MemoryPage(props: MemoryPageProps) {
   const [activePage, setActivePage] = useState<MemorySubPageId>(() => props.initialSubPage ?? readInitialMemorySubPage());
   const client = clients?.memoryRuntime ?? null;
 
-  function handleSubPageChange(page: MemorySubPageId) {
+  const handleSubPageChange = useCallback((page: MemorySubPageId) => {
     setActivePage(page);
-  }
+  }, []);
 
   useEffect(() => {
     if (!analyticsReady) {
@@ -114,8 +118,9 @@ export function MemoryPage(props: MemoryPageProps) {
 
   const childByPage = useMemo<Record<MemorySubPageId, ReactNode>>(
     () => ({
-      overview: <OverviewSubPage client={client} />,
+      overview: <OverviewSubPage client={client} onNavigate={handleSubPageChange} />,
       memories: <MemoriesSubPage client={client} onOpenSettings={() => dispatch(appActions.navigate("/settings"))} />,
+      "user-memories": <UserMemoriesSubPage client={client} />,
       tasks: <TasksSubPage client={client} />,
       policies: <PoliciesSubPage client={client} />,
       "world-model": <WorldModelSubPage client={client} />,
@@ -124,7 +129,7 @@ export function MemoryPage(props: MemoryPageProps) {
       logs: <LogsSubPage client={client} />,
       sources: <SourcesSubPage />
     }),
-    [client, dispatch]
+    [client, dispatch, handleSubPageChange]
   );
 
   useEffect(() => {
@@ -290,6 +295,7 @@ function createPreviewChildByPage(t: (key: MessageKey) => string): Record<Memory
   return {
     overview: <div>{t("memory.overview.total")}</div>,
     memories: <div>{t("memory.memories.title")}</div>,
+    "user-memories": <div>{t("memory.userMemories.title")}</div>,
     tasks: <div>{t("memory.tasks.title")}</div>,
     policies: <div>{t("memory.policies.title")}</div>,
     "world-model": <div>{t("memory.worldModel.title")}</div>,

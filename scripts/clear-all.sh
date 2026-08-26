@@ -185,8 +185,7 @@ sleep 1
 pkill -f "$APP_PATH" 2>/dev/null || true
 pkill -f "memory-service/memory.sqlite" 2>/dev/null || true
 
-# 1b. Remove Memmy hooks/skills injected into other coding agents (Codex, Claude Code,
-# Hermes, OpenClaw, OpenCode). Reuse each agent target's own uninstall logic through the repo's
+# 1b. Remove Memmy hooks/skills injected into Codex and Claude Code. Reuse each target's
 # bundled tsx so we strip only Memmy's marker blocks and hook entries while preserving every other
 # setting in those agents' config files; never hand-edit their JSON/Markdown here. Best-effort:
 # a missing agent, a broken import, or an absent tsx must not abort the uninstall.
@@ -202,9 +201,6 @@ const base = root + "/App/backend/src/adapters/outbound/skill-writer/";
 const specs = [
   ["codex/index.ts", "createCodexSkillTarget"],
   ["claude-code/index.ts", "createClaudeCodeSkillTarget"],
-  ["hermes/index.ts", "createHermesSkillTarget"],
-  ["openclaw/index.ts", "createOpenclawSkillTarget"],
-  ["opencode/index.ts", "createOpencodeSkillTarget"],
 ];
 for (const [rel, factory] of specs) {
   try {

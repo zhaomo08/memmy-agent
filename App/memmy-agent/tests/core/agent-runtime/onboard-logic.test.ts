@@ -9,12 +9,10 @@ import {
   SETTINGS_SECTION_META,
   SETTINGS_SECTIONS,
   SETTINGS_SETTER,
-  configureChannels,
   configureModelPresets,
   configureProvider,
   configureDraftModel,
   formatValue,
-  getChannelNames,
   getConstraintHint,
   getFieldDisplayName,
   getFieldTypeInfo,
@@ -39,7 +37,6 @@ import {
   AgentDefaults,
   ApiConfig,
   Base,
-  ChannelsConfig,
   Config,
   ContextCompactionConfig,
   GatewayConfig,
@@ -212,12 +209,11 @@ describe("onboard logic", () => {
     expect(((await configureDraftModel(required, "Required")) as any).name).toBe("");
   });
 
-  it("registers providers, channels, channel common, API server, and gateway settings", () => {
+  it("registers providers, API server, and gateway settings", () => {
     expect(getProviderNames()).toHaveProperty("openai");
     expect(getProviderNames()).not.toHaveProperty("openai_codex");
     expect(Object.values(getProviderInfo())[0]).toHaveLength(4);
-    expect(Object.keys(getChannelNames()).length).toBeGreaterThan(0);
-    expect(SETTINGS_SECTIONS).toContain("Channel Common");
+    expect(SETTINGS_SECTIONS).not.toContain("Channel Common");
     expect(SETTINGS_SECTIONS).toContain("API Server");
     expect(SETTINGS_SECTIONS).toContain("Gateway");
     expect(SETTINGS_SECTIONS).toContain("Memmy Memory");
@@ -226,11 +222,6 @@ describe("onboard logic", () => {
     expect(SETTINGS_SECTIONS).not.toContain("Memos Memory");
 
     const config = new Config();
-    const channels = new ChannelsConfig();
-    channels.sendToolHints = true;
-    SETTINGS_SETTER["Channel Common"](config, channels);
-    expect(SETTINGS_GETTER["Channel Common"](config).sendToolHints).toBe(true);
-
     SETTINGS_SETTER["API Server"](config, new ApiConfig({ host: "0.0.0.0", port: 9999, timeout: 90 }));
     expect(config.api.port).toBe(9999);
     expect(config.api.timeout).toBe(90);
@@ -330,11 +321,11 @@ describe("onboard logic", () => {
   it("runs the main menu, saves committed changes, and can discard unsaved changes", async () => {
     const initial = new Config();
 
-    usePrompt(["[H] Channel Common", /Send Tool Hints/, true, "done", "[S] Save and Exit"]);
+    usePrompt(["[I] API Server", /Port/, "Enter new value", "9999", "done", "[S] Save and Exit"]);
     const saved = await runOnboard(initial);
     expect(saved.shouldSave).toBe(true);
     expect(saved.changed).toBe(true);
-    expect(saved.config.channels.sendToolHints).toBe(true);
+    expect(saved.config.api.port).toBe(9999);
 
     usePrompt(["[A] Agent Settings", /Bot Name/, "Enter new value", "memmy-test", "done", "[X] Exit Without Saving"]);
     const discarded = await runOnboard(initial);
@@ -600,34 +591,6 @@ describe("onboard logic", () => {
     expect(names).not.toHaveProperty("github_copilot");
   });
 
-  it("returns channel names as an object", () => {
-    expect(Object.keys(getChannelNames()).length).toBeGreaterThan(0);
-  });
-
-  it("stays in the chat channels section until back is selected", async () => {
-    const config = new Config();
-    const channels = Object.keys(getChannelNames()).sort();
-    const responses: any[] = [channels[0], "done", channels[1], "done", "back"];
-    const select = vi.fn(() => {
-      const raw = responses.shift();
-      if (raw === "done") return new FakePrompt("[Done]");
-      if (raw === "back") return new FakePrompt("<- Back");
-      return new FakePrompt(raw);
-    });
-    setQuestionary({
-      select,
-      confirm: () => new FakePrompt(false),
-      text: () => new FakePrompt(""),
-      autocomplete: () => new FakePrompt(""),
-      pressAnyKeyToContinue: () => new FakePrompt(null),
-    });
-
-    await configureChannels(config);
-
-    expect(responses).toEqual([]);
-    expect(select).toHaveBeenCalledTimes(5);
-  });
-
   it("returns provider info tuples with four fields", () => {
     for (const value of Object.values(getProviderInfo())) expect(value).toHaveLength(4);
   });
@@ -723,30 +686,6 @@ describe("onboard logic", () => {
   it("keeps null prompt results as null", async () => {
     usePrompt([null]);
     await expect(inputText("Name", "old", "string")).resolves.toBeNull();
-  });
-
-  it("registers Channel Common in settings sections", () => {
-    expect(SETTINGS_SECTIONS).toContain("Channel Common");
-  });
-
-  it("returns config.channels for the Channel Common getter", () => {
-    const config = new Config();
-    expect(SETTINGS_GETTER["Channel Common"](config)).toBe(config.channels);
-  });
-
-  it("writes config.channels from the Channel Common setter", () => {
-    const config = new Config();
-    const channels = new ChannelsConfig({ sendToolHints: true });
-    SETTINGS_SETTER["Channel Common"](config, channels);
-    expect(config.channels.sendToolHints).toBe(true);
-  });
-
-  it("preserves per-channel extras while editing Channel Common", () => {
-    const config = new Config();
-    const channels = new ChannelsConfig({ sendToolHints: true });
-    (channels as any).feishu = { enabled: true, appId: "test123" };
-    SETTINGS_SETTER["Channel Common"](config, channels);
-    expect((config.channels as any).feishu.appId).toBe("test123");
   });
 
   it("registers API Server in settings sections", () => {

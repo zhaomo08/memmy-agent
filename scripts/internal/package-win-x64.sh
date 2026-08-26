@@ -397,6 +397,8 @@ verify_windows_native_module() {
       exit 1
       ;;
   esac
+
+  require_packaged_runtime_glob "$RUNTIME_DIR/memory/node_modules/sqlite-vec-windows-x64/vec0.*"
 }
 
 verify_windows_onnxruntime_module() {
@@ -433,15 +435,6 @@ verify_windows_sharp_module() {
   require_packaged_runtime_glob "$sharp_dir/libvips*.dll"
 }
 
-verify_windows_agent_native_artifacts() {
-  local node_pty_dir="$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64"
-
-  require_packaged_runtime_file "$node_pty_dir/conpty.node"
-  require_packaged_runtime_file "$node_pty_dir/conpty/conpty.dll"
-  require_packaged_runtime_file "$node_pty_dir/conpty/OpenConsole.exe"
-  require_packaged_runtime_glob "$RUNTIME_DIR/memmy-agent/node_modules/openclaw/node_modules/sqlite-vec-windows-x64/vec0.*"
-}
-
 verify_packaged_windows_unpacked_artifacts() {
   local unpacked_runtime="$DESKTOP_DIR/release/win-unpacked/resources/app.asar.unpacked/dist/runtime"
 
@@ -449,13 +442,12 @@ verify_packaged_windows_unpacked_artifacts() {
   require_packaged_runtime_file "$unpacked_runtime/memory/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime.dll"
   require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/*.dll"
   require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/@img/sharp-win32-x64/lib/libvips*.dll"
+  require_packaged_runtime_glob "$unpacked_runtime/memory/node_modules/sqlite-vec-windows-x64/vec0.*"
   require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/@memmy/migrations/dist/index.js"
   if [ -L "$unpacked_runtime/memmy-agent/node_modules/@memmy/migrations" ]; then
     echo "Packaged migrations package must not be a symbolic link." >&2
     exit 1
   fi
-  require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty/conpty.dll"
-  require_packaged_runtime_file "$unpacked_runtime/memmy-agent/node_modules/openclaw/node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty/OpenConsole.exe"
 }
 
 npm_ci_win_x64() {
@@ -466,7 +458,13 @@ npm_ci_win_x64() {
 
 install_better_sqlite3_win_x64() {
   local electron_version
-  electron_version="${MEMMY_ELECTRON_VERSION:-$(read_package_version "$DESKTOP_DIR/node_modules/electron/package.json")}"
+  local desktop_package_path
+  desktop_package_path="$(to_node_readable_path "$DESKTOP_DIR/package.json")"
+  electron_version="${MEMMY_ELECTRON_VERSION:-$(MEMMY_DESKTOP_PACKAGE_PATH="$desktop_package_path" node -e '
+    const { createRequire } = require("node:module");
+    const requireFromDesktop = createRequire(process.env.MEMMY_DESKTOP_PACKAGE_PATH);
+    process.stdout.write(requireFromDesktop("electron/package.json").version);
+  ')}"
 
   (
     cd "$RUNTIME_DIR/memory/node_modules/better-sqlite3"
@@ -545,7 +543,6 @@ if [ -e "$MIGRATIONS_STAGING_DIR" ]; then
   echo "Migrations staging directory was not removed." >&2
   exit 1
 fi
-verify_windows_agent_native_artifacts
 (
   cd "$RUNTIME_DIR/memmy-agent"
   node --input-type=module --eval '
