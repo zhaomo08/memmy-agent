@@ -33,6 +33,7 @@ describe("HttpMemoryClient", () => {
       "/api/v1/panel/overview",
       "/api/v1/panel/analysis",
       "/api/v1/panel/items",
+      "/api/v1/panel/projects",
       "/api/v1/panel/tasks",
       "/api/v1/panel/tasks/:id"
     ]);

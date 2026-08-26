@@ -26,6 +26,7 @@ import type {
   PanelAnalysisOutput,
   PanelItemsInput,
   PanelItemsOutput,
+  PanelProjectsOutput,
   PanelOverviewOutput,
   PanelTasksInput,
   PanelTasksOutput,
@@ -393,6 +394,11 @@ export function createMemosSqliteMemoryClient(options: CreateMemosSqliteMemoryCl
         dailySkillEvolutions: countRowsByDate(skillRows, dates, (item) => item.row.updated_at),
         toolLatency: buildToolLatency(logs, dates)
       };
+    },
+
+    async panelProjects(): Promise<PanelProjectsOutput> {
+      // The sqlite fallback reads scanned agent history, which carries no project attribution.
+      return { projects: [], serverTime: now() };
     },
 
     async panelItems(input: PanelItemsInput): Promise<PanelItemsOutput> {

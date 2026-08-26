@@ -363,7 +363,11 @@ export function MemoriesSubPage(props: MemoriesSubPageProps) {
       .then((data) => {
         if (!cancelled) setProjects(data.projects);
       })
-      .catch(() => undefined); // the filter simply stays empty when the list is unavailable
+      .catch((error) => {
+        // The filter hides itself when there are no projects, so a failure here is otherwise
+        // indistinguishable from "nothing to filter" -- say so instead of vanishing silently.
+        console.warn("[memory] project filter unavailable:", error);
+      });
     return () => {
       cancelled = true;
     };

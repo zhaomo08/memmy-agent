@@ -20,6 +20,7 @@ export const MEMORY_LAYER_PATHS = Object.freeze({
   panelOverview: "/api/v1/panel/overview",
   panelAnalysis: "/api/v1/panel/analysis",
   panelItems: "/api/v1/panel/items",
+  panelProjects: "/api/v1/panel/projects",
   panelTasks: "/api/v1/panel/tasks",
   deletePanelTask: "/api/v1/panel/tasks/:id"
 } as const);
