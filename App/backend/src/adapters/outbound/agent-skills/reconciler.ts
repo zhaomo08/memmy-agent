@@ -130,11 +130,14 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
       }
 
       for (const observation of observations) {
-        if (observation.state !== "linked") {
+        if (observation.state === "absent" || observation.state === "broken") {
           continue;
         }
 
-        mounts.set(observation.name, [...(mounts.get(observation.name) ?? []), observation.targetId]);
+        // A skill only present at one agent is still a decision worth recording, as
+        // mount: [] -- otherwise it reads as undeclared forever and the ledger never settles.
+        const current = mounts.get(observation.name) ?? [];
+        mounts.set(observation.name, observation.state === "linked" ? [...current, observation.targetId] : current);
       }
 
       const declarations = [...mounts.entries()].map(([name, mount]) => ({ name, mount }));
@@ -190,6 +193,13 @@ function compare(
   const undeclaredReported = new Set<string>();
 
   for (const observation of observations) {
+    // A dead link is dead whatever the manifest says. Reporting it only when a
+    // declaration happens to cover it is how these two sat unnoticed for months.
+    if (observation.state === "broken") {
+      findings.push(finding("blocked", observation, `dead symlink to ${observation.linkTarget ?? "an unknown path"}`));
+      continue;
+    }
+
     const declaration = declared.get(observation.name);
     if (!declaration) {
       // Only report an undeclared skill once, not once per target -- the decision is per skill.
@@ -217,7 +227,7 @@ function compare(
       continue;
     }
 
-    if (shouldMount && (observation.state === "local" || observation.state === "foreign" || observation.state === "broken")) {
+    if (shouldMount && (observation.state === "local" || observation.state === "foreign")) {
       findings.push(
         finding("blocked", observation, `declared for this agent but the path holds a ${describeState(observation)}`)
       );
@@ -246,11 +256,7 @@ function finding(kind: SkillFinding["kind"], observation: SkillObservation, deta
 }
 
 function describeState(observation: SkillObservation): string {
-  if (observation.state === "local") {
-    return "real directory";
-  }
-
-  return `${observation.state} symlink to ${observation.linkTarget ?? "an unknown path"}`;
+  return observation.state === "local" ? "real directory" : `foreign symlink to ${observation.linkTarget ?? "an unknown path"}`;
 }
 
 async function listDirectories(directory: string): Promise<string[]> {
