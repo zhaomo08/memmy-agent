@@ -23,16 +23,16 @@ describe("resolveWorkspaceIdentity", () => {
   });
 
   it("keeps the desktop agent's id for a non-git folder", () => {
-    const identity = resolveWorkspaceIdentity("/Users/mesay/.memmy/workspace");
+    const identity = resolveWorkspaceIdentity("/Users/example/.memmy/workspace");
 
-    expect(identity.workspaceId).toBe("9e2902eff0b02c9e");
-    expect(identity.workspaceId).toBe(workspaceIdFromPath("/Users/mesay/.memmy/workspace"));
+    expect(identity.workspaceId).toBe("a175da130cbe3a60");
+    expect(identity.workspaceId).toBe(workspaceIdFromPath("/Users/example/.memmy/workspace"));
   });
 
   it("refuses to treat containers as projects", () => {
     expect(resolveWorkspaceIdentity("/")).toEqual({});
-    expect(resolveWorkspaceIdentity("~", { homeDirectory: "/Users/mesay" })).toEqual({});
-    expect(resolveWorkspaceIdentity("/Users/mesay", { homeDirectory: "/Users/mesay" })).toEqual({});
+    expect(resolveWorkspaceIdentity("~", { homeDirectory: "/Users/example" })).toEqual({});
+    expect(resolveWorkspaceIdentity("/Users/example", { homeDirectory: "/Users/example" })).toEqual({});
     expect(resolveWorkspaceIdentity("")).toEqual({});
     expect(resolveWorkspaceIdentity("relative/path")).toEqual({});
   });
