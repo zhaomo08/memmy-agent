@@ -1126,3 +1126,60 @@ export const AgentRuleApplyDtoSchema = z.object({
     unavailableTargetIds: z.array(z.string())
 });
 export type AgentRuleApplyDto = z.infer<typeof AgentRuleApplyDtoSchema>;
+
+/** What is on disk at an agent's skills/<name> path. */
+export const SkillDiskStateSchema = z.enum(["linked", "absent", "local", "foreign", "broken"]);
+export type SkillDiskState = z.infer<typeof SkillDiskStateSchema>;
+
+/** Kind of difference between the skill manifest and disk. */
+export const SkillFindingKindSchema = z.enum(["not_mounted", "unexpected", "blocked", "undeclared"]);
+export type SkillFindingKind = z.infer<typeof SkillFindingKindSchema>;
+
+/** Schema for one observed skill/target pair. */
+export const SkillObservationSchema = z.object({
+    name: z.string(),
+    targetId: z.string(),
+    targetDisplayName: z.string(),
+    path: z.string(),
+    state: SkillDiskStateSchema,
+    linkTarget: z.string().optional()
+});
+export type SkillObservation = z.infer<typeof SkillObservationSchema>;
+
+/** Schema for one reported skill difference. */
+export const SkillFindingSchema = z.object({
+    kind: SkillFindingKindSchema,
+    name: z.string(),
+    targetId: z.string().nullable(),
+    targetDisplayName: z.string().nullable(),
+    path: z.string().nullable(),
+    detail: z.string()
+});
+export type SkillFinding = z.infer<typeof SkillFindingSchema>;
+
+/** Schema for the skill ledger status response. */
+export const SkillStatusDtoSchema = z.object({
+    libraryPath: z.string(),
+    manifestPath: z.string(),
+    manifestMissing: z.boolean(),
+    observations: z.array(SkillObservationSchema),
+    findings: z.array(SkillFindingSchema),
+    unavailableTargetIds: z.array(z.string())
+});
+export type SkillStatusDto = z.infer<typeof SkillStatusDtoSchema>;
+
+/** Schema for the skill reconcile response. */
+export const SkillReconcileDtoSchema = z.object({
+    mounted: z.array(SkillFindingSchema),
+    unmounted: z.array(SkillFindingSchema),
+    skipped: z.array(SkillFindingSchema),
+    unavailableTargetIds: z.array(z.string())
+});
+export type SkillReconcileDto = z.infer<typeof SkillReconcileDtoSchema>;
+
+/** Schema for the response to freezing the current layout as the manifest. */
+export const SkillFreezeDtoSchema = z.object({
+    manifestPath: z.string(),
+    declarations: z.number()
+});
+export type SkillFreezeDto = z.infer<typeof SkillFreezeDtoSchema>;
