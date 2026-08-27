@@ -1161,6 +1161,7 @@ export type SkillFinding = z.infer<typeof SkillFindingSchema>;
 export const SkillStatusDtoSchema = z.object({
     libraryPath: z.string(),
     manifestPath: z.string(),
+    managedNames: z.array(z.string()),
     manifestMissing: z.boolean(),
     observations: z.array(SkillObservationSchema),
     findings: z.array(SkillFindingSchema),

@@ -66,6 +66,8 @@ export interface SkillFinding {
 export interface SkillStatus {
   libraryPath: string;
   manifestPath: string;
+  /** Skills the app installs and owns. Observed, but never the ledger's to judge. */
+  managedNames: readonly string[];
   /** True when no manifest file exists yet, so every skill reads as undeclared. */
   manifestMissing: boolean;
   observations: readonly SkillObservation[];
