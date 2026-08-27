@@ -181,6 +181,21 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
       console.warn(`[agent-rules] apply failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
+    // Skills are reported, never reconciled on boot: adding or removing a symlink in the
+    // user's agent directory is a real change to their setup, and the ledger is theirs to
+    // curate. Drift is surfaced so it cannot rot unnoticed; acting on it stays explicit.
+    try {
+      const skills = await services.agentSkills.status();
+      if (!skills.manifestMissing && skills.findings.length > 0) {
+        console.info(`[agent-skills] ${skills.findings.length} difference(s) from ${skills.manifestPath}`);
+        for (const finding of skills.findings) {
+          console.info(`[agent-skills]   ${finding.kind} ${finding.name}${finding.targetDisplayName ? ` @ ${finding.targetDisplayName}` : ""}: ${finding.detail}`);
+        }
+      }
+    } catch (error) {
+      console.warn(`[agent-skills] status failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     const boundServer = server;
     const boundAutoScan = autoScan;
     return {

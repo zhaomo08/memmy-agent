@@ -8,6 +8,7 @@ import type { AgentAdapterRegistry } from "../adapters/outbound/agent-adapter/in
 import { createBuiltinOnboardingInsightSamplers } from "../adapters/outbound/agent-source/onboarding-insight-samplers.js";
 import type { SourceRegistry } from "../adapters/outbound/agent-source/source-registry.js";
 import { agentInstructionsTargetsFrom, createAgentRuleWriter, type AgentRuleWriter } from "../adapters/outbound/agent-rules/index.js";
+import { createSkillReconciler, type SkillReconciler } from "../adapters/outbound/agent-skills/index.js";
 import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
 import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
 import { createSkillTargetRegistry, type SkillTargetRegistry } from "../adapters/outbound/skill-writer/target-registry.js";
@@ -64,6 +65,8 @@ export interface BackendServices {
   localData: LocalDataService;
   /** Keeps every agent's instructions file in step with ~/.memmy/agent-rules. */
   agentRules: AgentRuleWriter;
+  /** Measures the shared skill library against each agent's skills directory. */
+  agentSkills: SkillReconciler;
   agentSources: AgentSourceService;
   agentSourceAutoInject: AgentSourceAutoInjectService;
   onboardingInsight: OnboardingInsightService;
@@ -171,6 +174,7 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
     }),
     agentSources,
     agentRules: createAgentRuleWriter({ targets: agentInstructionsTargetsFrom(skillTargetRegistry.list()) }),
+    agentSkills: createSkillReconciler({ targets: skillTargetRegistry.list() }),
     agentSourceAutoInject: createAgentSourceAutoInjectService({
       agentSources,
       permissionManager: options.permissionManager,
