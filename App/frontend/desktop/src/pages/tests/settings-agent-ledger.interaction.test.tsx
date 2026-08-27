@@ -24,7 +24,7 @@ const BLOCKED = {
   targetId: "codex",
   targetDisplayName: "Codex",
   path: "/home/user/.codex/skills/update-n8n-stack",
-  detail: "dead symlink to /Volumes/zhao/n8n"
+  detail: "dead symlink to /Volumes/backup/n8n"
 };
 
 const FINDINGS = [NOT_MOUNTED, BLOCKED];
