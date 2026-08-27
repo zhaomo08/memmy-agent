@@ -1,13 +1,12 @@
 /** Agent rules module. */
 import { AgentRuleApplyDtoSchema, AgentRuleStatusDtoSchema } from "@memmy/local-api-contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { resolveAgentRulesDirectory } from "../../../outbound/agent-rules/index.js";
-import type { AgentRuleWriter } from "../../../outbound/agent-rules/index.js";
 import { withErrorEnvelope } from "../../../../services/error-envelope.js";
+import type { BackendServices } from "../../../../services/index.js";
 
 /** Contract for register agent rule routes options. */
 export interface RegisterAgentRuleRoutesOptions {
-  agentRules: AgentRuleWriter;
+  agentRules: BackendServices["agentRules"];
   authenticateRuntimeToken: (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
 }
 
@@ -18,7 +17,7 @@ export function registerAgentRuleRoutes(app: FastifyInstance, options: RegisterA
     { preHandler: options.authenticateRuntimeToken },
     withErrorEnvelope(async (_request, reply) => {
       const status = await options.agentRules.status();
-      return reply.send(AgentRuleStatusDtoSchema.parse({ rulesDirectory: resolveAgentRulesDirectory(), ...status }));
+      return reply.send(AgentRuleStatusDtoSchema.parse(status));
     })
   );
 

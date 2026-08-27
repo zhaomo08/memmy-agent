@@ -93,4 +93,12 @@ export default tseslint.config({
       }
     ]
   }
+}, {
+  // The boundaries govern what the running code may depend on. A test that pins a
+  // cross-layer contract -- "this outbound path has a route on the inbound proxy" --
+  // has to see both sides to be worth anything, and ships nothing.
+  files: ["src/**/tests/**/*.ts"],
+  rules: {
+    "import/no-restricted-paths": "off"
+  }
 });

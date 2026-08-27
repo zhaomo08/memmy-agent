@@ -48,6 +48,8 @@ export interface AgentRuleStatusEntry {
 
 /** Full status across every rule and target. */
 export interface AgentRuleStatus {
+  /** Directory the rules were read from, so a caller can report it without resolving it again. */
+  rulesDirectory: string;
   entries: readonly AgentRuleStatusEntry[];
   errors: readonly AgentRuleSourceError[];
   /** Targets that are configured but whose root directory is not present on disk. */

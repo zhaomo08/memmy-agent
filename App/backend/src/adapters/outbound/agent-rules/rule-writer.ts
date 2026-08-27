@@ -58,7 +58,7 @@ export function createAgentRuleWriter(deps: CreateAgentRuleWriterDeps): AgentRul
         entries.push(...describeFile(source, file, document));
       }
 
-      return { entries, errors: source.errors, unavailableTargetIds };
+      return { rulesDirectory, entries, errors: source.errors, unavailableTargetIds };
     },
 
     async apply() {
