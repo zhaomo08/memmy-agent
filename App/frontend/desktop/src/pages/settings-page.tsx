@@ -1,8 +1,10 @@
 /** Settings page for account, model, token usage, and desktop preferences. */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from "react";
-import { Brain, Palette, Rocket, Settings2, Shield, User, Zap, ArrowRight, ArrowLeft, Bell, ExternalLink, FolderOpen, Gift, Info, KeyRound, LogOut, Wrench, Search, Eye, EyeOff, ChevronDown, ChevronUp, ChevronRight, Database, Loader2, CheckCircle2, XCircle, Check, AlertTriangle, Mic, Image as ImageIcon, Copy} from "lucide-react";
+import { Brain, Palette, Rocket, Settings2, Shield, User, Zap, ArrowRight, ArrowLeft, Bell, ExternalLink, FolderOpen, Gift, Info, KeyRound, LogOut, Wrench, Search, Eye, EyeOff, ChevronDown, ChevronUp, ChevronRight, Database, Loader2, CheckCircle2, XCircle, Check, AlertTriangle, Mic, Image as ImageIcon, Copy, Link2} from "lucide-react";
 import type { AccountInvitationView, AppSettingsDto, ByokTokenUsageByKind, ByokTokenUsageKind, ByokTokenUsageSummary, Language, PrivacySettingsDto, TokenQuotaEligibility, TokenSceneUsageDto, TokenUsageDto } from "@memmy/local-api-contracts";
+import type { AgentLedgerClient } from "../api/agent-ledger-client.js";
 import { useApiClients } from "../app/providers.js";
+import { AgentLedgerPanel } from "./settings-agent-ledger.js";
 import { copyInvitationCode } from "../app/invitation-analytics.js";
 import { resolveGiftTokenUsage } from "../app/routes.js";
 import { useUpdateCoordinator, type UpdateCoordinatorValue, type UpdatePhase } from "../app/update-coordinator.js";
@@ -219,6 +221,7 @@ export function SettingsPage() {
         configClient={clients?.config}
         byokTokenUsageClient={clients?.byokTokenUsage}
         tokenQuotaClient={clients?.tokenQuota}
+        agentLedgerClient={clients?.agentLedger}
         update={update}
         track={track}
         onUsageDetailVisibleChange={setShowUsageDetail}
@@ -239,6 +242,7 @@ export function SettingsPage() {
  * - update: The app-level desktop update state and primary action.
  * - track: The analytics-tracking function; may be omitted in pure-view tests and default to a no-op.
  * - onUsageDetailVisibleChange: Notifies the outer layout to collapse the draggable top bar when the Token usage detail sub-page's visibility changes.
+ * - agentLedgerClient: The agent rule and skill ledger client; may be omitted in SSR tests.
  */
 export interface SettingsPageViewProps {
   state: AppState;
@@ -250,6 +254,7 @@ export interface SettingsPageViewProps {
   update: UpdateCoordinatorValue;
   track?: TrackAnalyticsEvent;
   onUsageDetailVisibleChange?: (visible: boolean) => void;
+  agentLedgerClient?: AgentLedgerClient;
 }
 
 /** Returns whether a nickname input key event should save the current draft. */
@@ -264,7 +269,7 @@ export function shouldSaveAccountNicknameOnKeyDown(event: import("react").Keyboa
  * @returns The settings page content node matching the prototype structure.
  */
 export function SettingsPageView(props: SettingsPageViewProps) {
-  const { state, dispatch, accountClient, configClient, byokTokenUsageClient, tokenQuotaClient, update, track = noopTrackAnalyticsEvent, onUsageDetailVisibleChange } = props;
+  const { state, dispatch, accountClient, configClient, byokTokenUsageClient, tokenQuotaClient, update, track = noopTrackAnalyticsEvent, onUsageDetailVisibleChange, agentLedgerClient } = props;
   const { t } = useTranslation();
   const bootstrap = state.bootstrap;
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
@@ -1860,6 +1865,16 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             </button>
           </div>
         </Section>
+
+        {agentLedgerClient && (
+          <Section
+            icon={<Link2 size={16} className="text-text-ink/60" />}
+            title={t("settings.agentLedger")}
+            sectionId="agent-ledger"
+          >
+            <AgentLedgerPanel client={agentLedgerClient} />
+          </Section>
+        )}
 
         <Section icon={<Settings2 size={16} className="text-text-ink/60" />} title={t("settings.developer")}>
           <div className="space-y-1">

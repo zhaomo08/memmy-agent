@@ -1,5 +1,6 @@
 import type { RuntimeConfig } from "@memmy/local-api-contracts";
 import { createHttpAccountClient, type AccountClient } from "./account-client.js";
+import { createHttpAgentLedgerClient, type AgentLedgerClient } from "./agent-ledger-client.js";
 import { createHttpAgentSourceClient, type AgentSourceClient } from "./agent-source-client.js";
 import { createHttpAsrClient, type AsrClient } from "./asr-client.js";
 import { createHttpBootstrapClient, type BootstrapClient } from "./bootstrap-client.js";
@@ -23,6 +24,7 @@ export interface AppClients {
   account: AccountClient;
   config: ConfigClient;
   agentSources: AgentSourceClient;
+  agentLedger: AgentLedgerClient;
   localData: LocalDataClient;
   memoryRuntime: MemoryRuntimeClient;
   integrations: IntegrationsClient;
@@ -47,6 +49,7 @@ export function createAppClients(input: CreateAppClientsInput): AppClients {
     account: createHttpAccountClient(input.runtimeConfig),
     config: createHttpConfigClient(input.runtimeConfig),
     agentSources: createHttpAgentSourceClient(input.runtimeConfig),
+    agentLedger: createHttpAgentLedgerClient(input.runtimeConfig),
     localData: createHttpLocalDataClient(input.runtimeConfig),
     memoryRuntime: createHttpMemoryRuntimeClient(input.runtimeConfig),
     integrations: createHttpIntegrationsClient(input.runtimeConfig),
