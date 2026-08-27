@@ -355,6 +355,19 @@ describe("freeze", () => {
     ]);
   });
 
+  it("keeps the reasons a person wrote when the layout is frozen again", async () => {
+    await addLibrarySkill("pdf");
+    await mount(codexRoot, "pdf");
+    await writeManifest("skills:\n  pdf:\n    mount: [codex]\n    why: Claude has a plugin for this\n");
+
+    await mount(claudeRoot, "pdf");
+    await reconciler().freeze();
+
+    expect(parseSkillManifest(await readFile(manifestPath, "utf8")).declarations).toEqual([
+      { name: "pdf", mount: ["claude_code", "codex"], why: "Claude has a plugin for this" }
+    ]);
+  });
+
   it("drift appears as soon as the layout moves away from the frozen manifest", async () => {
     await addLibrarySkill("alpha");
     await mount(claudeRoot, "alpha");

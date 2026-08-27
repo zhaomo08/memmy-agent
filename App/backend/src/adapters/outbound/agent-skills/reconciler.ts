@@ -130,7 +130,10 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
     },
 
     async freeze() {
-      const { libraryPath } = await load();
+      const { libraryPath, declarations: existing } = await load();
+      // why is the whole reason the ledger beats a directory listing, and it is the one
+      // part only a person can write. Re-freezing re-reads the layout, never the prose.
+      const reasons = new Map(existing.filter((entry) => entry.why).map((entry) => [entry.name, entry.why]));
       const { observations, libraryNames } = await observe(libraryPath);
       const mounts = new Map<string, string[]>();
       for (const name of libraryNames) {
@@ -150,7 +153,10 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
         mounts.set(observation.name, observation.state === "linked" ? [...current, observation.targetId] : current);
       }
 
-      const declarations = [...mounts.entries()].map(([name, mount]) => ({ name, mount }));
+      const declarations = [...mounts.entries()].map(([name, mount]) => {
+        const why = reasons.get(name);
+        return why ? { name, mount, why } : { name, mount };
+      });
       await mkdir(dirname(manifestPath), { recursive: true });
       await writeFile(manifestPath, renderSkillManifest({ libraryPath, declarations }), "utf8");
       return { manifestPath, declarations: declarations.length };
