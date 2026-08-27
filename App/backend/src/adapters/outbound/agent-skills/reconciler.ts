@@ -31,6 +31,12 @@ export interface SkillReconciler {
 export interface CreateSkillReconcilerDeps {
   targets: readonly SkillMountTarget[];
   manifestPath?: string;
+  /**
+   * Skills the app installs into the same directory itself. The ledger records what the
+   * user mounts by hand; a skill the app owns is not theirs to declare, and reporting it
+   * as undeclared is noise they can never clear.
+   */
+  managedNames?: readonly string[];
   /** Overrides the library path the manifest would otherwise supply. Tests use this. */
   libraryPath?: string;
 }
@@ -38,6 +44,7 @@ export interface CreateSkillReconcilerDeps {
 /** Creates the reconciler that measures the shared skill library against each agent's skills directory. */
 export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillReconciler {
   const manifestPath = deps.manifestPath ?? resolveSkillManifestPath();
+  const managedNames = new Set(deps.managedNames ?? []);
 
   async function load(): Promise<{
     libraryPath: string;
@@ -85,9 +92,10 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
       return {
         libraryPath,
         manifestPath,
+        managedNames: [...managedNames],
         manifestMissing,
         observations,
-        findings: compare(declarations, observations, libraryNames),
+        findings: compare(declarations, observations, libraryNames, managedNames),
         unavailableTargetIds
       };
     },
@@ -95,7 +103,7 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
     async reconcile() {
       const { libraryPath, declarations } = await load();
       const { observations, unavailableTargetIds, libraryNames } = await observe(libraryPath);
-      const findings = compare(declarations, observations, libraryNames);
+      const findings = compare(declarations, observations, libraryNames, managedNames);
       const mounted: SkillFinding[] = [];
       const unmounted: SkillFinding[] = [];
       const skipped: SkillFinding[] = [];
@@ -126,11 +134,13 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
       const { observations, libraryNames } = await observe(libraryPath);
       const mounts = new Map<string, string[]>();
       for (const name of libraryNames) {
-        mounts.set(name, []);
+        if (!managedNames.has(name)) {
+          mounts.set(name, []);
+        }
       }
 
       for (const observation of observations) {
-        if (observation.state === "absent" || observation.state === "broken") {
+        if (observation.state === "absent" || observation.state === "broken" || managedNames.has(observation.name)) {
           continue;
         }
 
@@ -186,7 +196,8 @@ async function observeOne(
 function compare(
   declarations: readonly SkillDeclaration[],
   observations: readonly SkillObservation[],
-  libraryNames: readonly string[]
+  libraryNames: readonly string[],
+  managedNames: ReadonlySet<string>
 ): SkillFinding[] {
   const declared = new Map(declarations.map((declaration) => [declaration.name, declaration]));
   const findings: SkillFinding[] = [];
@@ -197,6 +208,12 @@ function compare(
     // declaration happens to cover it is how these two sat unnoticed for months.
     if (observation.state === "broken") {
       findings.push(finding("blocked", observation, `dead symlink to ${observation.linkTarget ?? "an unknown path"}`));
+      continue;
+    }
+
+    // The app puts this one there and takes it away again. Whatever the manifest says about
+    // it is not a difference worth acting on -- the app is the source of truth, not the ledger.
+    if (managedNames.has(observation.name)) {
       continue;
     }
 

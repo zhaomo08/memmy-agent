@@ -35,6 +35,11 @@ function reconciler(list = targets()) {
   return createSkillReconciler({ targets: list, manifestPath, libraryPath });
 }
 
+/** A reconciler told that memmy-memory is the app's own, as the services layer wires it. */
+function withManaged(list = targets()) {
+  return createSkillReconciler({ targets: list, manifestPath, libraryPath, managedNames: ["memmy-memory"] });
+}
+
 async function addLibrarySkill(name: string): Promise<void> {
   await mkdir(join(libraryPath, name), { recursive: true });
   await writeFile(join(libraryPath, name, "SKILL.md"), `# ${name}\n`, "utf8");
@@ -175,6 +180,62 @@ describe("status", () => {
     const list: SkillMountTarget[] = [...targets(), { targetId: "ghost", displayName: "Ghost", resolveRootDirectory: async () => null }];
     const status = await reconciler(list).status();
     expect(status.unavailableTargetIds).toEqual(["ghost"]);
+  });
+});
+
+describe("app-managed skills", () => {
+  it("says nothing about a skill the app installs itself", async () => {
+    await mkdir(join(claudeRoot, "skills", "memmy-memory"), { recursive: true });
+    await mkdir(join(codexRoot, "skills", "memmy-memory"), { recursive: true });
+
+    expect((await reconciler().status()).findings).toEqual([
+      expect.objectContaining({ kind: "undeclared", name: "memmy-memory" })
+    ]);
+    expect((await withManaged().status()).findings).toEqual([]);
+  });
+
+  it("still observes it, so the ledger does not quietly hide what is on disk", async () => {
+    await mkdir(join(codexRoot, "skills", "memmy-memory"), { recursive: true });
+
+    const status = await withManaged().status();
+    expect(status.managedNames).toEqual(["memmy-memory"]);
+    expect(status.observations).toContainEqual(
+      expect.objectContaining({ name: "memmy-memory", targetId: "codex", state: "local" })
+    );
+  });
+
+  it("reports a dead link even at a name the app owns", async () => {
+    await symlink(join(workspace, "vanished"), join(codexRoot, "skills", "memmy-memory"));
+
+    expect((await withManaged().status()).findings).toEqual([
+      expect.objectContaining({ kind: "blocked", name: "memmy-memory" })
+    ]);
+  });
+
+  it("does not call the app's own install a blocked path", async () => {
+    await mkdir(join(codexRoot, "skills", "memmy-memory"), { recursive: true });
+    await writeManifest("skills:\n  memmy-memory: [codex]\n");
+
+    // Without the guard the real directory the app wrote reads as something in the way.
+    expect((await reconciler().status()).findings).toEqual([
+      expect.objectContaining({ kind: "blocked", name: "memmy-memory" })
+    ]);
+
+    const result = await withManaged().reconcile();
+    expect([...result.mounted, ...result.unmounted, ...result.skipped]).toEqual([]);
+    expect((await lstat(join(codexRoot, "skills", "memmy-memory"))).isDirectory()).toBe(true);
+  });
+
+  it("keeps it out of a frozen ledger", async () => {
+    await addLibrarySkill("alpha");
+    await mount(codexRoot, "alpha");
+    await mkdir(join(codexRoot, "skills", "memmy-memory"), { recursive: true });
+
+    await withManaged().freeze();
+    expect(parseSkillManifest(await readFile(manifestPath, "utf8")).declarations).toEqual([
+      { name: "alpha", mount: ["codex"] }
+    ]);
+    expect((await withManaged().status()).findings).toEqual([]);
   });
 });
 
