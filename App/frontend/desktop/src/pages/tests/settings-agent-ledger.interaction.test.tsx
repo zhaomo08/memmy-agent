@@ -9,24 +9,25 @@ import type { AgentLedgerClient } from "../../api/agent-ledger-client.js";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const FINDINGS = [
-  {
-    kind: "not_mounted" as const,
-    name: "pdf",
-    targetId: "claude_code",
-    targetDisplayName: "Claude Code",
-    path: "/home/user/.claude/skills/pdf",
-    detail: "declared for this agent but not linked"
-  },
-  {
-    kind: "blocked" as const,
-    name: "update-n8n-stack",
-    targetId: "codex",
-    targetDisplayName: "Codex",
-    path: "/home/user/.codex/skills/update-n8n-stack",
-    detail: "dead symlink to /Volumes/zhao/n8n"
-  }
-];
+const NOT_MOUNTED = {
+  kind: "not_mounted" as const,
+  name: "pdf",
+  targetId: "claude_code",
+  targetDisplayName: "Claude Code",
+  path: "/home/user/.claude/skills/pdf",
+  detail: "declared for this agent but not linked"
+};
+
+const BLOCKED = {
+  kind: "blocked" as const,
+  name: "update-n8n-stack",
+  targetId: "codex",
+  targetDisplayName: "Codex",
+  path: "/home/user/.codex/skills/update-n8n-stack",
+  detail: "dead symlink to /Volumes/zhao/n8n"
+};
+
+const FINDINGS = [NOT_MOUNTED, BLOCKED];
 
 describe("AgentLedgerPanel", () => {
   let container: HTMLDivElement;
@@ -70,7 +71,7 @@ describe("AgentLedgerPanel", () => {
   });
 
   it("offers no fix button when nothing can be fixed automatically", async () => {
-    const client = createClient({ findings: [FINDINGS[1]] });
+    const client = createClient({ findings: [BLOCKED] });
 
     await render(client);
 
