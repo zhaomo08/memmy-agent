@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { sessionScopeForOpenRequest } from "../../../src/service/namespace/namespace-scope.js";
 import { resolveWorkspaceIdentity, workspaceIdFromPath } from "../../../src/utils/workspace.js";
 import type { RuntimeNamespace, SessionOpenRequest } from "../../../src/types.js";
@@ -16,10 +19,23 @@ describe("resolveWorkspaceIdentity", () => {
   });
 
   it("names a worktree after its parent repository", () => {
-    // This checkout is itself a git worktree of memmy-agent.
-    const identity = resolveWorkspaceIdentity(repoRoot);
+    // A worktree is a .git *file* pointing into the parent's .git/worktrees.
+    const { worktree } = buildWorktree();
 
-    expect(identity.projectLabel).toBe("memmy-agent/memmy-agent-chatwise");
+    expect(resolveWorkspaceIdentity(worktree).projectLabel).toBe("upstream-repo/feature-branch");
+  });
+
+  it("names a plain checkout after itself, with no parent to borrow from", () => {
+    const checkout = join(makeWorkspace(), "solo-repo");
+    mkdirSync(join(checkout, ".git"), { recursive: true });
+
+    expect(resolveWorkspaceIdentity(checkout).projectLabel).toBe("solo-repo");
+  });
+
+  it("gives a worktree its own id, because worktrees hold different code", () => {
+    const { worktree, parent } = buildWorktree();
+
+    expect(resolveWorkspaceIdentity(worktree).workspaceId).not.toBe(resolveWorkspaceIdentity(parent).workspaceId);
   });
 
   it("keeps the desktop agent's id for a non-git folder", () => {
@@ -66,3 +82,28 @@ describe("sessionScopeForOpenRequest", () => {
     expect(scope.projectId).toBeUndefined();
   });
 });
+
+const workspaces: string[] = [];
+
+afterEach(() => {
+  while (workspaces.length > 0) {
+    rmSync(workspaces.pop() as string, { recursive: true, force: true });
+  }
+});
+
+function makeWorkspace(): string {
+  const workspace = mkdtempSync(join(tmpdir(), "memmy-workspace-"));
+  workspaces.push(workspace);
+  return workspace;
+}
+
+/** Lays out a parent repository and a worktree of it, as git itself would. */
+function buildWorktree(): { parent: string; worktree: string } {
+  const workspace = makeWorkspace();
+  const parent = join(workspace, "upstream-repo");
+  const worktree = join(workspace, "feature-branch");
+  mkdirSync(join(parent, ".git", "worktrees", "feature-branch"), { recursive: true });
+  mkdirSync(worktree, { recursive: true });
+  writeFileSync(join(worktree, ".git"), `gitdir: ${join(parent, ".git", "worktrees", "feature-branch")}\n`, "utf8");
+  return { parent, worktree };
+}
