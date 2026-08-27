@@ -164,6 +164,13 @@ describe("status", () => {
     expect(observation?.state).toBe("broken");
   });
 
+  it("reports a dead link the manifest never mentioned", async () => {
+    await symlink(join(workspace, "vanished"), join(codexRoot, "skills", "orphan"));
+
+    const findings = (await reconciler().status()).findings;
+    expect(findings).toEqual([expect.objectContaining({ kind: "blocked", name: "orphan", targetId: "codex" })]);
+  });
+
   it("names a target whose root is absent instead of failing", async () => {
     const list: SkillMountTarget[] = [...targets(), { targetId: "ghost", displayName: "Ghost", resolveRootDirectory: async () => null }];
     const status = await reconciler(list).status();
@@ -266,6 +273,25 @@ describe("freeze", () => {
     await reconciler().freeze();
 
     expect(await readFile(manifestPath, "utf8")).toContain("a decision from an oversight");
+  });
+
+  it("records a skill that lives at one agent only, so the ledger settles", async () => {
+    await mkdir(join(codexRoot, "skills", "local-only"), { recursive: true });
+    await reconciler().freeze();
+
+    const document = parseSkillManifest(await readFile(manifestPath, "utf8"));
+    expect(document.declarations).toEqual([{ name: "local-only", mount: [] }]);
+    expect((await reconciler().status()).findings).toEqual([]);
+  });
+
+  it("refuses to record a dead link as intent", async () => {
+    await symlink(join(workspace, "vanished"), join(claudeRoot, "skills", "orphan"));
+    await reconciler().freeze();
+
+    expect(parseSkillManifest(await readFile(manifestPath, "utf8")).declarations).toEqual([]);
+    expect((await reconciler().status()).findings).toEqual([
+      expect.objectContaining({ kind: "blocked", name: "orphan" })
+    ]);
   });
 
   it("drift appears as soon as the layout moves away from the frozen manifest", async () => {
