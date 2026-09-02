@@ -19,6 +19,7 @@ import type {
   AccountSessionProfileInput,
   AccountSessionRepository
 } from "../infrastructure/app-state-store/repositories/account-session-repo.js";
+import type { BootstrapRepository } from "../infrastructure/app-state-store/repositories/bootstrap-repo.js";
 import type { MemmyConfigWriter, RuntimeProjectionResult } from "../infrastructure/memmy-config/index.js";
 import type { MemoryClient } from "../adapters/outbound/memory-client/index.js";
 import type { OkResponse } from "@memmy/local-api-contracts";
@@ -40,6 +41,8 @@ export interface CreateAccountServiceOptions {
   cloudClient: CloudClient;
   /** Account session repository. */
   accountSessionRepository: AccountSessionRepository;
+  /** Bootstrap repository used to preserve machine-level onboarding across logout. */
+  bootstrapRepository: Pick<BootstrapRepository, "preserveCompletedOnboardingForLocalByok">;
   /** Memmy config writer. */
   memmyConfigWriter?: MemmyConfigWriter;
   /** Memory client. */
@@ -168,6 +171,7 @@ export function createAccountService(options: CreateAccountServiceOptions): Acco
 
     async logout() {
       const uuid = options.accountSessionRepository.getCloudUuid();
+      options.bootstrapRepository.preserveCompletedOnboardingForLocalByok();
       if (uuid) {
         try {
           await options.cloudClient.logout({ uuid });
