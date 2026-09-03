@@ -81,6 +81,12 @@ refuses to start without a token and gives a specific error for non-loopback
 listeners. The built-in panel accepts the token in its password-style header
 field and sends it through the `Authorization` header.
 
+All remote summary-model calls (capture, reflection, long-turn splitting,
+reward scoring, retrieval filtering, and turn routing) are clipped before
+requesting when their estimated input would exceed an 8,192-token context;
+the requested output budget and a 512-token provider overhead margin are
+reserved first.
+
 ## CLI
 
 Run the CLI directly from source inside the `Memory/` directory:
