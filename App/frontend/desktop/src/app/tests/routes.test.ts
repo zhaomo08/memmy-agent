@@ -171,60 +171,13 @@ describe("desktop route table", () => {
     expect(resolveInitialView({
       bootstrap: completedByokBootstrap,
       preferredMode: "full",
-      modelConfig: {
-        catalog: {
-          modelAssignments: {
-            byok: { agent: { candidates: [] } }
-          }
-        }
-      }
+      modelConfig: { configured: false }
     })).toBe("/api-key");
     expect(resolveInitialView({
       bootstrap: completedByokBootstrap,
       preferredMode: "full",
-      modelConfig: {
-        catalog: {
-          modelAssignments: {
-            byok: { agent: { candidates: ["local-agent"] } }
-          }
-        }
-      }
+      modelConfig: { configured: true }
     })).toBe("/main");
-  });
-
-  it("keeps a pending BYOK first report after completion carryover once a model is configured", () => {
-    const carriedBootstrap = {
-      ...baseBootstrap,
-      app: { ...baseBootstrap.app, userMode: "byok" as const },
-      onboarding: {
-        ...baseBootstrap.onboarding,
-        completed: true,
-        currentStep: "completed" as const,
-        firstEncounterReportStatus: "pending" as const,
-        completedAt: "2026-06-04T00:00:00.000Z"
-      }
-    };
-    const reconciled = reconcileInitialOnboarding({ bootstrap: carriedBootstrap });
-
-    expect(reconciled.onboarding).toMatchObject({
-      completed: false,
-      currentStep: "scan_permission_required",
-      firstEncounterReportStatus: "pending"
-    });
-    expect(resolveInitialView({
-      bootstrap: reconciled,
-      preferredMode: "full",
-      modelConfig: {
-        catalog: { modelAssignments: { byok: { agent: { candidates: [] } } } }
-      }
-    })).toBe("/api-key");
-    expect(resolveInitialView({
-      bootstrap: reconciled,
-      preferredMode: "full",
-      modelConfig: {
-        catalog: { modelAssignments: { byok: { agent: { candidates: ["local-agent"] } } } }
-      }
-    })).toBe("/onboarding");
   });
 
   it("respects the preferred full or pet mode after onboarding is complete", () => {

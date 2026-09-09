@@ -66,12 +66,13 @@ export interface ResolveInitialViewInput {
   modelConfig?: ByokAgentModelAvailability | null;
 }
 
+/**
+ * Whether BYOK mode has a usable agent model. Upstream expresses this through
+ * its account model catalog; this fork has no catalog, so the flat provider
+ * config's own `configured` flag carries the same signal.
+ */
 export interface ByokAgentModelAvailability {
-  catalog?: {
-    modelAssignments: {
-      byok: { agent: { candidates: readonly string[] } };
-    };
-  } | null;
+  configured?: boolean;
 }
 
 /** Contract for pet launch guard input. */
@@ -142,8 +143,7 @@ export function resolveInitialView(input: ResolveInitialViewInput): AppRoutePath
   }
 
   if (input.bootstrap.app.userMode === "byok") {
-    if (input.modelConfig !== undefined &&
-      !input.modelConfig?.catalog?.modelAssignments.byok.agent.candidates.length) {
+    if (input.modelConfig !== undefined && !input.modelConfig?.configured) {
       return "/api-key";
     }
 
