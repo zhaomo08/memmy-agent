@@ -219,14 +219,14 @@ describe("PetPage helpers", () => {
       bootstrap,
       account,
       modelConfig: {
-        catalog: { modelAssignments: { byok: { agent: { candidates: [] } } } }
+        configured: false
       }
     })).toBe("/api-key");
     expect(resolvePetFullRoute({
       bootstrap,
       account,
       modelConfig: {
-        catalog: { modelAssignments: { byok: { agent: { candidates: ["local-agent"] } } } }
+        configured: true
       }
     })).toBe("/main");
   });
