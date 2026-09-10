@@ -2567,18 +2567,7 @@ function finishRetryWaitStatusForTurn(state: AgentState, chatId: string, turnId:
     return state;
   }
 
-  const nextState = {
-    ...state,
-    retryWaitStatusByChatId: {
-      ...state.retryWaitStatusByChatId,
-      [chatId]: {
-        ...status,
-        isRunning: false,
-        updatedAt: Date.now()
-      }
-    }
-  };
-  return chatId === state.currentChatId ? syncCurrentMessages(nextState) : nextState;
+  return clearRetryWaitStatusForChat(state, chatId);
 }
 
 function toolProgressFallbackLine(event: MemmyAgentWsEvent): string {

@@ -1858,7 +1858,7 @@ describe("agent chat slice", () => {
     expect(state.messages.every((message) => !message.isStreaming && !message.reasoningStreaming)).toBe(true);
     expect(state.messages.every((message) => message.stoppedByUser !== true)).toBe(true);
     expect(state.messagesByChatId["chat-1"]?.every((message) => !message.isStreaming && !message.reasoningStreaming)).toBe(true);
-    expect(state.retryWaitStatusByChatId["chat-1"]?.isRunning).toBe(false);
+    expect(state.retryWaitStatusByChatId["chat-1"]).toBeUndefined();
     expect(state.tasks.find((task) => task.chatId === "chat-1")?.runStartedAt).toBeNull();
     expect(state.lastTaskCompletion).toBeNull();
     expect(state.completedUnseenByChatId["chat-1"]).toBeUndefined();
@@ -2623,7 +2623,7 @@ describe("agent chat slice", () => {
     expect(state.retryWaitStatusByChatId["chat-1"]?.isRunning).toBe(true);
   });
 
-  it("stops retry_wait running when answer text starts without merging content", () => {
+  it("clears retry_wait status when answer text starts without merging content", () => {
     let state = agentReducer(initialAgentState, { type: "agent/sessionsLoaded", sessions });
     state = agentReducer(state, { type: "agent/wsEvent", event: { event: "ready", chat_id: "chat-1" } });
     state = agentReducer(state, {
@@ -2641,16 +2641,13 @@ describe("agent chat slice", () => {
       event: { event: "delta", chat_id: "chat-1", turn_id: "turn-retry", text: "真正正文" }
     });
 
-    expect(state.retryWaitStatusByChatId["chat-1"]).toMatchObject({
-      text: "Model request failed, retrying attempt 2 in 2s...",
-      isRunning: false
-    });
+    expect(state.retryWaitStatusByChatId["chat-1"]).toBeUndefined();
     expect(state.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
     expect(state.messages[1]).toMatchObject({ role: "assistant", content: "真正正文", isStreaming: true });
     expect(state.messages[1]?.content).not.toContain("Model request failed");
   });
 
-  it("keeps retry_wait out of activity traces when tool progress starts", () => {
+  it("clears retry_wait status when tool progress starts", () => {
     let state = agentReducer(initialAgentState, { type: "agent/sessionsLoaded", sessions });
     state = agentReducer(state, { type: "agent/wsEvent", event: { event: "ready", chat_id: "chat-1" } });
     state = agentReducer(state, {
@@ -2674,7 +2671,7 @@ describe("agent chat slice", () => {
       }
     });
 
-    expect(state.retryWaitStatusByChatId["chat-1"]?.isRunning).toBe(false);
+    expect(state.retryWaitStatusByChatId["chat-1"]).toBeUndefined();
     expect(state.messages.map((message) => message.role)).toEqual(["user", "tool"]);
     expect(state.messages[1]).toMatchObject({
       role: "tool",
@@ -2684,7 +2681,7 @@ describe("agent chat slice", () => {
     expect(state.messages.some((message) => message.content.includes("Model request failed"))).toBe(false);
   });
 
-  it("stops retry_wait running on turn_end and stop_result", () => {
+  it("clears retry_wait status on turn_end and stop_result", () => {
     let ended = agentReducer(initialAgentState, { type: "agent/sessionsLoaded", sessions });
     ended = agentReducer(ended, { type: "agent/wsEvent", event: { event: "ready", chat_id: "chat-1" } });
     ended = agentReducer(ended, { type: "agent/userMessageQueued", chatId: "chat-1", content: "turn end" });
@@ -2694,7 +2691,7 @@ describe("agent chat slice", () => {
     });
     ended = agentReducer(ended, { type: "agent/wsEvent", event: { event: "turn_end", chat_id: "chat-1", turn_id: "turn-end" } });
 
-    expect(ended.retryWaitStatusByChatId["chat-1"]?.isRunning).toBe(false);
+    expect(ended.retryWaitStatusByChatId["chat-1"]).toBeUndefined();
     expect(ended.isSending).toBe(false);
 
     let stopped = agentReducer(initialAgentState, { type: "agent/sessionsLoaded", sessions });
@@ -2706,7 +2703,7 @@ describe("agent chat slice", () => {
     });
     stopped = agentReducer(stopped, { type: "agent/wsEvent", event: { event: "stop_result", chat_id: "chat-1", stopped: 1, turn_id: "turn-stop" } });
 
-    expect(stopped.retryWaitStatusByChatId["chat-1"]?.isRunning).toBe(false);
+    expect(stopped.retryWaitStatusByChatId["chat-1"]).toBeUndefined();
     expect(stopped.isSending).toBe(false);
   });
 
