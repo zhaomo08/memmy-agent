@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR, PRODUCT_TOUR_TOOLS_NAV_ANCHOR } from "../app/product-tour-layout.js";
+import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR } from "../app/product-tour-layout.js";
 import type { AppRoutePath } from "../app/routes.js";
 import { clearDeferredGuidanceStep, clearFocusedAgentTarget, clearProductTourStep, readDeferredGuidanceStep, readGuidanceCompleted, routeTable, writeDeferredGuidanceStep, writeGuidanceCompleted } from "../app/routes.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
@@ -39,7 +39,6 @@ import {
   BrainCircuit,
   LayoutList,
   ListChecks,
-  Link2,
   Loader2,
   MessageSquarePlus,
   PanelLeft,
@@ -164,7 +163,6 @@ export interface AccountDisplayText {
 const navItems: NavItem[] = [
   { path: "/main", icon: <MessageSquarePlus size={16} /> },
   { action: "search", icon: <Search size={16} />, labelKey: "appFrame.search" },
-  { path: "/tools", icon: <Link2 size={16} /> },
   { path: "/memory", icon: <BrainCircuit size={16} /> }
 ];
 
@@ -213,7 +211,6 @@ const standaloneRenderTaskStateCoordinator: AgentTaskStateCoordinator = {
 
 function resolveProductTourNavAnchor(path: AppRoutePath): string | undefined {
   if (path === "/memory") return PRODUCT_TOUR_MEMORY_NAV_ANCHOR;
-  if (path === "/tools") return PRODUCT_TOUR_TOOLS_NAV_ANCHOR;
   return undefined;
 }
 

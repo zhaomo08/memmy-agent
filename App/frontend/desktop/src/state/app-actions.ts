@@ -12,10 +12,6 @@ import type {
 import type { AppRoutePath, PreferredMode } from "../app/routes.js";
 import type { InvitationToastKind } from "../app/invitation-result.js";
 import type { ModelProviderConfig } from "../api/config-client.js";
-import { isIntegrationSetupDiagnosticError, logHiddenIntegrationSetupDiagnosticError } from "../api/integration-errors.js";
-import type { IntegrationsClient } from "../api/integrations-client.js";
-import type { IntegrationConnection } from "../integrations/connection-state.js";
-import type { IntegrationMeta } from "../integrations/integration-meta.js";
 import type { MemmyAgentRunStatusSnapshot, MemmyAgentSessionSnapshot, MemmyAgentSessionSummary, MemmyAgentSidebarState, MemmyAgentWebuiThread, MemmyAgentWsEvent, WebuiSessionTarget } from "../api/memmy-agent-client.js";
 import type { PendingAttachment } from "./agent-composer-state.js";
 import type {
@@ -27,7 +23,6 @@ import type {
   AgentRecoveryChatRequest,
   AgentTaskStateRequest
 } from "./agent-chat-slice.js";
-import type { ToolsAction } from "./tools-slice.js";
 
 /** Type definition for event connection status. */
 export type EventConnectionStatus = "pending" | "connecting" | "connected" | "heartbeat" | "reconnecting";
@@ -76,7 +71,6 @@ export function createAgentOperationError(input: {
 
 /** Type definition for app action. */
 export type AppAction =
-  | ToolsAction
   | AgentAction
   | { type: "startup/loading" }
   | { type: "startup/error"; message: string }
@@ -226,16 +220,6 @@ export const appActions = {
   /** Handles modal changed. */
   modalChanged(modal: "nickname" | "scanPermission" | "improvement" | "modelConfig", open: boolean): AppAction {
     return { type: "modal/changed", modal, open };
-  },
-
-  /** Handles open tool connect modal. */
-  openToolConnectModal(integration: Pick<IntegrationMeta, "slug" | "surface">): AppAction {
-    return { type: "tools/openToolModal", surface: integration.surface, slug: integration.slug };
-  },
-
-  /** Closes close tool modal. */
-  closeToolModal(): AppAction {
-    return { type: "tools/closeModal" };
   }
 };
 
@@ -446,67 +430,3 @@ export const agentActions = {
     return { type: "agent/wsEvent", event };
   }
 };
-
-/** Definition for tools actions. */
-export const toolsActions = {
-  /** App actions module. */
-  async loadConnections(client: IntegrationsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
-    dispatch({ type: "tools/loadStart" });
-
-    try {
-      const connections = await loadToolConnectionRecords(client);
-      dispatch({
-        type: "tools/loadSuccess",
-        connections
-      });
-    } catch (error) {
-      if (isIntegrationSetupDiagnosticError(error)) {
-        logHiddenIntegrationSetupDiagnosticError(error);
-        dispatch({ type: "tools/loadSuccess", connections: [] });
-        return;
-      }
-
-      dispatch({ type: "tools/loadFailure", message: toErrorMessage(error) });
-    }
-  },
-
-  /** App actions module. */
-  async refreshConnections(client: IntegrationsClient, dispatch: (action: ToolsAction) => void): Promise<void> {
-    try {
-      const connections = await loadToolConnectionRecords(client);
-      dispatch({ type: "tools/connectionsUpdated", connections });
-    } catch (error) {
-      if (isIntegrationSetupDiagnosticError(error)) {
-        logHiddenIntegrationSetupDiagnosticError(error);
-        return;
-      }
-
-      dispatch({ type: "tools/connectionFailure", message: toErrorMessage(error) });
-    }
-  }
-};
-
-/** Reads load tool connection records. */
-export async function loadToolConnectionRecords(client: IntegrationsClient): Promise<IntegrationConnection[]> {
-  return listIntegrationConnections(client);
-}
-
-/** Handles list integration connections. */
-async function listIntegrationConnections(client: IntegrationsClient): Promise<IntegrationConnection[]> {
-  try {
-    const connectionsResponse = await client.listConnections();
-    return connectionsResponse.connections.map((connection) => ({ ...connection, surface: "integration" }));
-  } catch (error) {
-    if (isIntegrationSetupDiagnosticError(error)) {
-      logHiddenIntegrationSetupDiagnosticError(error);
-      return [];
-    }
-
-    throw error;
-  }
-}
-
-/** Handles to error message. */
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

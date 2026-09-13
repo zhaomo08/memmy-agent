@@ -124,7 +124,7 @@ export interface MemmyConfigWriter {
   /**
    * Write a single memmy-agent MCP server config (tools.mcpServers[serverName]).
    *
-   * @param serverName the MCP server name, e.g. composio.
+   * @param serverName the MCP server name.
    * @param serverConfig the full config for this MCP server (fully replaced), e.g. { type, url, headers }.
    */
   patchMcpServerConfig(serverName: string, serverConfig: Record<string, unknown>): Promise<void>;
@@ -630,7 +630,7 @@ export async function writeActiveImageGenerationProfileToMemmyConfig(
  *
  * Fully replaces this server's config, so each startup can idempotently refresh it with the latest port/credentials.
  *
- * @param serverName the MCP server name, e.g. composio.
+ * @param serverName the MCP server name.
  * @param serverConfig the full config for this MCP server, e.g. { type, url, headers }.
  * @param configPath the Memmy main config file path.
  */

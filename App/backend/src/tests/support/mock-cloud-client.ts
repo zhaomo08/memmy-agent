@@ -1,11 +1,7 @@
 import type {
   CheckReleaseInput,
-  CloudAuthorizeIntegrationInput,
   CloudClient,
-  CloudDeleteIntegrationConnectionInput,
-  CloudExecuteIntegrationToolInput,
   CloudHealth,
-  CloudIntegrationSessionInput,
   CloudAccountProfile,
   GetAccountInfoInput,
   GetTokenQuotaEligibilityInput,
@@ -162,32 +158,6 @@ export function createMockCloudClient(options: CreateMockCloudClientOptions = {}
         nextAllowedAtEpochMs: null,
         latestRequestStatus: null,
         latestReviewNote: null
-      };
-    },
-
-    async listIntegrationCapabilities(_input: CloudIntegrationSessionInput) {
-      return { toolkits: [] };
-    },
-
-    async authorizeIntegration(input: CloudAuthorizeIntegrationInput) {
-      return {
-        connectUrl: `https://backend.composio.dev/api/v3/s/${input.slug}-mock`,
-        connectionId: `mock-${input.slug}`
-      };
-    },
-
-    async listIntegrationConnections(_input: CloudIntegrationSessionInput) {
-      return { connections: [] };
-    },
-
-    async deleteIntegrationConnection(_input: CloudDeleteIntegrationConnectionInput) {
-      return { ok: true };
-    },
-
-    async executeIntegrationRouterTool(input: CloudExecuteIntegrationToolInput) {
-      return {
-        data: { mockToolSlug: input.toolSlug, arguments: input.arguments ?? {} },
-        successful: true
       };
     },
 

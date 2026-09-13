@@ -555,7 +555,6 @@ export function agentRuntimeConnectRetryDelayMs(attempt: number): number {
 /** Checks is agent runtime bridge route. */
 export function isAgentRuntimeBridgeRoute(path: AppRoutePath): boolean {
   return path === "/main"
-    || path === "/tools"
     || path === "/settings"
     || path === "/memory"
     || path === "/memory-sources";

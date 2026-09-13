@@ -9,10 +9,6 @@ import {
   type ByokTokenUsageClient
 } from "./byok-token-usage-client.js";
 import { createHttpConfigClient, type ConfigClient } from "./config-client.js";
-import {
-  createHttpIntegrationsClient,
-  type IntegrationsClient
-} from "./integrations-client.js";
 import { createHttpLocalDataClient, type LocalDataClient } from "./local-data-client.js";
 import { createHttpMemoryRuntimeClient, type MemoryRuntimeClient } from "./memory-runtime-client.js";
 import { createMemmyAgentClient, type MemmyAgentClient } from "./memmy-agent-client.js";
@@ -27,7 +23,6 @@ export interface AppClients {
   agentLedger: AgentLedgerClient;
   localData: LocalDataClient;
   memoryRuntime: MemoryRuntimeClient;
-  integrations: IntegrationsClient;
   byokTokenUsage: ByokTokenUsageClient;
   asr: AsrClient;
   memmyAgent: MemmyAgentClient;
@@ -52,7 +47,6 @@ export function createAppClients(input: CreateAppClientsInput): AppClients {
     agentLedger: createHttpAgentLedgerClient(input.runtimeConfig),
     localData: createHttpLocalDataClient(input.runtimeConfig),
     memoryRuntime: createHttpMemoryRuntimeClient(input.runtimeConfig),
-    integrations: createHttpIntegrationsClient(input.runtimeConfig),
     byokTokenUsage: createHttpByokTokenUsageClient(input.runtimeConfig),
     asr: createHttpAsrClient(input.runtimeConfig),
     memmyAgent: createMemmyAgentClient(input.runtimeConfig.agentGateway),

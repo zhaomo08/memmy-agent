@@ -24,7 +24,6 @@ describe("AppFrame", () => {
     );
 
     expect(html).toContain("新任务");
-    expect(html).toContain("连接与工具");
     expect(html).toContain("项目");
     expect(html).toContain("任务");
     expect(html).toContain("暂无任务");
@@ -48,7 +47,6 @@ describe("AppFrame", () => {
     expect(html).toContain("relative min-w-0 flex-1 overflow-hidden flex flex-col bg-content-bg");
     expect(html).toContain('data-tour-anchor="product-tour-memory-nav"');
     expect(html).toContain('data-icon="message-square-plus"');
-    expect(html).toContain('data-icon="link-2"');
     expect(html).toContain('data-icon="brain-circuit"');
     expect(html).toContain('data-icon="panel-left"');
     expect(html).not.toContain('data-icon="arrow-right"');

@@ -5,18 +5,11 @@ import {
   AccountLoginResultViewSchema,
   AccountSessionViewSchema,
   ApiErrorBodySchema,
-  AuthorizeIntegrationResponseSchema,
   AvatarOptionSchema,
   ByokTokenUsageEventSchema,
   ByokTokenUsageSummarySchema,
   ClearLocalDataInputSchema,
   ExportLocalDataInputSchema,
-  ConnectIntegrationInputSchema,
-  IntegrationCapabilitiesResponseSchema,
-  IntegrationConnectionsResponseSchema,
-  IntegrationDetailSchema,
-  IntegrationListItemSchema,
-  IntegrationStatusSchema,
   LocalDataClearResponseSchema,
   LocalDataExportResponseSchema,
   LocalDataRevealResponseSchema,
@@ -35,7 +28,6 @@ import {
   SetImprovementProgramInputSchema,
   SetImprovementProgramResponseSchema,
   SetSkinInputSchema,
-  RequestConnectUrlResponseSchema,
   VerifyCodeInputSchema
 } from "@memmy/local-api-contracts";
 
@@ -442,113 +434,4 @@ describe("local app contracts", () => {
     });
   });
 
-  it("parses tool integration contracts", () => {
-    const listItem = IntegrationListItemSchema.parse({
-      id: "github",
-      name: "GitHub",
-      iconText: "G",
-      category: "Platform",
-      authKind: "oauth",
-      brand: "#181717",
-      iconKind: "svg",
-      status: "not_configured"
-    });
-
-    expect(listItem).toMatchObject({
-      id: "github",
-      iconText: "G",
-      authKind: "oauth",
-      brand: "#181717",
-      iconKind: "svg",
-      status: "not_configured"
-    });
-
-    expect(IntegrationStatusSchema.parse("requesting_url")).toBe("requesting_url");
-    expect(IntegrationStatusSchema.parse("awaiting_browser_auth")).toBe("awaiting_browser_auth");
-    expect(() => IntegrationStatusSchema.parse("connecting")).toThrow();
-
-    const detail = IntegrationDetailSchema.parse({
-      ...listItem,
-      summary: "Connect GitHub for repository workflows.",
-      description: "Use OAuth authorization to connect GitHub.",
-      permissions: ["Read repositories", "Manage issues"],
-      authKind: "oauth"
-    });
-
-    expect(detail.permissions).toContain("Manage issues");
-    expect(ConnectIntegrationInputSchema.parse({ id: "github" })).toEqual({ id: "github" });
-    expect(ConnectIntegrationInputSchema.parse({ id: "github", apiKey: "ghp_test" })).toEqual({
-      id: "github",
-      apiKey: "ghp_test"
-    });
-    expect(
-      RequestConnectUrlResponseSchema.parse({
-        url: "https://example.com/oauth/github?state=conn-github",
-        pollToken: "conn-github"
-      })
-    ).toEqual({
-      url: "https://example.com/oauth/github?state=conn-github",
-      pollToken: "conn-github"
-    });
-
-    expect(
-      AuthorizeIntegrationResponseSchema.parse({
-        connectUrl: "https://backend.composio.dev/api/v3/s/github-test",
-        connectionId: "conn-github"
-      })
-    ).toEqual({
-      connectUrl: "https://backend.composio.dev/api/v3/s/github-test",
-      connectionId: "conn-github"
-    });
-
-    expect(
-      IntegrationConnectionsResponseSchema.parse({
-        connections: [{ id: "conn-github", toolkit: "github", status: "ACTIVE", accountEmail: "dev@example.com" }]
-      })
-    ).toEqual({
-      connections: [{ id: "conn-github", toolkit: "github", status: "ACTIVE", accountEmail: "dev@example.com" }]
-    });
-
-    expect(
-      IntegrationCapabilitiesResponseSchema.parse({
-        toolkits: ["github"]
-      })
-    ).toEqual({
-      toolkits: ["github"]
-    });
-  });
-
-  it("accepts Composio integration error codes in the shared error envelope", () => {
-    expect(
-      ApiErrorBodySchema.parse({
-        error: {
-          code: "composio_not_configured",
-          message: "尚未配置 Composio 鉴权服务",
-          requestId: "req-composio"
-        }
-      })
-    ).toEqual({
-      error: {
-        code: "composio_not_configured",
-        message: "尚未配置 Composio 鉴权服务",
-        requestId: "req-composio"
-      }
-    });
-
-    expect(
-      ApiErrorBodySchema.parse({
-        error: {
-          code: "toolkit_unsupported",
-          message: "该工具暂不支持 Composio 授权",
-          requestId: "req-toolkit"
-        }
-      })
-    ).toEqual({
-      error: {
-        code: "toolkit_unsupported",
-        message: "该工具暂不支持 Composio 授权",
-        requestId: "req-toolkit"
-      }
-    });
-  });
 });

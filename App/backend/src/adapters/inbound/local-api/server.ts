@@ -13,8 +13,6 @@ import { registerAgentSourceRoutes } from "./routes/agent-sources.js";
 import { registerAgentRuntimeRoutes } from "./routes/agent-runtime/index.js";
 import { registerAsrRoutes } from "./routes/asr.js";
 import { registerByokTokenUsageRoutes } from "./routes/byok-token-usage.js";
-import { registerComposioMcpRoutes } from "./routes/composio-mcp.js";
-import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerLocalDataRoutes } from "./routes/local-data.js";
 import { registerOnboardingInsightRoutes } from "./routes/onboarding-insight.js";
 
@@ -30,10 +28,6 @@ const FILE_ORIGIN = "file://";
 export interface CreateLocalApiServerOptions {
   permissionManager: PermissionManager;
   services: BackendServices;
-  /**
-   * Local validation token for the Composio MCP bridge; the agent carries it in mcpServers.composio.headers to access /mcp/composio.
-   */
-  composioMcpToken: string;
   heartbeatIntervalMs?: number;
   allowedOrigins?: readonly string[];
   scanWorker?: {
@@ -109,15 +103,6 @@ export function createLocalApiServer(options: CreateLocalApiServerOptions): Fast
   registerTokenQuotaRoutes(app, {
     tokenQuota: options.services.tokenQuota,
     authenticateRuntimeToken
-  });
-  registerIntegrationRoutes(app, {
-    integrations: options.services.integrations,
-    authenticateRuntimeToken
-  });
-  // The MCP bridge validates with its own x-memmy-mcp-token (the agent has no runtime token), so authenticateRuntimeToken is not attached.
-  registerComposioMcpRoutes(app, {
-    integrations: options.services.integrations,
-    mcpToken: options.composioMcpToken
   });
   registerLocalDataRoutes(app, {
     localData: options.services.localData,

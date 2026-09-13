@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../i18n/i18n-provider.js";
-import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR, PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR, PRODUCT_TOUR_TOOLS_NAV_ANCHOR } from "../product-tour-layout.js";
+import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR } from "../product-tour-layout.js";
 
 import { resolveMainWindowActionRoute, resolveProductTourPath } from "../router.js";
 import { ProductTourGuide, productTourSteps, productTourTabRoute, type ProductTourTab } from "../product-tour.js";
@@ -18,7 +18,7 @@ describe("ProductTourGuide", () => {
     expect(resolveMainWindowActionRoute("/settings")).toBe("workspace");
   });
 
-  it("保留两步导览结构并只展示当前支持范围", () => {
+  it("保留导览结构并只展示当前支持范围", () => {
     expect(
       productTourSteps.map((step) => ({
         tab: step.tab,
@@ -47,29 +47,6 @@ describe("ProductTourGuide", () => {
           anchorId: PRODUCT_TOUR_MEMORY_NAV_ANCHOR
         },
         extraHighlights: undefined
-      },
-      {
-        tab: "tools",
-        title: "连接与工具",
-        pose: "chat",
-        description: "在这里启用 GitHub、Notion 等工具集成，让 Agent 在你授权的范围内完成任务",
-        arrow: "bottom",
-        bubblePlacement: {
-          anchorId: PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,
-          side: "inside",
-          blockAlign: "start",
-          inlineAlign: "end",
-          offsetX: 4,
-          offsetY: 4
-        },
-        highlight: {
-          anchorId: PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,
-          padding: { top: 16, left: 16 },
-          viewportBottom: 16
-        },
-        extraHighlights: [
-          { anchorId: PRODUCT_TOUR_TOOLS_NAV_ANCHOR }
-        ]
       }
     ]);
   });
@@ -94,12 +71,11 @@ describe("ProductTourGuide", () => {
   it("只允许原型导览使用的页面 tab", () => {
     const tabs = new Set<ProductTourTab>(productTourSteps.map((step) => step.tab));
 
-    expect([...tabs]).toEqual(["memory", "tools"]);
+    expect([...tabs]).toEqual(["memory"]);
   });
 
   it("把原型内部 tab 映射到当前状态路由", () => {
     expect(resolveProductTourPath("chat")).toBe("/main");
-    expect(resolveProductTourPath("tools")).toBe("/tools");
     expect(resolveProductTourPath("memory")).toBe("/main");
     expect(resolveProductTourPath("settings")).toBe("/settings");
   });
@@ -107,7 +83,6 @@ describe("ProductTourGuide", () => {
   it("导览 tab→路由映射为单一来源，memory 步骤留在主工作台而非跳独立记忆页", () => {
     expect(productTourTabRoute("chat")).toBe("/main");
     expect(productTourTabRoute("memory")).toBe("/main");
-    expect(productTourTabRoute("tools")).toBe("/tools");
     expect(productTourTabRoute("settings")).toBe("/settings");
     expect(resolveProductTourPath("memory")).toBe(productTourTabRoute("memory"));
   });

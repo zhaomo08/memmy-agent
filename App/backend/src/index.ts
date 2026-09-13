@@ -1,6 +1,5 @@
 /** Src module. */
 import { RuntimeConfigSchema, type AppSettingsDto, type LastLaunchMode, type RuntimeConfig } from "@memmy/local-api-contracts";
-import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { createDefaultAgentAdapterRegistry, type AgentAdapterRegistry } from "./adapters/outbound/agent-adapter/index.js";
 import { createAppStateStore } from "./infrastructure/app-state-store/index.js";
@@ -128,11 +127,9 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
       memmyConfigPath
     });
     const localToken = await permissionManager.getRuntimeToken();
-    const composioMcpToken = `mmt_${randomBytes(32).toString("base64url")}`;
     server = createLocalApiServer({
       permissionManager,
       services,
-      composioMcpToken,
       heartbeatIntervalMs: options.heartbeatIntervalMs,
       scanWorker
     });
@@ -142,14 +139,6 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
     if (!address || typeof address === "string") {
       throw new Error("Local API did not bind to a TCP port");
     }
-
-    // Write the Composio MCP bridge into the agent config (tools.mcpServers.composio), so the agent connects to the local MCP server based on it.
-    await memmyConfigWriter.patchMcpServerConfig("composio", {
-      type: "streamableHttp",
-      url: `http://127.0.0.1:${(address as AddressInfo).port}/mcp/composio`,
-      headers: { "x-memmy-mcp-token": composioMcpToken },
-      toolTimeout: 60
-    });
 
     const runtimeConfig = RuntimeConfigSchema.parse({
       baseUrl: `http://127.0.0.1:${(address as AddressInfo).port}`,

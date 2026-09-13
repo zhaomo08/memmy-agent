@@ -36,7 +36,6 @@ import {
   type BootstrapScenario,
   type BootstrapService
 } from "./bootstrap-service.js";
-import { createIntegrationService, type IntegrationService } from "./integration-service.js";
 import { createIngestionService, type IngestionService } from "./ingestion-service.js";
 import { createLocalDataService, type LocalDataService } from "./local-data-service.js";
 import { createMemoryDetailService, type MemoryDetailService } from "./memory-detail-service.js";
@@ -61,8 +60,6 @@ export interface BackendServices {
   bootstrap: BootstrapService;
   appConfig: AppConfigService;
   account: AccountService;
-  /** Integrations. */
-  integrations: IntegrationService;
   localData: LocalDataService;
   /** Keeps every agent's instructions file in step with ~/.memmy/agent-rules. */
   agentRules: AgentRuleWriter;
@@ -166,10 +163,6 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
       bootstrapRepository: options.appStateStore.repositories.bootstrap,
       memmyConfigWriter: options.memmyConfigWriter,
       memoryClient: options.memoryClient
-    }),
-    integrations: createIntegrationService({
-      cloudClient: options.cloudClient,
-      composioMachineTokenRepository: options.appStateStore.repositories.composioMachineToken
     }),
     localData: createLocalDataService({
       localDataStore: options.appStateStore.localDataStore

@@ -56,14 +56,14 @@ describe("requestJson", () => {
     await expect(
       requestJson({
         config: runtimeConfig,
-        path: "/api/v1/integrations/airtable/authorize",
+        path: "/api/account/logout",
         schema: z.object({ ok: z.literal(true) }),
         init: { method: "POST" }
       })
     ).resolves.toEqual({ ok: true });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      new URL("/api/v1/integrations/airtable/authorize", runtimeConfig.baseUrl),
+      new URL("/api/account/logout", runtimeConfig.baseUrl),
       expect.objectContaining({
         method: "POST",
         body: undefined,

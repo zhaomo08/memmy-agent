@@ -2,40 +2,25 @@
 import {
   AccountInvitationViewSchema,
   ASR_PROVIDER,
-  AuthorizeIntegrationResponseSchema,
   resolveCloudServiceBaseUrl,
-  IntegrationCapabilitiesResponseSchema,
-  IntegrationConnectionsResponseSchema,
   LegalAgreementUrlsSchema,
-  IntegrationToolResultSchema,
   InvitationResultSchema,
-  OkResponseSchema,
   PromotionFlagsSchema,
   QWEN_ASR_MODEL_ID,
   TokenQuotaEligibilitySchema,
   TokenUsageDtoSchema,
-  type AuthorizeIntegrationResponse,
   type AccountInvitationView,
-  type IntegrationCapabilitiesResponse,
-  type IntegrationConnection,
-  type IntegrationConnectionsResponse,
   type LegalAgreementUrls,
-  type IntegrationToolResult,
-  type OkResponse,
   type PromotionFlags,
   type TokenSceneUsageDto
 } from "@memmy/local-api-contracts";
 import type {
-  CloudAuthorizeIntegrationInput,
   CloudAsrTranscriptionInput,
   CloudAsrTranscriptionResult,
   CheckReleaseInput,
   CloudAccountProfile,
   CloudClient,
-  CloudDeleteIntegrationConnectionInput,
-  CloudExecuteIntegrationToolInput,
   CloudHealth,
-  CloudIntegrationSessionInput,
   CloudLoginInput,
   CloudLoginResult,
   CloudLogoutInput,
@@ -57,10 +42,6 @@ import type {
 } from "./types.js";
 
 const DEFAULT_TIMEOUT_MS = 5_000;
-const CLOUD_COMPOSIO_ROUTER_TIMEOUT_MS = 60_000;
-const CLOUD_COMPOSIO_UNAVAILABLE_MESSAGE = "工具连接服务暂时不可用";
-const CLOUD_COMPOSIO_SERVICE_UNAVAILABLE_CODE = 60020;
-const CLOUD_COMPOSIO_TOOLKIT_UNSUPPORTED_CODE = 60021;
 const CLOUD_EMAIL_VERIFICATION_CODE_START = 40110;
 const CLOUD_EMAIL_VERIFICATION_CODE_END = 40120;
 const CLOUD_EMAIL_RATE_LIMIT_CODES = new Set([40112, 40113, 40114, 40115]);
@@ -268,80 +249,6 @@ export function createHttpCloudClient(options: CreateHttpCloudClientOptions = {}
       return TokenQuotaEligibilitySchema.parse(data);
     },
 
-    async listIntegrationCapabilities(input: CloudIntegrationSessionInput): Promise<IntegrationCapabilitiesResponse> {
-      const data = await requestCloudData<unknown>(
-        fetchImpl,
-        baseUrl,
-        timeoutMs,
-        "/api/composio/auth-configs?limit=100&show_disabled=false",
-        {
-          method: "GET",
-          lang: "zh",
-          composioMachineToken: input.machineComposioToken,
-          toError: toCloudIntegrationError
-        }
-      );
-
-      return IntegrationCapabilitiesResponseSchema.parse(toIntegrationCapabilities(data));
-    },
-
-    async authorizeIntegration(input: CloudAuthorizeIntegrationInput): Promise<AuthorizeIntegrationResponse> {
-      const data = await requestCloudData<unknown>(
-        fetchImpl,
-        baseUrl,
-        timeoutMs,
-        `/api/composio/integrations/${encodeURIComponent(input.slug)}/authorize`,
-        {
-          body: {},
-          lang: "zh",
-          composioMachineToken: input.machineComposioToken,
-          toError: toCloudIntegrationError
-        }
-      );
-
-      return AuthorizeIntegrationResponseSchema.parse(toAuthorizeIntegrationResponse(data));
-    },
-
-    async listIntegrationConnections(input: CloudIntegrationSessionInput): Promise<IntegrationConnectionsResponse> {
-      const data = await requestCloudData<unknown>(fetchImpl, baseUrl, timeoutMs, "/api/composio/connections", {
-        method: "GET",
-        lang: "zh",
-        composioMachineToken: input.machineComposioToken,
-        toError: toCloudIntegrationError
-      });
-
-      return IntegrationConnectionsResponseSchema.parse(toIntegrationConnections(data));
-    },
-
-    async deleteIntegrationConnection(input: CloudDeleteIntegrationConnectionInput): Promise<OkResponse> {
-      const data = await requestCloudData<unknown>(
-        fetchImpl,
-        baseUrl,
-        timeoutMs,
-        `/api/composio/connections/${encodeURIComponent(input.id)}`,
-        {
-          method: "DELETE",
-          lang: "zh",
-          composioMachineToken: input.machineComposioToken,
-          toError: toCloudIntegrationError
-        }
-      );
-
-      return OkResponseSchema.parse(toOkResponse(data));
-    },
-
-    async executeIntegrationRouterTool(input: CloudExecuteIntegrationToolInput): Promise<IntegrationToolResult> {
-      const routerTimeoutMs = Math.max(timeoutMs, CLOUD_COMPOSIO_ROUTER_TIMEOUT_MS);
-      const data = await requestCloudData<unknown>(fetchImpl, baseUrl, routerTimeoutMs, "/api/composio/router/execute", {
-        body: { toolSlug: input.toolSlug, arguments: input.arguments ?? {} },
-        lang: "zh",
-        composioMachineToken: input.machineComposioToken,
-        toError: toCloudIntegrationError
-      });
-
-      return IntegrationToolResultSchema.parse(toIntegrationToolResult(data));
-    },
-
     async transcribeAudio(input: CloudAsrTranscriptionInput): Promise<CloudAsrTranscriptionResult> {
       const data = await requestCloudData<unknown>(fetchImpl, baseUrl, timeoutMs, "/api/agentAsr/transcriptions", {
         body: {
@@ -399,7 +306,6 @@ interface CloudRequestOptions {
   body?: Record<string, unknown>;
   lang: "zh" | "en";
   bearerCredential?: string;
-  composioMachineToken?: string;
   deviceId?: string;
   toError?: (status: number, envelope: CloudEnvelope) => Error;
 }
@@ -456,7 +362,6 @@ async function requestCloudData<T>(
       ...(options.body === undefined ? {} : { "content-type": "application/json" }),
       lang: options.lang,
       ...(options.bearerCredential ? { authorization: `Bearer ${options.bearerCredential}` } : {}),
-      ...(options.composioMachineToken ? { "x-memmy-composio-token": options.composioMachineToken } : {}),
       ...(options.deviceId ? { "x-memmy-device-id": options.deviceId } : {}),
       "x-agent-region": normalizeAgentRegion(process.env.MEMMY_APP_EDITION)
     },
@@ -629,110 +534,6 @@ function toTokenSceneUsages(value: unknown): TokenSceneUsageDto[] {
 }
 
 /**
- * Maps the Cloud tool-config response into the local capabilities list.
- *
- * @param value Cloud Service data.
- * @returns the list of connectable toolkit slugs.
- */
-function toIntegrationCapabilities(value: unknown): IntegrationCapabilitiesResponse {
-  const record = asRecord(value);
-  const items = Array.isArray(value)
-    ? value
-    : (arrayField(record, "items") ?? arrayField(record, "data") ?? []);
-
-  return {
-    toolkits: [...new Set(items.map(readToolkitSlug).filter((slug): slug is string => Boolean(slug)))]
-  };
-}
-
-/**
- * Maps the Cloud authorization response into the local authorization DTO.
- *
- * @param value Cloud Service data.
- * @returns the authorization redirect URL and connection id.
- */
-function toAuthorizeIntegrationResponse(value: unknown): AuthorizeIntegrationResponse {
-  const record = asRecord(value);
-  return {
-    connectUrl:
-      readString(record.connectUrl) ??
-      readString(record.connect_url) ??
-      readString(record.redirectUrl) ??
-      readString(record.redirect_url) ??
-      readString(record.url) ??
-      "",
-    connectionId:
-      readString(record.connectionId) ??
-      readString(record.connection_id) ??
-      readString(record.connectedAccountId) ??
-      readString(record.connected_account_id) ??
-      readString(record.id) ??
-      ""
-  };
-}
-
-/**
- * Maps the Cloud connection-list response into local connection DTOs.
- *
- * @param value Cloud Service data.
- * @returns the list of tool connections.
- */
-function toIntegrationConnections(value: unknown): IntegrationConnectionsResponse {
-  const record = asRecord(value);
-  const connections = Array.isArray(value)
-    ? value
-    : (arrayField(record, "connections") ?? arrayField(record, "items") ?? arrayField(record, "data") ?? []);
-
-  return {
-    connections: connections.map(toIntegrationConnection)
-  };
-}
-
-/**
- * Maps a single Cloud connection record into a local connection DTO.
- *
- * @param value Cloud connection item.
- * @returns the local connection record.
- */
-function toIntegrationConnection(value: unknown): IntegrationConnection {
-  const record = asRecord(value);
-  const toolkitRecord = asRecord(record.toolkit);
-  return {
-    id: readString(record.id) ?? readString(record.connectionId) ?? readString(record.connectedAccountId) ?? "",
-    toolkit:
-      readString(record.toolkit) ??
-      readString(record.toolkit_slug) ??
-      readString(toolkitRecord.slug) ??
-      readString(toolkitRecord.name) ??
-      "",
-    status: readString(record.status) ?? readString(record.state) ?? "",
-    createdAt: readString(record.createdAt) ?? readString(record.created_at) ?? undefined,
-    accountEmail: readString(record.accountEmail) ?? readString(record.account_email) ?? readString(record.email) ?? undefined,
-    workspace: readString(record.workspace) ?? undefined,
-    username: readString(record.username) ?? undefined
-  };
-}
-
-/**
- * Maps the Cloud delete response into a local ok response.
- *
- * @param value Cloud Service data.
- * @returns the ok response.
- */
-function toOkResponse(value: unknown): OkResponse {
-  if (value === true || value === null) {
-    return { ok: true };
-  }
-
-  const record = asRecord(value);
-  if (record.ok === true || record.success === true) {
-    return { ok: true };
-  }
-
-  throw Object.assign(new Error(CLOUD_COMPOSIO_UNAVAILABLE_MESSAGE), { code: "internal" as const });
-}
-
-/**
  * Maps the Cloud ASR response into a local transcription result.
  *
  * @param value Cloud Service data.
@@ -745,53 +546,6 @@ function toCloudAsrTranscriptionResult(value: unknown): CloudAsrTranscriptionRes
     modelId: QWEN_ASR_MODEL_ID,
     provider: ASR_PROVIDER
   };
-}
-
-/**
- * Reads the toolkit slug from a tool-config item.
- *
- * @param value Cloud tool-config item.
- * @returns the toolkit slug; returns null when missing.
- */
-function readToolkitSlug(value: unknown): string | null {
-  const record = asRecord(value);
-  const toolkitRecord = asRecord(record.toolkit);
-  return readString(toolkitRecord.slug) ?? readString(record.toolkit_slug);
-}
-
-/**
- * Normalizes the Tool Router execution result, ensuring an object shape for zod validation.
- *
- * @param value the data field returned by Cloud.
- * @returns an object containing at least a data field.
- */
-function toIntegrationToolResult(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return { data: value ?? null };
-}
-
-/**
- * Maps a Cloud tool-connection error into a local error code.
- *
- * @param status HTTP status code.
- * @param envelope Cloud Service response envelope.
- * @returns an Error recognizable by error-envelope.
- */
-function toCloudIntegrationError(status: number, envelope: CloudEnvelope): Error {
-  const rawMessage = envelope.message || `Cloud integration request failed with HTTP ${status}`;
-  if (envelope.code === CLOUD_COMPOSIO_SERVICE_UNAVAILABLE_CODE || isComposioConfigMessage(rawMessage)) {
-    return Object.assign(new Error(CLOUD_COMPOSIO_UNAVAILABLE_MESSAGE), { code: "composio_not_configured" as const });
-  }
-
-  if (envelope.code === CLOUD_COMPOSIO_TOOLKIT_UNSUPPORTED_CODE || isToolkitUnsupportedMessage(rawMessage)) {
-    return Object.assign(new Error(sanitizeMessage(rawMessage)), { code: "toolkit_unsupported" as const });
-  }
-
-  const code = classifyCloudError(status, envelope.code);
-  const message = code === "internal" ? CLOUD_COMPOSIO_UNAVAILABLE_MESSAGE : sanitizeMessage(rawMessage);
-  return Object.assign(new Error(message), { code });
 }
 
 /**
@@ -813,29 +567,6 @@ function toCloudEmailVerificationError(status: number, envelope: CloudEnvelope):
   const message = envelope.message || `Cloud email verification request failed with HTTP ${status}`;
 
   return Object.assign(new Error(message), { code });
-}
-
-/**
- * Determines whether this is a Cloud-internal Composio configuration error.
- *
- * @param message the original error message.
- * @returns true means the product side should hide internal configuration details.
- */
-function isComposioConfigMessage(message: string): boolean {
-  const lower = message.toLowerCase();
-  return lower.includes("composio") &&
-    (lower.includes("api-key") || lower.includes("api_key") || lower.includes("api key") || lower.includes("base-url") || lower.includes("base_url"));
-}
-
-/**
- * Determines whether this is a toolkit-not-configured error.
- *
- * @param message the original error message.
- * @returns true means the current toolkit has no usable connection configuration.
- */
-function isToolkitUnsupportedMessage(message: string): boolean {
-  const lower = message.toLowerCase();
-  return lower.includes("auth config") && lower.includes("toolkit");
 }
 
 /**
@@ -905,18 +636,6 @@ function sanitizeMessage(message: string): string {
  */
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-/**
- * Reads an array field.
- *
- * @param record the object.
- * @param key the field name.
- * @returns the array; undefined when missing or of a mismatched type.
- */
-function arrayField(record: Record<string, unknown>, key: string): unknown[] | undefined {
-  const value = record[key];
-  return Array.isArray(value) ? value : undefined;
 }
 
 /**
