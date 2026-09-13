@@ -16,6 +16,7 @@ import { MemoryDrawerDeleteAction } from "./memory-delete-action.js";
 import { toMemoryDetailErrorMessage } from "./memory-detail-error.js";
 import { cleanMemoryBody, cleanMemoryText, drawerEyebrow } from "./memory-display.js";
 import { displayMemoryId } from "./memory-id.js";
+import { MemoryMarkdown } from "./memory-markdown.js";
 import {
   clearMemoryPanelCache,
   memoryPanelCacheKey,
@@ -392,7 +393,9 @@ function DetailTextSection(props: { title: string; body?: string }) {
   return (
     <section className="memory-detail-card">
       <h5 className="memory-detail-card__label">{props.title}</h5>
-      <div className="memory-policy-section-body">{cleanMemoryBody(props.body) || "-"}</div>
+      <div className="memory-policy-section-body">
+        <MemoryMarkdown text={cleanMemoryBody(props.body) || "-"} />
+      </div>
     </section>
   );
 }
