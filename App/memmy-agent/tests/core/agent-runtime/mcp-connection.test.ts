@@ -181,7 +181,7 @@ describe("MCP connection helpers", () => {
   it("AgentLoop.closeMcp closes connected MCP stacks", async () => {
     const loop = makeLoop(tempRoot(), {});
     const close = vi.fn(async () => undefined);
-    (loop as any).mcpStacks = { composio: { aclose: close } };
+    (loop as any).mcpStacks = { test: { aclose: close } };
     (loop as any).mcpConnected = true;
 
     await loop.closeMcp();

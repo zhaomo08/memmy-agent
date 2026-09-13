@@ -24,7 +24,7 @@ npm run db:migrate
 ## Architecture
 
 - `adapters/inbound/local-api`: Fastify routes, runtime-token authentication,
-  CORS, SSE, and the Composio MCP bridge.
+  CORS and SSE.
 - `adapters/outbound/agent-source`: built-in history readers for Claude Code
   and Codex.
 - `adapters/outbound/skill-writer`: Memory skill, hook, command, and plugin
@@ -33,8 +33,7 @@ npm run db:migrate
   for runtime-supplied agent adapters.
 - `adapters/outbound/memory-client`: HTTP Memory Layer and local Memmy SQLite
   clients.
-- `adapters/outbound/cloud-client`: account, integration, and hosted-service
-  requests.
+- `adapters/outbound/cloud-client`: account and hosted-service requests.
 - `infrastructure/app-state-store`: local application state, secrets,
   repositories, and migrations.
 - `infrastructure/agent-source-store`: source metadata and ingestion
@@ -44,8 +43,7 @@ npm run db:migrate
 - `infrastructure/memmy-config`: reads and updates the shared Memmy
   configuration.
 - `services`: orchestration for bootstrap, account state, ingestion, scans,
-  runtime memory operations, skill distribution, integrations, and progress
-  events.
+  runtime memory operations, skill distribution, and progress events.
 
 ## Desktop Runtime
 
@@ -54,9 +52,6 @@ it writes `~/.memmy/runtime.json` with owner-only permissions. That file
 contains the local API URL, runtime token, and optional Memory service URL used
 by desktop clients.
 
-The backend also writes the Composio MCP bridge URL and its dedicated token to
-`tools.mcpServers.composio` in the shared Memmy configuration.
-
 `infrastructure/cli-binary/installer.ts` can symlink a built `memmy` executable
 to `~/.local/bin/memmy`. Packaging or another caller must invoke the installer;
 backend startup does not install the symlink automatically.
@@ -64,18 +59,16 @@ backend startup does not install the symlink automatically.
 ## Local API
 
 `GET /api/health` is the only unauthenticated local API route. Other `/api/*`
-routes require the `x-memmy-local-token` header, with two transport-specific
-exceptions:
+routes require the `x-memmy-local-token` header, with one transport-specific
+exception:
 
 - `GET /api/events` accepts the same runtime token as `?token=` because browser
   `EventSource` cannot reliably send custom headers.
-- `/mcp/composio` uses its dedicated `x-memmy-mcp-token`.
 
 The local API is grouped into these route families:
 
 - Application bootstrap, settings, onboarding, account, quota, and local data
 - Claude Code and Codex source discovery, scanning, skills, and hooks
-- External tool integrations
 - BYOK token usage and speech transcription
 - Agent Runtime memory, session, turn, and panel routes
 

@@ -19,7 +19,6 @@ and interactive chat, the channel gateway, and an OpenAI-compatible HTTP API.
 | Desktop Vite development server       |                                      `19000` |
 | Vite HMR                              |                                      `19010` |
 | Desktop local API                     |                                    Ephemeral |
-| Composio MCP bridge                   | Same ephemeral port as the desktop local API |
 
 ## Installed CLI
 
