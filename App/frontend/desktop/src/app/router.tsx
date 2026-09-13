@@ -32,7 +32,6 @@ import { SettingsPage } from "../pages/settings-page.js";
 import { StartupScreen } from "../pages/startup-screen.js";
 import { TokenDetailPage } from "../pages/token-detail-page.js";
 import { TokenExhaustedModal } from "../pages/token-exhausted-modal.js";
-import { ToolsPage } from "../pages/tools-page.js";
 import { WelcomePage } from "../pages/welcome-page.js";
 /** Handles app router. */
 export function AppRouter(props: { onRetry: () => void }) {
@@ -232,8 +231,6 @@ function renderRoute(path: AppRoutePath) {
       return <ApiKeyOptionalPage />;
     case "/onboarding":
       return <OnboardingPage />;
-    case "/tools":
-      return <ToolsPage />;
     case "/memory":
       return <MemoryPage />;
     case "/memory-sources":

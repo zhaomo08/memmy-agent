@@ -849,9 +849,7 @@ export const ApiErrorCodeSchema = z.enum([
   "scan_not_permitted",
   "memory_recall_not_permitted",
   "skill_write_not_permitted",
-  "agent_source_unavailable",
-  "composio_not_configured",
-  "toolkit_unsupported"
+  "agent_source_unavailable"
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
 

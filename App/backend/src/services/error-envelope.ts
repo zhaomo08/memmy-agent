@@ -17,9 +17,7 @@ export const API_ERROR_CODES = [
   "scan_not_permitted",
   "memory_recall_not_permitted",
   "skill_write_not_permitted",
-  "agent_source_unavailable",
-  "composio_not_configured",
-  "toolkit_unsupported"
+  "agent_source_unavailable"
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -38,9 +36,7 @@ export const HTTP_STATUS_BY_CODE: Readonly<Record<ApiErrorCode, number>> = Objec
   scan_not_permitted: 403,
   memory_recall_not_permitted: 403,
   skill_write_not_permitted: 403,
-  agent_source_unavailable: 409,
-  composio_not_configured: 400,
-  toolkit_unsupported: 400
+  agent_source_unavailable: 409
 });
 
 export interface ApiError extends Error {

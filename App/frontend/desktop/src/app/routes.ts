@@ -15,7 +15,6 @@ export type AppRoutePath =
   | "/onboarding"
   | "/main"
   | "/pet"
-  | "/tools"
   | "/memory"
   | "/memory-sources"
   | "/settings";
@@ -51,7 +50,6 @@ export const routeTable: Record<AppRoutePath, AppRouteDefinition> = {
   "/onboarding": { path: "/onboarding", navKey: "nav.onboarding", requiresBootstrap: true },
   "/main": { path: "/main", navKey: "nav.chat", requiresBootstrap: true },
   "/pet": { path: "/pet", navKey: "nav.pet", requiresBootstrap: true },
-  "/tools": { path: "/tools", navKey: "nav.tools", requiresBootstrap: true },
   "/memory": { path: "/memory", navKey: "nav.memory", requiresBootstrap: true },
   "/memory-sources": { path: "/memory-sources", navKey: "nav.memory", requiresBootstrap: true },
   "/settings": { path: "/settings", navKey: "nav.settings", requiresBootstrap: true }
@@ -496,9 +494,9 @@ export function writeGuidanceCompleted(storage: Storage | undefined): void {
   storage?.setItem(GUIDANCE_COMPLETED_STORAGE_KEY, "1");
 }
 
-// Current product-tour step index: the tour overlay is mounted inside AppFrame, and advancing the tour to the tools step navigates to /tools, which remounts AppFrame
-// and clears component state. If the step lived only in component useState, the remount would reset it to step 0 (memory), causing it to bounce back and forth between memory and tools
-// and never reach the tools step. Hence the step index is persisted to sessionStorage and read back to resume after a remount/reload.
+// Current product-tour step index: the tour overlay is mounted inside AppFrame, and advancing the tour between steps navigates between routes, which remounts AppFrame
+// and clears component state. If the step lived only in component useState, the remount would reset it to step 0 (memory), causing it to bounce back and forth
+// and never reach later steps. Hence the step index is persisted to sessionStorage and read back to resume after a remount/reload.
 const PRODUCT_TOUR_STEP_STORAGE_KEY = "memmy.productTourStep";
 
 /**
@@ -643,7 +641,7 @@ function isAppRoutePath(value: string | null): value is AppRoutePath {
 }
 
 function isRestorableRoute(path: AppRoutePath): boolean {
-  return path === "/main" || path === "/pet" || path === "/tools" || path === "/memory" || path === "/memory-sources" || path === "/settings";
+  return path === "/main" || path === "/pet" || path === "/memory" || path === "/memory-sources" || path === "/settings";
 }
 
 function isPostOnboardingRoute(path: AppRoutePath): boolean {

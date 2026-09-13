@@ -3,12 +3,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Memmy, type MemmyPose } from "../components/mascot/memmy.js";
 import { zhCNMessages, type MessageKey } from "../i18n/messages.js";
 import { useTranslation } from "../i18n/use-translation.js";
-import { BrainCircuit, Link2 } from "../pages/memory/memory-prototype-icons.js";
+import { BrainCircuit } from "../pages/memory/memory-prototype-icons.js";
 import {
   createDomProductTourAnchorLookup,
   PRODUCT_TOUR_MEMORY_NAV_ANCHOR,
-  PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,
-  PRODUCT_TOUR_TOOLS_NAV_ANCHOR,
   resolveProductTourStepLayout,
   type ProductTourBubblePlacement,
   type ProductTourHighlightSpec
@@ -16,13 +14,11 @@ import {
 import { readProductTourStep, writeProductTourStep, type AppRoutePath } from "./routes.js";
 
 /** Type definition for product tour tab. */
-export type ProductTourTab = "chat" | "tools" | "memory" | "settings";
+export type ProductTourTab = "chat" | "memory" | "settings";
 
 /** Handles product tour tab route. */
 export function productTourTabRoute(tab: ProductTourTab): AppRoutePath {
   switch (tab) {
-    case "tools":
-      return "/tools";
     case "settings":
       return "/settings";
     case "memory":
@@ -70,30 +66,6 @@ export function createProductTourSteps(t: (key: MessageKey) => string): ProductT
       highlight: {
         anchorId: PRODUCT_TOUR_MEMORY_NAV_ANCHOR
       }
-    },
-    {
-      tab: "tools",
-      title: t("productTour.tools.title"),
-      icon: <Link2 size={15} className="text-action-sky" />,
-      pose: "chat",
-      description: t("productTour.tools.description"),
-      arrow: "bottom",
-      bubblePlacement: {
-        anchorId: PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,
-        side: "inside",
-        blockAlign: "start",
-        inlineAlign: "end",
-        offsetX: 4,
-        offsetY: 4
-      },
-      highlight: {
-        anchorId: PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR,
-        padding: { top: 16, left: 16 },
-        viewportBottom: 16
-      },
-      extraHighlights: [
-        { anchorId: PRODUCT_TOUR_TOOLS_NAV_ANCHOR }
-      ]
     }
   ];
 }

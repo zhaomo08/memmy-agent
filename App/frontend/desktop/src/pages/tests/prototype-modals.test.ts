@@ -105,7 +105,6 @@ describe("2026-06-09 prototype modals", () => {
     expect(appFrameSource).toContain("<ProductTourGuide");
     expect(routerSource).not.toContain("<ProductTourGuide");
     expect(messagesSource).toContain('"productTour.memory.title": "记忆管理"');
-    expect(messagesSource).toContain('"productTour.tools.title": "连接与工具"');
     expect(tourSource).toContain('t("productTour.memory.title")');
   });
 

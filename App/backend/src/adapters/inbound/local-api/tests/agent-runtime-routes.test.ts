@@ -345,7 +345,6 @@ function createServer(overrides: Record<string, unknown> = {}): FastifyInstance 
     },
     appConfig: {},
     account: {},
-    integrations: {},
     localData: {},
     agentSources: {},
     progressBus: createProgressBus(),

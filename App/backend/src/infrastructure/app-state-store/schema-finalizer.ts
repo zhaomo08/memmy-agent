@@ -23,7 +23,6 @@ type SecretPurpose =
   | "embedding_api_key"
   | "memory_summary_api_key"
   | "memory_evolution_api_key"
-  | "composio_machine_token"
   | "asr_api_key"
   | "image_gen_api_key";
 

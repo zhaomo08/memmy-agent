@@ -20,25 +20,4 @@ describe("frontend API client selection", () => {
     expect("isMock" in clients).toBe(false);
     expect(clients.runtimeConfig.memory?.baseUrl).toBe("http://127.0.0.1:18960");
   });
-
-  it("真实模式 integrations 首调失败时不再降级 mock", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              code: "composio_not_configured",
-              message: "尚未配置 Composio 鉴权服务",
-              requestId: "unknown"
-            }
-          }),
-          { status: 400 }
-        )
-      )
-    );
-    const clients = createAppClients({ runtimeConfig });
-
-    await expect(clients.integrations.listConnections()).rejects.toThrow("尚未配置 Composio 鉴权服务");
-  });
 });

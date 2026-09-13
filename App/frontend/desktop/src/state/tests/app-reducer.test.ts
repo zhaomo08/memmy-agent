@@ -62,18 +62,18 @@ describe("app reducer", () => {
 
   it("sets chat view visibility from the bootstrap route", () => {
     const mainState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/main"));
-    const toolsState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/tools"));
+    const settingsState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/settings"));
 
     expect(mainState.agent.chatViewVisible).toBe(true);
-    expect(toolsState.agent.chatViewVisible).toBe(false);
+    expect(settingsState.agent.chatViewVisible).toBe(false);
   });
 
   it("updates navigation without dropping loaded bootstrap data", () => {
     const readyState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/welcome"));
-    const nextState = appReducer(readyState, appActions.navigate("/tools"));
+    const nextState = appReducer(readyState, appActions.navigate("/settings"));
 
     expect(nextState.bootstrap).toBe(readyState.bootstrap);
-    expect(nextState.navigation.currentPath).toBe("/tools");
+    expect(nextState.navigation.currentPath).toBe("/settings");
     expect(nextState.agent.chatViewVisible).toBe(false);
   });
 
@@ -81,7 +81,7 @@ describe("app reducer", () => {
     let state = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/main"));
     expect(state.agent.chatViewVisible).toBe(true);
 
-    for (const path of ["/tools", "/settings", "/memory", "/memory-sources"] as const) {
+    for (const path of ["/settings", "/memory", "/memory-sources"] as const) {
       state = appReducer(state, appActions.navigate(path));
       expect(state.navigation.currentPath).toBe(path);
       expect(state.agent.chatViewVisible).toBe(false);
@@ -92,7 +92,7 @@ describe("app reducer", () => {
   });
 
   it("clears the current chat completion dot when navigation returns to the visible chat view", () => {
-    let state = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/tools"));
+    let state = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/settings"));
     state = appReducer(state, agentActions.newChatCreated("chat-1"));
     state = appReducer(state, agentActions.wsEventReceived({ event: "goal_status", chat_id: "chat-1", status: "running", started_at: 1781240000000 }));
     state = appReducer(state, agentActions.wsEventReceived({ event: "turn_end", chat_id: "chat-1" }));

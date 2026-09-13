@@ -60,22 +60,6 @@ describe("prototype page structure alignment", () => {
 
   it("aligns utility pages with their prototype counterparts", () => {
     expect(source("pages/api-key-page.tsx")).toContain("min-h-screen bg-canvas-oat px-4 pt-4 pb-8 relative overflow-hidden");
-    expect(source("pages/tools-page.tsx")).toContain("app-frame-page-content h-full overflow-y-auto py-6");
-    expect(source("pages/tools-page.tsx")).toContain("tools-icon-grid");
-    expect(source("styles.css")).toContain("grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));");
-    expect(source("styles.css")).toContain("gap: 8px;");
-    expect(source("styles.css")).toContain("gap: 12px;");
-    expect(source("styles.css")).not.toContain("aspect-ratio: 1 / 1");
-    expect(source("styles.css")).toContain(".integration-card-logo");
-    expect(source("styles.css")).toContain(".integration-logo-badge");
-    expect(source("styles.css")).toContain(".integration-logo-image");
-    expect(source("styles.css")).toContain("width: 48px");
-    expect(source("styles.css")).toContain("width: 32px");
-    expect(source("styles.css")).toContain("max-width: 40px");
-    expect(source("styles.css")).toContain("padding: 4px");
-    expect(source("styles.css")).toContain("gap: 0;");
-    expect(source("styles.css")).toContain("font-size: 11px");
-    expect(source("styles.css")).toContain("font-size: 10px");
     expect(source("pages/memory-page.tsx")).toContain("min-w-0 flex-1 flex flex-col overflow-hidden bg-content-bg");
     expect(source("pages/memory-page.tsx")).toContain("icon: <Layers size={16}");
     expect(source("pages/memory-page.tsx")).toContain("app-frame-page-content min-h-0 flex-1 overflow-y-auto py-6");

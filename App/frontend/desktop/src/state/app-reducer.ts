@@ -5,7 +5,6 @@ import type { InvitationToastKind } from "../app/invitation-result.js";
 import type { ModelProviderConfig } from "../api/config-client.js";
 import type { AgentSourceScanCompletion, AgentSourceScanProgress, AppAction, EventConnectionStatus } from "./app-actions.js";
 import { agentReducer, initialAgentState, type AgentAction, type AgentState } from "./agent-chat-slice.js";
-import { initialToolsState, toolsReducer, type ToolsAction, type ToolsState } from "./tools-slice.js";
 
 /** Contract for startup state. */
 export interface StartupState {
@@ -67,7 +66,6 @@ export interface AppState {
   agent: AgentState;
   modals: ModalState;
   invitationToast: InvitationToastState | null;
-  tools: ToolsState;
 }
 
 const defaultScanPreferences: ScanPreferences = {
@@ -141,8 +139,7 @@ export function createInitialAppState(): AppState {
       improvement: false,
       modelConfig: false
     },
-    invitationToast: null,
-    tools: initialToolsState
+    invitationToast: null
   };
 }
 
@@ -365,10 +362,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           agent: agentReducer(state.agent, action as AgentAction)
         };
       }
-      return {
-        ...state,
-        tools: toolsReducer(state.tools, action as ToolsAction)
-      };
+      return state;
   }
 }
 

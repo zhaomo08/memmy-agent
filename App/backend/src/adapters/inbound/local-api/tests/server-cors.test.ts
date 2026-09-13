@@ -33,7 +33,6 @@ describe("local api cors", () => {
 function createServer(): FastifyInstance {
   return createLocalApiServer({
     permissionManager: createPermissionManager(),
-    composioMcpToken: "mcp-token",
     services: {
       bootstrap: {
         async getBootstrap() {

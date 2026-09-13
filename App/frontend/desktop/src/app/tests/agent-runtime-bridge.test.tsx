@@ -37,7 +37,6 @@ describe("AgentRuntimeBridge", () => {
 
   it("enables websocket runtime only for the main workspace route family", () => {
     expect(isAgentRuntimeBridgeRoute("/main")).toBe(true);
-    expect(isAgentRuntimeBridgeRoute("/tools")).toBe(true);
     expect(isAgentRuntimeBridgeRoute("/settings")).toBe(true);
     expect(isAgentRuntimeBridgeRoute("/memory")).toBe(true);
     expect(isAgentRuntimeBridgeRoute("/memory-sources")).toBe(true);

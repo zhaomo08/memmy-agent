@@ -4,12 +4,6 @@ import type { CSSProperties } from "react";
 /** Definition for product tour memory nav anchor. */
 export const PRODUCT_TOUR_MEMORY_NAV_ANCHOR = "product-tour-memory-nav";
 
-/** Definition for product tour tools nav anchor. */
-export const PRODUCT_TOUR_TOOLS_NAV_ANCHOR = "product-tour-tools-nav";
-
-/** Definition for product tour tools content anchor. */
-export const PRODUCT_TOUR_TOOLS_CONTENT_ANCHOR = "product-tour-tools-content";
-
 /** Contract for product tour rect. */
 export interface ProductTourRect {
   top: number;

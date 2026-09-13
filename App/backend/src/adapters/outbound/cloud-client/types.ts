@@ -1,15 +1,10 @@
 import type {
   AsrModelId,
   AsrProvider,
-  AuthorizeIntegrationResponse,
   AccountInvitationView,
   HealthStatus,
-  IntegrationCapabilitiesResponse,
-  IntegrationConnectionsResponse,
   LegalAgreementUrls,
-  IntegrationToolResult,
   InvitationResult,
-  OkResponse,
   PromotionFlags,
   TokenUsageDto
 } from "@memmy/local-api-contracts";
@@ -158,27 +153,6 @@ export interface ReleaseCheckResult {
   downloadUrl?: string;
 }
 
-/** Contract for cloud integration session input. */
-export interface CloudIntegrationSessionInput {
-  machineComposioToken: string;
-}
-
-/** Contract for cloud authorize integration input. */
-export interface CloudAuthorizeIntegrationInput extends CloudIntegrationSessionInput {
-  slug: string;
-}
-
-/** Contract for cloud delete integration connection input. */
-export interface CloudDeleteIntegrationConnectionInput extends CloudIntegrationSessionInput {
-  id: string;
-}
-
-/** Contract for cloud execute integration tool input. */
-export interface CloudExecuteIntegrationToolInput extends CloudIntegrationSessionInput {
-  toolSlug: string;
-  arguments?: Record<string, unknown>;
-}
-
 /** Contract for cloud logout input. */
 export interface CloudLogoutInput {
   uuid: string;
@@ -213,11 +187,6 @@ export interface CloudClient {
   grantImprovementProgramTokens(input: GrantTokensInput): Promise<TokenUsageSnapshot>;
   getTokenQuotaEligibility(input: GetTokenQuotaEligibilityInput): Promise<TokenQuotaEligibility>;
   requestTokenQuota(input: RequestTokenQuotaInput): Promise<TokenQuotaApplyResult>;
-  listIntegrationCapabilities(input: CloudIntegrationSessionInput): Promise<IntegrationCapabilitiesResponse>;
-  authorizeIntegration(input: CloudAuthorizeIntegrationInput): Promise<AuthorizeIntegrationResponse>;
-  listIntegrationConnections(input: CloudIntegrationSessionInput): Promise<IntegrationConnectionsResponse>;
-  deleteIntegrationConnection(input: CloudDeleteIntegrationConnectionInput): Promise<OkResponse>;
-  executeIntegrationRouterTool(input: CloudExecuteIntegrationToolInput): Promise<IntegrationToolResult>;
   transcribeAudio(input: CloudAsrTranscriptionInput): Promise<CloudAsrTranscriptionResult>;
   sendTelemetry(input: SendTelemetryInput): Promise<void>;
   checkRelease(input: CheckReleaseInput): Promise<ReleaseCheckResult>;
