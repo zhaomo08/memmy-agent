@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_NAMESPACE_SOURCE } from "../types.js";
 import { MemoryService } from "../service/memory-service.js";
 import { MemoryServiceError, statusForCode } from "../utils/error.js";
+import { stableHash } from "../utils/id.js";
 import { resolveTimeZone } from "../utils/time.js";
 import {
   createPluginRuntimeAnalytics,
@@ -560,11 +561,12 @@ async function routeRequest(
       sourceSkillVersion: typeof request.sourceSkillVersion === "string" ? request.sourceSkillVersion : undefined,
       sourceContentHash: typeof request.sourceContentHash === "string" ? request.sourceContentHash : undefined
     };
+    const idempotency = memoryAddIdempotency(publicRequest, path);
     const result = await trackExternalToolCall(
       pluginRuntimeAnalytics,
       { ...request, toolName: "memmy_memory_add" },
       () =>
-        service.idempotent("memory.add", publicRequest, { path, request: publicRequest }, () =>
+        service.idempotent("memory.add", idempotency.request, idempotency.fingerprint, () =>
           service.addMemory(publicRequest)
         ),
       (addResult) => ({
@@ -729,6 +731,49 @@ async function routeRequest(
   }
 
   throw new MemoryServiceError("not_found", `${method} ${path} is not registered`);
+}
+
+function memoryAddIdempotency(
+  request: MemoryAddRequest,
+  path: string
+): { request: RequestEnvelope; fingerprint: unknown } {
+  const sourceAgentId = request.sourceAgentId?.trim();
+  const sourceSkillId = request.sourceSkillId?.trim();
+  const sourceContentHash = request.sourceContentHash?.trim();
+  const isAgentSourceSkill =
+    request.layer === "Skill" &&
+    Boolean(request.requestId) &&
+    Boolean(sourceAgentId) &&
+    Boolean(sourceSkillId) &&
+    Boolean(sourceContentHash) &&
+    request.adapterId === `agent-source:${sourceAgentId}`;
+
+  if (!isAgentSourceSkill) {
+    return {
+      request,
+      fingerprint: { path, request }
+    };
+  }
+
+  const identity = {
+    namespace: request.namespace,
+    sourceAgentId,
+    sourceSkillId,
+    sourceContentHash
+  };
+  return {
+    request: {
+      adapterId: request.adapterId,
+      // Version the key so legacy full-request fingerprints cannot keep
+      // conflicting after volatile Skill metadata changes.
+      requestId: `agent-source-skill:v2:${stableHash(identity)}`,
+      namespace: request.namespace
+    },
+    fingerprint: {
+      path,
+      skill: identity
+    }
+  };
 }
 
 function publicOpenSessionResponse(result: unknown): Record<string, unknown> {
