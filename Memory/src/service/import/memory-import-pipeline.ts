@@ -2,7 +2,7 @@ import type { MemoryAddRequest, MemoryLayer, ToolCallPayload } from "../../types
 import { captureTurnSteps, signatureFromTraceParts } from "../../algorithm/plugin-algorithms.js";
 import { MemoryServiceError } from "../../utils/error.js";
 import { stableHash } from "../../utils/id.js";
-import { clip, firstLine } from "../../utils/text.js";
+import { clip, firstLine, firstSemanticUserLine } from "../../utils/text.js";
 
 export const IMPORT_SUMMARY_QUEUED_TAG = "摘要排队中";
 export const IMPORT_SUMMARY_PROCESSING_TAG = "摘要总结中";
@@ -105,7 +105,7 @@ export function memoryAddImportTrace(request: MemoryAddRequest, at: string): Rec
 
 export function titleFromImportTrace(trace: Record<string, unknown>): string | undefined {
   const userText = stringFromRecord(trace, "user_text");
-  const title = userText ? firstLine(userText) : "";
+  const title = userText ? firstSemanticUserLine(userText) : "";
   return title ? clip(title, 120) : undefined;
 }
 
