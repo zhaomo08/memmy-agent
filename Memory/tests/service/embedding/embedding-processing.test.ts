@@ -356,7 +356,8 @@ function negativePolicyMemory(title: string, trigger: string): MemoryRow {
 function skillMemory(short?: {
   retrievalBlurb: string;
   triggerContext: string;
-}): MemoryRow {
+}, overrides?: { content: string }): MemoryRow {
+  const content = overrides?.content ?? "# SQLite migration\n\nPROCEDURE_ONLY_SENTINEL";
   const now = "2026-07-24T00:00:00.000Z";
   return {
     id: "skill_retrieval_document",
@@ -366,7 +367,7 @@ function skillMemory(short?: {
     status: "activated",
     visibility: "private",
     memoryKey: "skill:sqlite-migration",
-    memoryValue: "# SQLite migration\n\nPROCEDURE_ONLY_SENTINEL",
+    memoryValue: content,
     tags: ["sqlite", "migration"],
     info: {},
     properties: {
@@ -376,7 +377,7 @@ function skillMemory(short?: {
         skill: {
           name: "SQLite migration",
           status: "active",
-          invocation_guide: "# SQLite migration\n\nPROCEDURE_ONLY_SENTINEL",
+          invocation_guide: content,
           ...(short ? { procedure_json: short } : {})
         }
       }
