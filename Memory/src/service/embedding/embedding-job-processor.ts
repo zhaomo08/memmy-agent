@@ -37,6 +37,7 @@ import {
   isTaskLinkedUserFeedback,
   isUserMemoryQuestion
 } from "../user-memory/user-memory.js";
+import { fallbackCaptureSummary } from "../evolution/capture-summary.js";
 import {
   embeddingTextForMemory,
   traceSummaryEmbeddingText,
@@ -649,7 +650,11 @@ function fallbackImportSummary(trace: TraceMeta, memory: MemoryRow): string {
 }
 
 function fallbackTraceSummary(trace: TraceMeta): string {
-  return clip(firstLine([trace.summary, trace.userText, trace.agentText].filter(Boolean).join("\n")) || "trace memory", 200);
+  return fallbackCaptureSummary({
+    userText: trace.userText,
+    agentText: trace.agentText,
+    toolCalls: trace.toolCalls
+  });
 }
 
 function renderTraceMemoryValue(step: { summary: string; rawTurnId?: string; stepIndex?: number; userText?: string; agentText?: string; toolCalls: Array<{ name: string; input?: unknown; output?: unknown; error?: string }>; reflection: { text: string | null; alpha: number }; value: number; priority: number }): string {
