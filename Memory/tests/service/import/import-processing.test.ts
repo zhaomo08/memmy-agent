@@ -241,20 +241,20 @@ describe("MemoryService / import / processing", () => {
   it("uses the semantic user query instead of XML metadata as an import title", () => {
     const { db, service } = createTestService();
     const added = service.addMemory({
-      adapterId: "agent-source:cursor",
-      requestId: "cursor-wrapped-turn",
+      adapterId: "agent-source:codex",
+      requestId: "codex-wrapped-turn",
       layer: "L1",
-      source: "cursor",
-      tags: ["agent-source", "cursor"],
+      source: "codex",
+      tags: ["agent-source", "codex"],
       title: "<timestamp>Thursday, Sep 17, 2026, 7:00 PM (UTC+8)</timestamp>",
-      turnId: "cursor:wrapped-turn",
+      turnId: "codex:wrapped-turn",
       content: [
         "## user",
         "",
         "<timestamp>Thursday, Sep 17, 2026, 7:00 PM (UTC+8)</timestamp>",
         "<system_reminder>Workspace metadata.</system_reminder>",
         "<user_query>",
-        "修复 Cursor 记忆标题。",
+        "修复 Codex 记忆标题。",
         "</user_query>",
         "",
         "## assistant",
@@ -263,16 +263,16 @@ describe("MemoryService / import / processing", () => {
       ].join("\n")
     });
 
-    expect(added.title).toBe("修复 Cursor 记忆标题。");
+    expect(added.title).toBe("修复 Codex 记忆标题。");
 
     const notification = service.addMemory({
-      adapterId: "agent-source:cursor",
-      requestId: "cursor-notification-only",
+      adapterId: "agent-source:codex",
+      requestId: "codex-notification-only",
       layer: "L1",
-      source: "cursor",
-      tags: ["agent-source", "cursor"],
+      source: "codex",
+      tags: ["agent-source", "codex"],
       title: "<timestamp>Thursday, Sep 17, 2026, 7:01 PM (UTC+8)</timestamp>",
-      turnId: "cursor:notification-only",
+      turnId: "codex:notification-only",
       content: [
         "## user",
         "",
@@ -285,7 +285,7 @@ describe("MemoryService / import / processing", () => {
       ].join("\n")
     });
 
-    expect(notification.title).toBe("cursor conversation");
+    expect(notification.title).toBe("codex conversation");
     db.close();
   });
 
