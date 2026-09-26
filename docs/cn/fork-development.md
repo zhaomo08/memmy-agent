@@ -24,9 +24,9 @@ upstream  https://github.com/MemTensor/memmy-agent.git
 
 ## 同步上游 main
 
-GitHub Actions 每天自动检查一次，也可以在 Actions 页面手动运行
-`Sync upstream main`。工作流只允许快进更新；如果 Fork 的 `main` 出现个人提交或
-历史分叉，它会失败并停止，不会强制覆盖。
+上游同步由本地脚本手动执行，不再通过 GitHub Actions 定时更新。脚本只允许
+快进更新；如果自己的 `main` 出现个人提交或历史分叉，它会失败并停止，
+不会强制覆盖。
 
 本地可以执行：
 
