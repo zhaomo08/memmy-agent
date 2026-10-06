@@ -295,6 +295,9 @@ export class NegativeExperiencePipeline {
       ?? repair?.suggestion
       ?? feedback?.rationale
       ?? (rewardReason ? `Address and verify this failure before continuing: ${rewardReason}` : ""));
+    // A line long enough to need clipping is a transcript -- the agent's whole reply or
+    // the user's next prompt -- not a lesson. Injected later, it is noise in every project.
+    if (antiPattern.length > GUIDANCE_MAX_CHARS || preference.length > GUIDANCE_MAX_CHARS) return undefined;
     const sourceBasis = sourceBasisFor(source, feedback);
     const feedbackConfidence = feedback?.polarity === "negative" && isOperationalSaferBehavior(feedbackText)
       ? Math.max(0.65, feedbackClassification.confidence)
@@ -317,8 +320,8 @@ export class NegativeExperiencePipeline {
       feedback,
       repair,
       trigger: clip(trigger, 240),
-      antiPattern: clip(antiPattern, 360),
-      preference: clip(preference, 360),
+      antiPattern,
+      preference,
       verification: text(job.payload.verification)
         ?? "Check that the plan avoids the historical failure mode before acting.",
       confidence: clamp(rawConfidence, 0, confidenceCap),
@@ -337,6 +340,8 @@ export class NegativeExperiencePipeline {
     return this.deps.repos.memories.getByKey("L2", key);
   }
 }
+
+const GUIDANCE_MAX_CHARS = 360;
 
 function negativeExperienceSource(value: unknown): NegativeExperienceSource | undefined {
   return value === "episode_reward"
@@ -368,8 +373,9 @@ function isActionableNegativeExperience(draft: NegativeExperienceDraft): boolean
     if (!draft.feedbackShape || draft.feedbackShape === "confusion") {
       return false;
     }
-    if (!isOperationalSaferBehavior(draft.preference)) return false;
   }
+  // Implicit feedback carries whatever the next turn said, a reward label included.
+  if (draft.feedback && !isOperationalSaferBehavior(draft.preference)) return false;
   return !(
     isGenericNegativeGuidance(draft.antiPattern)
     && isGenericNegativeGuidance(draft.preference)

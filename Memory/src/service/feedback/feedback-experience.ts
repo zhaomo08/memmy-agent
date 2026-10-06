@@ -492,7 +492,16 @@ maybeCreateDecisionRepair(
     if (feedback.episodeId) {
       this.deps.repos.runtime.appendEpisodeDecisionRepair(feedback.episodeId, repair.id, feedback.createdAt);
     }
-    const actuallyAttached = attachedPolicyIds.length > 0
+    // Guidance is an LLM draft, or a target the classifier pulled out of an explicit
+    // correction. Anything else is the user's raw message behind a "Prefer:" label: it
+    // stays on the repair record, but is not written into a policy.
+    // ponytail: the classifier is a regex and still misreads some prompts as corrections;
+    // port upstream v1.2.0's synthesizeFailureExperienceSink if that leak matters.
+    const distilled = Boolean(llmDraft) || (
+      feedback.channel === "explicit" &&
+      Boolean(classification.prefer ?? classification.correction ?? classification.constraint)
+    );
+    const actuallyAttached = distilled && attachedPolicyIds.length > 0
       ? this.attachRepairToPolicies(repair.id, attachedPolicyIds, repair.preference, repair.antiPattern, feedback.createdAt)
       : [];
     this.deps.repos.runtime.appendChange({

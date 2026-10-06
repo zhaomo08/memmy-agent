@@ -482,6 +482,57 @@ describe("MemoryService / evolution / negative experience", () => {
     db.close();
   });
 
+  it("does not file the agent's whole reply as the thing to avoid", async () => {
+    const { db, service } = createTestService({
+      config: {
+        ...DEFAULT_MEMMY_CONFIG,
+        algorithm: {
+          ...DEFAULT_MEMMY_CONFIG.algorithm,
+          capture: {
+            ...DEFAULT_MEMMY_CONFIG.algorithm.capture,
+            embedAfterCapture: false,
+            synthReflection: false
+          },
+          feedback: {
+            ...DEFAULT_MEMMY_CONFIG.algorithm.feedback,
+            useLlm: false,
+            attachToPolicy: false
+          }
+        }
+      }
+    });
+    const namespace = {
+      source: "codex",
+      profileId: "jiang",
+      userId: "negative-transcript-user"
+    };
+    const session = service.openSession({ namespace });
+    const turn = service.completeTurn("negative-transcript-turn", {
+      sessionId: session.sessionId,
+      episodeId: "negative-transcript-episode",
+      query: "Configure TLS and verify the service port.",
+      // A real reply runs to kilobytes; the feedback is otherwise the actionable kind.
+      answer: `## Summary\n${"I configured port 80 and skipped TLS verification. ".repeat(12)}`
+    });
+    await service.feedback({
+      sessionId: session.sessionId,
+      episodeId: turn.episodeId,
+      l1MemoryId: turn.l1MemoryId,
+      channel: "explicit",
+      polarity: "negative",
+      magnitude: 1,
+      rationale: "Wrong port: use 443 and verify TLS before reporting completion."
+    });
+
+    service.closeSession(session.sessionId);
+    await service.runWorkerOnce(50);
+    await service.runWorkerOnce(50);
+    await service.runWorkerOnce(50);
+
+    expect(service.panelItems({ namespace, layer: "L2" }).items).toEqual([]);
+    db.close();
+  });
+
   it("recalls negative policies written under another user id", async () => {
     const { db, service } = createTestService({
       config: {
