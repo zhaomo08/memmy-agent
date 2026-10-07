@@ -67,7 +67,8 @@ import type {
   ToolCallPayload,
   ToolObserveRequest,
   TurnCompleteRequest,
-  TurnStartRequest
+  TurnStartRequest,
+  MemoryFilter
 } from "../types.js";
 import { MemoryServiceError } from "../utils/error.js";
 import { newId,stableHash,stableStringify } from "../utils/id.js";
@@ -962,14 +963,17 @@ export class MemoryService {
   }
 
   /**
-   * The traces recorded just before and after one, in the same session, oldest first.
-   * A search hit says what was found; this says what was going on around it.
-   * ponytail: reads the session's newest 1000 traces and slices; a keyset query if
-   * sessions outgrow that.
+   * The traces recorded just before and after one, oldest first. A search hit says what
+   * was found; this says what was going on around it.
+   *
+   * Imported history carries no session id, so for those the neighbours are the same
+   * agent's traces nearest in time -- usually the same conversation, not guaranteed.
+   * `scope` tells the caller which it got.
    */
   memoryTimeline(id: string, request: RequestEnvelope & { before?: number; after?: number } = {}): {
     id: string;
     sessionId: string | null;
+    scope: "session" | "agent";
     items: Array<{ id: string; at: string; anchor: boolean; summary: string }>;
     serverTime: string;
   } {
@@ -978,20 +982,24 @@ export class MemoryService {
     this.assertMemoryInScope(memory, request.namespace);
     const span = (value: number | undefined) =>
       Math.min(20, Math.max(0, Number.isFinite(value) ? Math.floor(value as number) : 3));
-    const session = memory.sessionId
-      ? this.repos.memories.list(
-          { sessionId: memory.sessionId, memoryLayer: "L1", status: ["activated", "resolving"] },
-          1000
-        ).reverse()
-      : [];
-    const index = session.findIndex((row) => row.id === memory.id);
-    const rows = index < 0
-      ? [memory]
-      : session.slice(Math.max(0, index - span(request.before)), index + span(request.after) + 1);
+    const scope: MemoryFilter = {
+      ...(memory.sessionId ? { sessionId: memory.sessionId } : { agentId: memory.agentId }),
+      memoryLayer: "L1",
+      status: ["activated", "resolving"]
+    };
+    const earlier = this.repos.memories
+      .list({ ...scope, createdAtLt: memory.createdAt }, span(request.before))
+      .reverse();
+    // created_at can tie, so the anchor is read back with its successors and dropped.
+    const later = this.repos.memories
+      .listAscending({ ...scope, createdAtGte: memory.createdAt }, span(request.after) + 1)
+      .filter((row) => row.id !== memory.id)
+      .slice(0, span(request.after));
     return {
       id: memory.id,
       sessionId: memory.sessionId ?? null,
-      items: rows.map((row) => ({
+      scope: memory.sessionId ? "session" : "agent",
+      items: [...earlier, memory, ...later].map((row) => ({
         id: row.id,
         at: row.createdAt,
         anchor: row.id === memory.id,

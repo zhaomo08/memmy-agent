@@ -652,6 +652,21 @@ export class MemoryRepository {
     return this.hydrateMany(rows.map(memoryFromSql));
   }
 
+  /** The rows nearest after a point in time, oldest first. `list` only reads newest first. */
+  listAscending(filter: MemoryFilter = {}, limit = 50): MemoryRow[] {
+    const built = buildMemoryWhere(filter);
+    const rows = this.db
+      .prepare(
+        `SELECT *
+         FROM memories
+         WHERE ${built.where}
+         ORDER BY created_at ASC, updated_at ASC, id ASC
+         LIMIT ?`
+      )
+      .all(...built.params, limit) as MemorySqlRow[];
+    return this.hydrateMany(rows.map(memoryFromSql));
+  }
+
   listPendingAgentSourceImportSummaries(limit = 10000, targetMemoryIds?: readonly string[]): MemoryRow[] {
     if (targetMemoryIds && targetMemoryIds.length === 0) return [];
     const targetClause = targetMemoryIds

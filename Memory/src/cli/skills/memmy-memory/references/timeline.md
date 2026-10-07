@@ -10,9 +10,9 @@ Use this command when:
 
 API shape:
 - endpoint: `GET /memory/:id/timeline`;
-- returns the traces recorded in the same session, oldest first, each with `id`, `at`, `summary`, and `anchor: true` on the one asked about;
-- `--before` and `--after` default to 3 and are capped at 20;
-- a memory with no session returns only itself.
+- returns the traces recorded around it, oldest first, each with `id`, `at`, `summary`, and `anchor: true` on the one asked about;
+- `scope: "session"` means the neighbours share its session; `scope: "agent"` means it is imported history with no session, and the neighbours are the same agent's traces nearest in time -- usually the same conversation, not guaranteed;
+- `--before` and `--after` default to 3 and are capped at 20.
 
 Do not use this command to:
 - search without an id;
