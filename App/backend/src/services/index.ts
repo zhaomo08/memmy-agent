@@ -12,7 +12,10 @@ import { createSkillReconciler, type SkillReconciler } from "../adapters/outboun
 import { createClaudeCodeSkillTarget } from "../adapters/outbound/skill-writer/claude-code/index.js";
 import { createCodexSkillTarget } from "../adapters/outbound/skill-writer/codex/index.js";
 import { createSkillTargetRegistry, type SkillTargetRegistry } from "../adapters/outbound/skill-writer/target-registry.js";
-import { MEMMY_SKILL_DIRECTORY_NAME } from "../adapters/outbound/skill-writer/templates/memmy-skill-directory.js";
+import {
+  MEMMY_RESUME_SKILL_DIRECTORY_NAME,
+  MEMMY_SKILL_DIRECTORY_NAME
+} from "../adapters/outbound/skill-writer/templates/memmy-skill-directory.js";
 import type { CloudClient } from "../adapters/outbound/cloud-client/index.js";
 import type { MemoryClient } from "../adapters/outbound/memory-client/index.js";
 import type { PermissionManager } from "../permission/index.js";
@@ -170,10 +173,11 @@ export function createBackendServices(options: CreateBackendServicesOptions): Ba
     agentSources,
     agentRules: createAgentRuleWriter({ targets: agentInstructionsTargetsFrom(skillTargetRegistry.list()) }),
     // The reconciler and the skill distributor both write into <agent>/skills. Only the
-    // distributor owns memmy-memory, so the ledger is told to observe it and stay out of it.
+    // distributor owns memmy-memory and memmy-resume, so the ledger is told to observe them
+    // and stay out of them.
     agentSkills: createSkillReconciler({
       targets: skillTargetRegistry.list(),
-      managedNames: [MEMMY_SKILL_DIRECTORY_NAME]
+      managedNames: [MEMMY_SKILL_DIRECTORY_NAME, MEMMY_RESUME_SKILL_DIRECTORY_NAME]
     }),
     agentSourceAutoInject: createAgentSourceAutoInjectService({
       agentSources,
