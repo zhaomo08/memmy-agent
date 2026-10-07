@@ -21,7 +21,7 @@ import type {
 import { DEFAULT_NAMESPACE_SOURCE } from "../types.js";
 import { newId, stableHash } from "../utils/id.js";
 import { asStringArray, parseJson, toJson } from "../utils/json.js";
-import { firstSemanticUserLine } from "../utils/text.js";
+import { firstSemanticUserLine, spaceCjkForFts } from "../utils/text.js";
 import { nowIso } from "../utils/time.js";
 import {
   attachMemoryVectors,
@@ -1077,7 +1077,7 @@ export class MemoryRepository {
       if (!memory.deletedAt && memory.status !== "deleted") {
         this.db
           .prepare(`INSERT INTO memories_fts (id, identifier, memory_value, tags) VALUES (?, ?, ?, ?)`)
-          .run(memory.id, memory.id, retrievalDocumentForMemory(memory), memory.tags.join(" "));
+          .run(memory.id, memory.id, spaceCjkForFts(retrievalDocumentForMemory(memory)), spaceCjkForFts(memory.tags.join(" ")));
       }
     } catch {
       // The service search path is deterministic JS scoring; FTS is maintained
@@ -1369,7 +1369,7 @@ export class UserMemoryRepository {
     if (memory.status === "active" && !memory.deletedAt) {
       this.db.prepare(
         `INSERT INTO user_memories_fts (id, content, memory_types) VALUES (?, ?, ?)`
-      ).run(memory.id, memory.content, memory.memoryTypes.join(" "));
+      ).run(memory.id, spaceCjkForFts(memory.content), memory.memoryTypes.join(" "));
     }
   }
 }

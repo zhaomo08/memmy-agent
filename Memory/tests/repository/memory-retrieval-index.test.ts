@@ -8,6 +8,7 @@ import {
   memoryVectorEntries
 } from "../../src/storage/memory-vector-state.js";
 import { Repositories } from "../../src/storage/repositories.js";
+import { compileRetrievalQuery } from "../../src/algorithm/plugin-algorithms.js";
 import type { MemoryLayer, MemoryRow } from "../../src/types.js";
 
 describe("memory retrieval indexes", () => {
@@ -57,6 +58,39 @@ describe("memory retrieval indexes", () => {
          WHERE memory_key = 'shared-memory-key'`
       ).get()).toEqual({ count: layers.length });
       db.close();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("finds Chinese text by the words a query shares with it, not only by a verbatim run", () => {
+    const root = mkdtempSync(join(tmpdir(), "mindock-memory-cjk-fts-"));
+    try {
+      const path = join(root, "memory.sqlite");
+      const db = new MemoryDb({ path });
+      const repos = new Repositories(db.db);
+      repos.memories.insert({ ...traceMemory("trace_packaging"), memoryValue: "打包前要先清空编译产物，否则会带上已删除的代码" });
+      repos.memories.insert({ ...traceMemory("trace_movie"), memoryValue: "给我推荐一部科幻电影" });
+
+      // Two-character words, in an order and wording the stored sentence does not repeat.
+      const match = compileRetrievalQuery("编译产物 打包").ftsMatch;
+      expect(repos.memories.searchFtsIds(match, { memoryLayer: "L1" }, 5).map((hit) => hit.id))
+        .toEqual(["trace_packaging"]);
+
+      // A row indexed before CJK was split is rewritten the next time the database opens.
+      db.db.prepare(`DELETE FROM memories_fts WHERE id = 'trace_movie'`).run();
+      db.db.prepare(`INSERT INTO memories_fts (id, identifier, memory_value, tags) VALUES (?, ?, ?, '')`)
+        .run("trace_movie", "trace_movie", "给我推荐一部科幻电影");
+      db.db.prepare(`DELETE FROM schema_migrations WHERE id = 'fts-cjk-spaced'`).run();
+      const movie = compileRetrievalQuery("科幻电影").ftsMatch;
+      expect(repos.memories.searchFtsIds(movie, { memoryLayer: "L1" }, 5)).toEqual([]);
+      db.close();
+
+      const reopened = new MemoryDb({ path });
+      expect(new Repositories(reopened.db).memories.searchFtsIds(movie, { memoryLayer: "L1" }, 5).map((hit) => hit.id))
+        .toEqual(["trace_movie"]);
+      expect(reopened.schemaVersion().version).toBeGreaterThan(0);
+      reopened.close();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { spaceCjkForFts } from "../utils/text.js";
 
 export const SCHEMA_VERSION = 5;
 export const SCHEMA_MIGRATION_ID = "005_user_memory";
@@ -538,6 +539,7 @@ export function migrate(db: Database.Database): void {
         backfillMemoryProcessingState(db, now);
         removeLegacyProcessingMetadata(db);
       }
+      respaceFtsForCjk(db, now);
 
       db.prepare(
         `INSERT INTO schema_migrations (id, version, applied_at, checksum)
@@ -551,6 +553,34 @@ export function migrate(db: Database.Database): void {
   } finally {
     db.pragma(`foreign_keys = ${foreignKeys ? "ON" : "OFF"}`);
   }
+}
+
+const FTS_CJK_SPACED_MIGRATION_ID = "fts-cjk-spaced";
+
+/**
+ * Rewrites rows indexed before spaceCjkForFts existed. Recorded as its own version-0 row in
+ * schema_migrations rather than by SCHEMA_VERSION: the table shape is unchanged, upstream
+ * owns the version numbers, and MAX(version) is unaffected. Not runtime_kv -- that table
+ * travels in export bundles.
+ */
+function respaceFtsForCjk(db: Database.Database, now: string): void {
+  if (db.prepare(`SELECT 1 FROM schema_migrations WHERE id = ?`).get(FTS_CJK_SPACED_MIGRATION_ID)) return;
+  const memories = db.prepare(`SELECT rowid, memory_value, tags FROM memories_fts`).all() as Array<{
+    rowid: number; memory_value: string | null; tags: string | null;
+  }>;
+  const updateMemory = db.prepare(`UPDATE memories_fts SET memory_value = ?, tags = ? WHERE rowid = ?`);
+  for (const row of memories) {
+    updateMemory.run(spaceCjkForFts(row.memory_value ?? ""), spaceCjkForFts(row.tags ?? ""), row.rowid);
+  }
+  const userMemories = db.prepare(`SELECT rowid, content FROM user_memories_fts`).all() as Array<{
+    rowid: number; content: string | null;
+  }>;
+  const updateUserMemory = db.prepare(`UPDATE user_memories_fts SET content = ? WHERE rowid = ?`);
+  for (const row of userMemories) {
+    updateUserMemory.run(spaceCjkForFts(row.content ?? ""), row.rowid);
+  }
+  db.prepare(`INSERT INTO schema_migrations (id, version, applied_at, checksum) VALUES (?, 0, ?, ?)`)
+    .run(FTS_CJK_SPACED_MIGRATION_ID, now, `${memories.length}+${userMemories.length}`);
 }
 
 function addColumnIfMissing(
@@ -719,7 +749,7 @@ function removeLegacyProcessingMetadata(db: Database.Database): void {
     if (!row.deleted_at && row.status !== "deleted") {
       db.prepare(
         `INSERT INTO memories_fts (id, identifier, memory_value, tags) VALUES (?, ?, ?, ?)`
-      ).run(row.id, row.id, row.memory_value, tags.join(" "));
+      ).run(row.id, row.id, spaceCjkForFts(row.memory_value), spaceCjkForFts(tags.join(" ")));
     }
   }
 }

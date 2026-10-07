@@ -19,3 +19,15 @@ export function firstSemanticUserLine(value: string): string {
     .replace(/<image_files>[\s\S]*?<\/image_files>/gi, "\n");
   return firstLine(candidate.replace(/<\/?[a-z_][^>]*>/gi, "\n"));
 }
+
+const CJK_CHAR = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g;
+
+/**
+ * unicode61 has no word breaking for CJK: a sentence without spaces is one token, so a
+ * query only matches a stored run it repeats in full. Indexing one character per token
+ * turns any quoted CJK term into a phrase match on an arbitrary substring, ranked by BM25.
+ * Index text and query terms must both pass through here.
+ */
+export function spaceCjkForFts(text: string): string {
+  return text.replace(CJK_CHAR, " $& ");
+}

@@ -10,6 +10,7 @@ import type { LlmClient } from "../model/types.js";
 import { MEMORY_SUMMARY_MAX_TOKENS } from "../config/index.js";
 import { memoryVector } from "../storage/memory-vector-state.js";
 import { stableHash } from "../utils/id.js";
+import { spaceCjkForFts } from "../utils/text.js";
 
 export interface CapturedTraceStep {
   key: string;
@@ -5907,11 +5908,30 @@ const KEYWORD_CJK_RUN = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]+/g;
 const KEYWORD_ASCII_RUN = /[A-Za-z0-9][A-Za-z0-9_-]*/g;
 
 function prepareMemoryFtsMatch(text: string): string | null {
-  const terms = extractMemoryFtsTerms(text).slice(0, 5);
-  if (terms.length === 0) return null;
-  const safe = terms.map((term) => `"${term.replace(/"/g, "\"\"")}"`);
-  if (safe.length <= 2) return safe.join(" ");
-  return combinations(safe, 3).map((group) => `(${group.join(" ")})`).join(" OR ");
+  const safe = extractMemoryFtsTerms(text).slice(0, 5).map(ftsPhrase);
+  const exact = safe.length <= 2
+    ? safe.join(" ")
+    : combinations(safe, 3).map((group) => `(${group.join(" ")})`).join(" OR ");
+  // Chinese words are mostly two characters, and a query rarely repeats a stored run
+  // verbatim. Bigram phrases let BM25 rank by how many, and how rare, the shared words are.
+  const bigrams = cjkBigrams(text).slice(0, 24).map(ftsPhrase);
+  const parts = [...(exact ? [`(${exact})`] : []), ...bigrams];
+  return parts.length > 0 ? parts.join(" OR ") : null;
+}
+
+/** Quotes a term for MATCH. CJK is indexed one character per token, so it becomes a phrase. */
+function ftsPhrase(term: string): string {
+  return `"${spaceCjkForFts(term).replace(/"/g, "\"\"").trim()}"`;
+}
+
+function cjkBigrams(text: string): string[] {
+  const out = new Set<string>();
+  for (const run of String(text ?? "").replace(KEYWORD_PUNCT, " ").match(KEYWORD_CJK_RUN) ?? []) {
+    for (let index = 0; index <= run.length - 2; index += 1) {
+      out.add(run.slice(index, index + 2));
+    }
+  }
+  return Array.from(out);
 }
 
 function extractMemoryFtsTerms(text: string): string[] {
