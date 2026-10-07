@@ -18,7 +18,7 @@ import {
 import type { MemoryRow,ToolCallPayload,UserMemoryType } from "../../types.js";
 import { stableStringify } from "../../utils/id.js";
 import { isRecord,stringifyForMemory } from "../../utils/json.js";
-import { clip,firstLine } from "../../utils/text.js";
+import { clip, clipMiddle, firstLine } from "../../utils/text.js";
 import { nowIso } from "../../utils/time.js";
 import type { ScheduleEmbeddingAfterTextUpdateInput } from "../embedding/embedding-job-processor.js";
 import {
@@ -933,6 +933,8 @@ Rules:
 - Preserve original speaker/person names. User/assistant roles may be import
   roles and must not replace real participants when names are present.
 - Do not invent facts. Do not infer ownership from neighboring turns.
+- "...[N chars omitted]..." marks text cut from the middle of a long message to
+  fit. Summarize what is shown; do not guess at what was cut.
 - Do NOT prefix with "The user said" / "用户说了". Just state the fact.
 - If no durable fact is present, summarize the concrete request/result that
   would be most useful for retrieval.`;
@@ -976,7 +978,9 @@ Summary rules:
 - If create_l1 is false, l1_summary must be empty.
 - user_memory_types must be empty when create_user_memory is false.
 - user_memory_evidence must be empty when create_user_memory is false; l1_evidence must be empty when create_l1 is false.
-- Do not invent facts.`;
+- Do not invent facts.
+- "...[N chars omitted]..." marks text cut from the middle of a long message to
+  fit. Summarize what is shown; do not guess at what was cut.`;
 
 interface BatchReflectionScore {
   idx: number;
@@ -1313,10 +1317,11 @@ function traceSummaryPayload(input: {
   const parts: string[] = [`CAPTURED AT: ${input.trace.ts}`];
   const normalizedUser = normalizeCaptureSummaryUserText(input.userText);
   if (normalizedUser.requestText) {
-    parts.push(`USER:\n${clip(normalizedUser.requestText, 1400)}`);
+    parts.push(`USER:\n${clipMiddle(normalizedUser.requestText, 1400)}`);
   }
   if (input.agentText) {
-    parts.push(`ASSISTANT:\n${clip(input.agentText, 1400)}`);
+    // The outcome is at the end of a reply; clip() here kept only the plan.
+    parts.push(`ASSISTANT:\n${clipMiddle(input.agentText, 1400)}`);
   }
   if (input.toolCalls.length > 0) {
     parts.push(`TOOLS:\n${clip(input.toolCalls.map((call) =>

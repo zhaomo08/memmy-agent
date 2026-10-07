@@ -3,6 +3,21 @@ export function clip(value: string, max: number): string {
   return cleaned.length <= max ? cleaned : `${cleaned.slice(0, max - 3)}...`;
 }
 
+/**
+ * Like clip, but cuts the middle and says how much went. A long reply opens with what it
+ * is about to do and closes with what happened; a head-only cut keeps the first and hands
+ * a summarizer no sign that there was a second.
+ */
+export function clipMiddle(value: string, max: number): string {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= max) return cleaned;
+  const marker = (omitted: number) => ` ...[${omitted} chars omitted]... `;
+  const room = Math.max(0, max - marker(cleaned.length).length);
+  const head = cleaned.slice(0, Math.ceil(room / 2));
+  const tail = cleaned.slice(cleaned.length - (room - head.length));
+  return `${head}${marker(cleaned.length - head.length - tail.length)}${tail}`;
+}
+
 export function firstLine(value: string): string {
   return value
     .split(/\r?\n/)
