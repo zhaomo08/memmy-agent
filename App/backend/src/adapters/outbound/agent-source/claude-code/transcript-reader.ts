@@ -33,7 +33,9 @@ export async function* readClaudeCodeTranscript(
 /** Handles to raw claude code message. */
 function toRawClaudeCodeMessage(record: JsonObject, fallbackIndex: number): RawClaudeCodeMessage | null {
   const type = getString(record.type);
-  if (type !== "user" && type !== "assistant") {
+  // isMeta rows are text the harness injected under the user role -- a loaded skill's whole
+  // SKILL.md, most often. Nobody said it, and it would be recalled as a user statement.
+  if ((type !== "user" && type !== "assistant") || record.isMeta === true) {
     return null;
   }
 

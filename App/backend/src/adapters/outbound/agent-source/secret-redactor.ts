@@ -47,8 +47,13 @@ const LARGE_BASE64_PAYLOAD_MIN_LENGTH = 4096;
  * @param input Raw message text from an external Agent.
  * @returns The plain text with secrets replaced, or the original text when no rule matches.
  */
+const PRIVATE_BLOCK_PATTERN = /<private>[\s\S]*?(?:<\/private>|$)/gi;
+
 export function redactSecrets(input: string): string {
-  const withoutLargeBinaryPayloads = redactBase64Runs(input, LARGE_BASE64_PAYLOAD_MIN_LENGTH);
+  // The user's own opt-out: anything inside <private> never reaches memory. An unclosed
+  // tag hides the rest of the message rather than leaking it.
+  const withoutPrivateBlocks = input.replace(PRIVATE_BLOCK_PATTERN, "[PRIVATE]");
+  const withoutLargeBinaryPayloads = redactBase64Runs(withoutPrivateBlocks, LARGE_BASE64_PAYLOAD_MIN_LENGTH);
   const redacted = REDACTION_RULES.reduce((current, rule) => {
     if (rule.replace) {
       return current.replace(rule.pattern, rule.replace);

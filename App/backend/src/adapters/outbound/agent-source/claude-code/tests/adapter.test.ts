@@ -83,6 +83,30 @@ describe("claude code source adapter", () => {
     ]);
   });
 
+  it("drops harness-injected rows and keeps <private> blocks out of memory", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "memmy-claude-code-"));
+    const projectsRoot = join(tempDir, "projects");
+    const projectDirectory = join(projectsRoot, "-tmp-project");
+    mkdirSync(projectDirectory, { recursive: true });
+    writeFileSync(
+      join(projectDirectory, "session-1.jsonl"),
+      [
+        JSON.stringify({ type: "user", isMeta: true, sourceToolUseID: "toolu_1", message: { role: "user", content: [{ type: "text", text: "Base directory for this skill: /tmp/skills/demo\n\n# Demo skill" }] }, uuid: "skill-uuid", timestamp: "2026-05-29T10:00:00.000Z", sessionId: "session-1" }),
+        JSON.stringify({ type: "user", message: { role: "user", content: "Deploy it. <private>the staging password is hunter2</private> Then report." }, uuid: "real-uuid", timestamp: "2026-05-29T10:00:01.000Z", sessionId: "session-1" }),
+        JSON.stringify({ type: "user", message: { role: "user", content: "Use <private>an unclosed secret" }, uuid: "open-uuid", timestamp: "2026-05-29T10:00:02.000Z", sessionId: "session-1" })
+      ].join("\n"),
+      "utf8"
+    );
+
+    const adapter = createClaudeCodeSourceAdapter({ projectsRoot });
+    const messages = await collect(adapter.scan({}));
+
+    expect(messages.map((message) => message.content)).toEqual([
+      "Deploy it. [PRIVATE] Then report.",
+      "Use [PRIVATE]"
+    ]);
+  });
+
   it("treats a missing projects directory as an empty history", async () => {
     const projectsRoot = join(tmpdir(), `memmy-missing-claude-${crypto.randomUUID()}`);
 
