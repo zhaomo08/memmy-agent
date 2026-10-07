@@ -847,10 +847,17 @@ function renderInjectedSnippet(
         body: renderInjectedOnboardingFirstReportBody(hit, trace)
       };
     }
+    // A reply that does not fit would be cut where the snippet limit falls, which is in
+    // the opening narration and before the outcome. Every trace is stored with a summary
+    // written from the whole exchange, so inject that instead of half a reply.
+    const full = renderInjectedTraceBody(hit, trace);
+    const body = full.length > MEMORY_PACKET_MAX_SNIPPET_BODY_CHARS && trace.summary.trim()
+      ? renderInjectedTraceSummaryBody(hit, trace)
+      : full;
     return {
       refKind: "trace",
       title: "Trace",
-      body: truncateInjectedSnippet(renderInjectedTraceBody(hit, trace))
+      body: truncateInjectedSnippet(body)
     };
   }
 
@@ -924,6 +931,24 @@ function renderInjectedTraceBody(hit: RecallHit, trace: TraceMeta): string {
     ...labeledInjectedBlock("Historical user statement", trace.userText || "(empty)"),
     "",
     ...labeledInjectedBlock("Historical assistant response", trace.agentText || "(empty)")
+  ].join("\n");
+}
+
+const INJECTED_TRACE_USER_STATEMENT_CHARS = 200;
+
+function renderInjectedTraceSummaryBody(hit: RecallHit, trace: TraceMeta): string {
+  return [
+    `id: ${hit.id}`,
+    `timestamp: ${formatInjectedTimestamp(trace.ts, hit.updatedAt)}`,
+    "",
+    ...labeledInjectedBlock(
+      "Historical user statement",
+      elideMiddle(trace.userText.trim() || "(empty)", INJECTED_TRACE_USER_STATEMENT_CHARS)
+    ),
+    "",
+    ...labeledInjectedBlock("Summary of the assistant's response", trace.summary),
+    "",
+    "The full response is longer; `memmy_memory_get(id)` returns it."
   ].join("\n");
 }
 
@@ -1312,9 +1337,21 @@ function firstLineSummary(guide: string, maxChars: number): string {
 }
 
 function truncateInjectedSnippet(value: string): string {
-  if (value.length <= MEMORY_PACKET_MAX_SNIPPET_BODY_CHARS) return value;
-  const head = value.slice(0, MEMORY_PACKET_MAX_SNIPPET_BODY_CHARS - 16);
-  return `${head}\n...[truncated]`;
+  return elideMiddle(value, MEMORY_PACKET_MAX_SNIPPET_BODY_CHARS);
+}
+
+/**
+ * Cuts the middle out of text that does not fit, and says how much went. The head carries
+ * the id and what was asked; the tail carries where it ended up. A head-only cut keeps
+ * neither the outcome nor any sign of how much is missing.
+ */
+function elideMiddle(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  const marker = (elided: number) => `\n...[truncated ${elided} chars]...\n`;
+  const room = Math.max(0, maxChars - marker(value.length).length);
+  const head = value.slice(0, Math.floor(room * 2 / 3));
+  const tail = value.slice(value.length - (room - head.length));
+  return `${head}${marker(value.length - head.length - tail.length)}${tail}`;
 }
 
 function stripEpisodePromptMetrics(summary: string): string {
