@@ -122,6 +122,13 @@ describe("memmy CLI command map", () => {
       path: "/api/v1/memory/mem_l1_1"
     },
     {
+      name: "timeline",
+      argv: ["timeline", "mem_l1_1", "--before", "2", "--after", "4"],
+      method: "GET",
+      path: "/api/v1/memory/mem_l1_1/timeline",
+      query: { before: "2", after: "4" }
+    },
+    {
       name: "delete",
       argv: ["delete", "mem_l1_1"],
       method: "DELETE",

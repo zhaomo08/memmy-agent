@@ -17,6 +17,7 @@ Use this skill when the task needs persistent agent memory through the `memmy-me
 - Search memory: read [search](./references/search.md).
 - Add a memory manually: read [add](./references/add.md).
 - Read one memory by id: read [get](./references/get.md).
+- See what happened around one memory: read [timeline](./references/timeline.md).
 - Delete one memory by id: read [delete](./references/delete.md).
 - Call uncommon HTTP routes for debugging: read [raw](./references/raw.md).
 

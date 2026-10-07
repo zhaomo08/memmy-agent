@@ -94,6 +94,8 @@ async function mapTopLevelCommand(words: string[], parsed: ParsedArgs): Promise<
       return addMemoryRequest(words.slice(1), parsed);
     case "get":
       return getMemoryRequest(words.slice(1), parsed);
+    case "timeline":
+      return timelineRequest(words.slice(1), parsed);
     case "delete":
       return deleteMemoryRequest(words.slice(1), parsed);
     default:
@@ -204,6 +206,19 @@ function getMemoryRequest(args: string[], parsed: ParsedArgs): CliRequest {
   return {
     method: "GET",
     path: `/memory/${encodeURIComponent(requireValue("id", id))}`
+  };
+}
+
+function timelineRequest(args: string[], parsed: ParsedArgs): CliRequest {
+  const id = optionString(parsed.options, "id") ?? args[0];
+  const query = ["before", "after"]
+    .map((name) => [name, optionString(parsed.options, name)] as const)
+    .filter(([, value]) => value !== undefined)
+    .map(([name, value]) => `${name}=${encodeURIComponent(value as string)}`)
+    .join("&");
+  return {
+    method: "GET",
+    path: `/memory/${encodeURIComponent(requireValue("id", id))}/timeline${query ? `?${query}` : ""}`
   };
 }
 

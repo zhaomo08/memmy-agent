@@ -29,7 +29,8 @@ import {
   type EpisodeRecord,
   type EvolutionJobRecord,
   type RawTurnRecord,
-  type SessionRecord
+  type SessionRecord,
+  titleFromValue
 } from "../storage/repositories.js";
 import type { SerializedMemoryVector } from "../storage/sqlite-vec-store.js";
 import type {
@@ -958,6 +959,48 @@ export class MemoryService {
 
   getMemory(id: string, request: RequestEnvelope = {}): MemoryGetResponse {
     return this.episodeReadModel.getMemory(id, request);
+  }
+
+  /**
+   * The traces recorded just before and after one, in the same session, oldest first.
+   * A search hit says what was found; this says what was going on around it.
+   * ponytail: reads the session's newest 1000 traces and slices; a keyset query if
+   * sessions outgrow that.
+   */
+  memoryTimeline(id: string, request: RequestEnvelope & { before?: number; after?: number } = {}): {
+    id: string;
+    sessionId: string | null;
+    items: Array<{ id: string; at: string; anchor: boolean; summary: string }>;
+    serverTime: string;
+  } {
+    this.assertMemorySearchEnabled();
+    const memory = this.requireExistingMemory(id);
+    this.assertMemoryInScope(memory, request.namespace);
+    const span = (value: number | undefined) =>
+      Math.min(20, Math.max(0, Number.isFinite(value) ? Math.floor(value as number) : 3));
+    const session = memory.sessionId
+      ? this.repos.memories.list(
+          { sessionId: memory.sessionId, memoryLayer: "L1", status: ["activated", "resolving"] },
+          1000
+        ).reverse()
+      : [];
+    const index = session.findIndex((row) => row.id === memory.id);
+    const rows = index < 0
+      ? [memory]
+      : session.slice(Math.max(0, index - span(request.before)), index + span(request.after) + 1);
+    return {
+      id: memory.id,
+      sessionId: memory.sessionId ?? null,
+      items: rows.map((row) => ({
+        id: row.id,
+        at: row.createdAt,
+        anchor: row.id === memory.id,
+        summary: typeof row.info.summary === "string" && row.info.summary.trim()
+          ? row.info.summary.trim()
+          : titleFromValue(row.memoryValue)
+      })),
+      serverTime: nowIso()
+    };
   }
 
   async worldModelQuery(input: InternalMemorySearchRequest): Promise<{

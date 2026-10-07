@@ -692,6 +692,20 @@ async function routeRequest(
     return result;
   }
 
+  const memoryTimeline = match(path, /^\/api\/v1\/memory\/([^/]+)\/timeline$/);
+  if (method === "GET" && memoryTimeline) {
+    requireMemoryRead(principal);
+    const count = (name: string) => {
+      const raw = url.searchParams.get(name);
+      return raw === null ? undefined : Number(raw);
+    };
+    return service.memoryTimeline(decodeMatchSegment(memoryTimeline, 1), {
+      namespace: principal.namespace,
+      before: count("before"),
+      after: count("after")
+    });
+  }
+
   const memoryGet = match(path, /^\/api\/v1\/memory\/([^/]+)$/);
   if (method === "GET" && memoryGet) {
     requireMemoryRead(principal);
