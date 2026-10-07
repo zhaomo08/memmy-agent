@@ -1080,3 +1080,19 @@ export const SkillFreezeDtoSchema = z.object({
     declarations: z.number()
 });
 export type SkillFreezeDto = z.infer<typeof SkillFreezeDtoSchema>;
+
+/** Schema for promoting one Memmy skill memory into the shared skill library. */
+export const SkillPromoteRequestSchema = z.object({
+    memoryId: z.string().min(1),
+    /** Overrides the library directory name; defaults to the memory's own skill name. */
+    name: z.string().min(1).optional()
+});
+export type SkillPromoteRequest = z.infer<typeof SkillPromoteRequestSchema>;
+
+/** Schema for the response to promoting a skill memory. */
+export const SkillPromoteDtoSchema = z.object({
+    name: z.string(),
+    path: z.string(),
+    mounted: z.array(z.string())
+});
+export type SkillPromoteDto = z.infer<typeof SkillPromoteDtoSchema>;

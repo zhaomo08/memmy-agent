@@ -1,6 +1,7 @@
 /** Reconciler module. */
 import { lstat, mkdir, readdir, readlink, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import YAML from "yaml";
 
 import {
   readSkillManifest,
@@ -25,7 +26,30 @@ export interface SkillReconciler {
   reconcile(): Promise<SkillReconcileResult>;
   /** Writes a manifest describing the current disk layout, so drift can be measured from here on. */
   freeze(): Promise<{ manifestPath: string; declarations: number }>;
+  /**
+   * Adds one new skill to the shared library, declares it for every available target and
+   * links it there. Never overwrites: a name already in the library or the manifest is refused.
+   */
+  publish(input: SkillPublishInput): Promise<SkillPublishResult>;
 }
+
+/** A skill to add to the shared library. */
+export interface SkillPublishInput {
+  name: string;
+  description: string;
+  body: string;
+  /** Where the skill came from, recorded beside it in the ledger. */
+  why: string;
+}
+
+/** What publishing one skill wrote. */
+export interface SkillPublishResult {
+  name: string;
+  path: string;
+  mounted: string[];
+}
+
+const SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,63}$/;
 
 /** Dependencies for {@link createSkillReconciler}. */
 export interface CreateSkillReconcilerDeps {
@@ -160,6 +184,52 @@ export function createSkillReconciler(deps: CreateSkillReconcilerDeps): SkillRec
       await mkdir(dirname(manifestPath), { recursive: true });
       await writeFile(manifestPath, renderSkillManifest({ libraryPath, declarations }), "utf8");
       return { manifestPath, declarations: declarations.length };
+    },
+
+    async publish(input: SkillPublishInput): Promise<SkillPublishResult> {
+      const name = input.name.trim().toLowerCase().replace(/[_\s]+/g, "-");
+      if (!SKILL_NAME_PATTERN.test(name)) {
+        throw new Error(`skill name "${input.name}" must match ${SKILL_NAME_PATTERN.source}`);
+      }
+      if (!input.description.trim() || !input.body.trim()) {
+        throw new Error("a skill needs a description and a body");
+      }
+
+      const { libraryPath, declarations, manifestMissing } = await load();
+      if (manifestMissing) {
+        // A one-line manifest would turn every existing skill into an undeclared finding.
+        throw new Error(`no manifest at ${manifestPath}; freeze the current layout first`);
+      }
+      const path = join(libraryPath, name);
+      if (declarations.some((entry) => entry.name === name) || (await exists(path))) {
+        throw new Error(`skill "${name}" already exists; refusing to overwrite it`);
+      }
+
+      const roots: Array<{ targetId: string; root: string }> = [];
+      for (const target of deps.targets) {
+        const root = await target.resolveRootDirectory();
+        if (!root) continue;
+        if (await exists(join(root, "skills", name))) {
+          throw new Error(`"${name}" is already present at ${target.displayName}; refusing to overwrite it`);
+        }
+        roots.push({ targetId: target.targetId, root });
+      }
+
+      await mkdir(path, { recursive: true });
+      const frontmatter = YAML.stringify({ name, description: input.description.trim() }).trimEnd();
+      await writeFile(join(path, "SKILL.md"), `---\n${frontmatter}\n---\n\n${input.body.trim()}\n`, "utf8");
+      const mounted = roots.map((entry) => entry.targetId);
+      await writeFile(
+        manifestPath,
+        renderSkillManifest({ libraryPath, declarations: [...declarations, { name, mount: mounted, why: input.why }] }),
+        "utf8"
+      );
+      for (const { root } of roots) {
+        const link = join(root, "skills", name);
+        await mkdir(dirname(link), { recursive: true });
+        await symlink(relative(dirname(link), path), link);
+      }
+      return { name, path, mounted };
     }
   });
 }
@@ -319,4 +389,13 @@ async function pathExists(path: string): Promise<boolean> {
 
 function isMissing(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: string }).code === "ENOENT";
+}
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+    return true;
+  } catch {
+    return false;
+  }
 }

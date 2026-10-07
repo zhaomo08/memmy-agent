@@ -1,6 +1,11 @@
 /** Agent skills module. */
 export { createSkillReconciler } from "./reconciler.js";
-export type { CreateSkillReconcilerDeps, SkillReconciler } from "./reconciler.js";
+export type {
+  CreateSkillReconcilerDeps,
+  SkillPublishInput,
+  SkillPublishResult,
+  SkillReconciler
+} from "./reconciler.js";
 export {
   parseSkillManifest,
   readSkillManifest,

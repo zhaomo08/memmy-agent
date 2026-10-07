@@ -89,6 +89,7 @@ export function createLocalApiServer(options: CreateLocalApiServerOptions): Fast
   });
   registerAgentSkillRoutes(app, {
     agentSkills: options.services.agentSkills,
+    memoryClient: options.services.memoryClient,
     authenticateRuntimeToken
   });
   registerAppConfigRoutes(app, {

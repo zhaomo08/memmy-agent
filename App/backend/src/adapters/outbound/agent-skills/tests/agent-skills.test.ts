@@ -378,3 +378,48 @@ describe("freeze", () => {
     expect((await reconciler().status()).findings).toEqual([expect.objectContaining({ kind: "not_mounted" })]);
   });
 });
+
+describe("publish", () => {
+  const draft = {
+    name: "git_commit_attribution_fix",
+    description: "Use when commits show the wrong author: a colon here, too.",
+    body: "# Fix commit attribution\n\n1. Inspect the log.",
+    why: "Promoted from Memmy skill memory skill_1"
+  };
+
+  it("writes the skill, records why, links it everywhere, and leaves the ledger settled", async () => {
+    await addLibrarySkill("alpha");
+    await mount(claudeRoot, "alpha");
+    await mount(codexRoot, "alpha");
+    await writeManifest("skills:\n  alpha: [claude_code, codex]\n");
+
+    const published = await reconciler().publish(draft);
+
+    expect(published).toEqual({
+      name: "git-commit-attribution-fix",
+      path: join(libraryPath, "git-commit-attribution-fix"),
+      mounted: ["claude_code", "codex"]
+    });
+    const skill = await readFile(join(published.path, "SKILL.md"), "utf8");
+    expect(skill.startsWith("---\nname: git-commit-attribution-fix\ndescription:")).toBe(true);
+    expect(skill).toContain("# Fix commit attribution");
+    expect(await readFile(join(codexRoot, "skills", "git-commit-attribution-fix", "SKILL.md"), "utf8")).toBe(skill);
+    const manifest = parseSkillManifest(await readFile(manifestPath, "utf8"));
+    expect(manifest.declarations.find((entry) => entry.name === published.name)?.why).toBe(draft.why);
+    expect((await reconciler().status()).findings).toEqual([]);
+  });
+
+  it("refuses a name that is already taken, and writes nothing", async () => {
+    await addLibrarySkill("git-commit-attribution-fix");
+    await writeManifest("skills: {}\n");
+
+    await expect(reconciler().publish(draft)).rejects.toThrow(/already exists/);
+    expect(await readFile(join(libraryPath, "git-commit-attribution-fix", "SKILL.md"), "utf8"))
+      .toBe("# git-commit-attribution-fix\n");
+    expect(await readFile(manifestPath, "utf8")).toBe("skills: {}\n");
+  });
+
+  it("refuses to start a ledger with one line in it", async () => {
+    await expect(reconciler().publish(draft)).rejects.toThrow(/freeze/);
+  });
+});
