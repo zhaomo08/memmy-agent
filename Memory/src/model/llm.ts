@@ -90,6 +90,7 @@ export function createLlmClient(config: LlmConfig, options: CreateLlmClientOptio
 class HttpLlmClient implements LlmClient {
   private lastOkAt: string | undefined;
   private lastError: string | undefined;
+  private openAiJsonResponseFormat: "json_object" | "text" = "json_object";
   private readonly usageRecorder = new HttpByokTokenUsageRecorder();
 
   constructor(readonly config: LlmConfig, private readonly options: CreateLlmClientOptions = {}) {}
@@ -318,28 +319,49 @@ class HttpLlmClient implements LlmClient {
     const thinkingBudget = thinking.enabled && thinkingUsesEnableThinking(this.config.vendor ?? "", base, model)
       ? this.config.thinkingBudget
       : undefined;
-    const response = await postJsonWithRetry<OpenAiChatResponse>({
-      provider: "openai_compatible",
-      operation: options.operation,
-      model: this.config.model,
-      url,
-      headers: {
-        ...bearer(this.config.apiKey),
-        ...(this.options.agentRegion ? { "X-Agent-Region": this.options.agentRegion } : {})
-      },
-      timeoutMs: options.timeoutMs ?? this.config.timeoutMs,
-      maxRetries: options.maxRetries ?? this.config.maxRetries,
-      body: {
+    const automaticResponseFormat = options.jsonMode && !omitJsonMode
+      ? this.openAiJsonResponseFormat
+      : undefined;
+    const request = (responseFormat: "json_object" | "text" | undefined) =>
+      postJsonWithRetry<OpenAiChatResponse>({
+        provider: "openai_compatible",
+        operation: options.operation,
         model: this.config.model,
-        messages,
-        ...(!omitTemperature ? { temperature: options.temperature ?? this.config.temperature } : {}),
-        max_tokens: options.maxTokens ?? this.config.maxTokens,
-        stream: false,
-        ...thinking.fields,
-        ...(thinkingBudget !== undefined ? { thinking_budget: thinkingBudget } : {}),
-        ...(options.jsonMode && !omitJsonMode ? { response_format: { type: "json_object" } } : {})
+        url,
+        headers: {
+          ...bearer(this.config.apiKey),
+          ...(this.options.agentRegion ? { "X-Agent-Region": this.options.agentRegion } : {})
+        },
+        timeoutMs: options.timeoutMs ?? this.config.timeoutMs,
+        maxRetries: options.maxRetries ?? this.config.maxRetries,
+        body: {
+          model: this.config.model,
+          messages,
+          ...(!omitTemperature ? { temperature: options.temperature ?? this.config.temperature } : {}),
+          max_tokens: options.maxTokens ?? this.config.maxTokens,
+          stream: false,
+          ...thinking.fields,
+          ...(thinkingBudget !== undefined ? { thinking_budget: thinkingBudget } : {}),
+          ...(responseFormat ? { response_format: { type: responseFormat } } : {})
+        }
+      });
+    let response: OpenAiChatResponse;
+    try {
+      response = await request(automaticResponseFormat);
+    } catch (error) {
+      if (automaticResponseFormat !== "json_object" || !requiresTextResponseFormat(error)) {
+        throw error;
       }
-    });
+      this.openAiJsonResponseFormat = "text";
+      logger.warn("json.response_format_fallback", {
+        operation: options.operation,
+        provider: "openai_compatible",
+        model: this.config.model,
+        responseFormat: "text",
+        ...memoryErrorFields(error)
+      });
+      response = await request("text");
+    }
     const choice = response.choices?.[0];
     const text = choice?.message?.content;
     if (typeof text !== "string" || !text.trim()) {
@@ -553,6 +575,17 @@ class HttpLlmClient implements LlmClient {
       usage: extractModelTokenUsage(response)
     });
   }
+}
+
+function requiresTextResponseFormat(error: unknown): boolean {
+  // http.ts throws a plain Error formatted as "<provider> HTTP <status>: <detail>".
+  if (!(error instanceof Error) || !/ HTTP (?:400|422):/.test(error.message)) {
+    return false;
+  }
+  const detail = error.message.toLowerCase().replace(/['"`]/g, "");
+  return /response[_ ]format(?:\.type)?/.test(detail)
+    && detail.includes("json_schema")
+    && /\btext\b/.test(detail);
 }
 
 function constrainSummaryMessages(
