@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isDirectRun, main } from "../src/cli/index.js";
 import { PROJECT_VERSION } from "../src/cli/project-version.js";
 import {
@@ -30,6 +30,24 @@ describe("memmy CLI", () => {
     symlinkSync(target, link);
 
     expect(isDirectRun(link, target)).toBe(true);
+  });
+
+  it("never sends CLI analytics to the cloud, even with MEMMY_CLOUD_SERVICE set", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetchSpy);
+    const home = mkdtempSync(join(tmpdir(), "memmy-cli-analytics-"));
+    roots.push(home);
+    writeFileSync(join(home, "analytics-client-id"), "client-under-test\n");
+    vi.stubEnv("MEMMY_HOME", home);
+    vi.stubEnv("MEMMY_CLOUD_SERVICE", "https://analytics.invalid");
+    vi.stubEnv("VITEST", "");
+    try {
+      await runCliText(["help"]);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("does not expose MCP commands in this release", async () => {

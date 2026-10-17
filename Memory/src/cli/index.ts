@@ -1,12 +1,8 @@
 #!/usr/bin/env node
-// Must load first: inject MEMMY_CLOUD_SERVICE from a nearby .env for analytics.
-import { loadCloudServiceEnv } from "./load-env.js";
-loadCloudServiceEnv();
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   CLI_ANALYTICS_EVENTS,
-  createCliAnalytics,
   createNoopCliAnalytics,
   elapsedMs,
   errorCodeFromUnknown,
@@ -24,7 +20,7 @@ export type MainDeps = {
 
 export async function main(argv = process.argv.slice(2), deps: MainDeps = {}): Promise<void> {
   const startedAt = (deps.now ?? Date.now)();
-  const analytics = resolveMainAnalytics(argv, deps);
+  const analytics = resolveMainAnalytics(deps);
   const baseParams = resolveCliAnalyticsParams(argv, { argvPath: deps.argvPath });
   if (shouldTrackCliAnalytics(argv)) {
     analytics.track(CLI_ANALYTICS_EVENTS.invoked, baseParams);
@@ -59,16 +55,10 @@ export async function main(argv = process.argv.slice(2), deps: MainDeps = {}): P
   }
 }
 
-function resolveMainAnalytics(argv: string[], deps: MainDeps): CliLifecycleAnalytics {
-  if (deps.analytics) return deps.analytics;
-  if (!shouldTrackCliAnalytics(argv)) {
-    return createNoopCliAnalytics();
-  }
-  // Avoid accidental network calls from CLI tests that invoke main().
-  if (process.env.VITEST) {
-    return createCliAnalytics({ baseUrl: null });
-  }
-  return createCliAnalytics();
+function resolveMainAnalytics(deps: MainDeps): CliLifecycleAnalytics {
+  // Fork: CLI cloud analytics is off. Agent hooks run `search`/`add` with the
+  // query or memory text as an argument, and this build is local-first.
+  return deps.analytics ?? createNoopCliAnalytics();
 }
 
 export function isDirectRun(argvPath = process.argv[1], modulePath = fileURLToPath(import.meta.url)): boolean {
