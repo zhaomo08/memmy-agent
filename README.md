@@ -49,6 +49,22 @@ npm run dev:desktop    # 本地启动桌面端（renderer :19000 + Electron）
 - `App/memmy-agent`：本地 Agent Runtime 与内部 WebSocket。
 - `App/shell/desktop`：macOS Electron 壳与菜单栏入口。
 
+## 分支
+
+| 分支 | 用途 |
+|---|---|
+| `develop` | 日常开发，默认分支 |
+| `main` | 稳定发布线，从这里打 `v<版本>-fork.<n>` tag 发版 |
+| `upstream-main` | MemTensor `main` 的只读镜像，只用来对照上游，不在上面提交 |
+
+上游同步在临时分支 `sync/<上游版本>` 上做，从 `develop` 拉出，验证后合回 `develop` 并删除。更新镜像：
+
+```bash
+git fetch upstream && git push origin upstream/main:upstream-main
+```
+
+旧分支以 `archive/*` tag 保存。
+
 ## 上游同步策略
 
 上游仓库保留为 `upstream` remote。同步时只移植以下内容：
