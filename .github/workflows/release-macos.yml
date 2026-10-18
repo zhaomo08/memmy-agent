@@ -89,13 +89,13 @@ jobs:
           echo "bundled skills match source ($skill_count skills)"
 
           # Deny-list scan restricted to our own compiled output (dist/runtime),
-          # not node_modules — third-party packages legitimately contain some of
+          # excluding its bundled node_modules — third-party packages legitimately contain some of
           # these words (e.g. std-env, typescript's README). A hit here means an
           # unsupported client or a feature meant to be removed leaked into the
           # shipped app, not just the source tree.
           rm -rf /tmp/memmy-scope
           npx --yes asar extract "$ASAR" /tmp/memmy-scope
-          if grep -rilE "chatwise|opencode|openclaw|hermes|workbuddy|mochat|telegram|composio" /tmp/memmy-scope/dist/runtime; then
+          if grep -rilE --exclude-dir=node_modules "chatwise|opencode|openclaw|hermes|workbuddy|mochat|telegram|composio" /tmp/memmy-scope/dist/runtime; then
             echo "::error::deny-listed strings found under dist/runtime"
             exit 1
           fi
