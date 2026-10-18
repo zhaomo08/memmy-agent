@@ -1,0 +1,160 @@
+name: Release macOS (unsigned)
+
+# A tag push builds the unsigned DMG and publishes a GitHub Release; a manual run
+# only builds it as a workflow artifact. The app never updates itself (see the
+# memmy-upstream-monitor skill's "shouldManageRequiredUpdates" fork invariant):
+# a human downloads the DMG and installs it.
+#
+# Fork tags are v<package.json version>-fork.<n>, because plain vX.Y.Z tags are
+# MemTensor's and the fork's version numbers overlap with them.
+on:
+  push:
+    tags: ["v*-fork.*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check tag matches package.json
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          pkg_version=$(node -p "require('./package.json').version")
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v${pkg_version//./\\.}-fork\.[0-9]+$ ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match v${pkg_version}-fork.<n>"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use public env defaults
+        run: cp .env.example .env
+
+      - name: Clean workspace build output
+        run: |
+          rm -rf App/memmy-agent/dist Memory/dist App/backend/dist \
+                 App/shell/desktop/dist App/frontend/desktop/dist
+
+      - name: Package unsigned DMG
+        run: npm run package:mac:unsigned
+
+      - name: Verify bundle completeness
+        run: |
+          set -euo pipefail
+          APP="App/shell/desktop/release/mac-arm64/Memmy.app"
+          ASAR="$APP/Contents/Resources/app.asar"
+          test -d "$APP" || { echo "::error::built app not found at $APP"; exit 1; }
+
+          built_version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")
+          pkg_version=$(node -p "require('./package.json').version")
+          echo "app version: $built_version (package.json: $pkg_version)"
+          if [ "$built_version" != "$pkg_version" ]; then
+            echo "::error::bundle version ($built_version) does not match package.json ($pkg_version)"
+            exit 1
+          fi
+
+          # Compare bundled skill folders against source rather than a hardcoded
+          # count, so this stays correct as skills are added/removed over time.
+          src_skills=$(find App/memmy-agent/src/skills -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          bundled_skills=$(npx --yes asar list "$ASAR" \
+            | grep -E '^/dist/runtime/memmy-agent/dist/skills/[^/]+$' \
+            | sed 's#^/dist/runtime/memmy-agent/dist/skills/##' \
+            | grep -v '\.md$' \
+            | sort)
+          if ! diff <(echo "$src_skills") <(echo "$bundled_skills") > /tmp/skills.diff; then
+            echo "::error::bundled skills do not match source (stale or incomplete dist) — see diff below"
+            cat /tmp/skills.diff
+            exit 1
+          fi
+          skill_count=$(echo "$src_skills" | grep -c .)
+          echo "bundled skills match source ($skill_count skills)"
+
+          # Deny-list scan restricted to our own compiled output (dist/runtime),
+          # not node_modules — third-party packages legitimately contain some of
+          # these words (e.g. std-env, typescript's README). A hit here means an
+          # unsupported client or a feature meant to be removed leaked into the
+          # shipped app, not just the source tree.
+          rm -rf /tmp/memmy-scope
+          npx --yes asar extract "$ASAR" /tmp/memmy-scope
+          if grep -rilE "chatwise|opencode|openclaw|hermes|workbuddy|mochat|telegram|composio" /tmp/memmy-scope/dist/runtime; then
+            echo "::error::deny-listed strings found under dist/runtime"
+            exit 1
+          fi
+          echo "deny-list scan of dist/runtime: clean"
+
+          {
+            echo "### Memmy unsigned macOS build"
+            echo "- version: \`$built_version\`"
+            echo "- skills bundled: $skill_count"
+            echo "- deny-list scan: clean"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: memmy-macos-arm64-unsigned
+          path: App/shell/desktop/release/Memmy-*-arm64-unsigned.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: memmy-macos-arm64-unsigned
+          path: release-assets
+
+      - name: Publish release
+        run: |
+          set -euo pipefail
+          (cd release-assets && sha256sum Memmy-* > SHA256SUMS.txt)
+          notes=release-assets/NOTES.md
+          manual=".github/release-notes/$GITHUB_REF_NAME.md"
+          if [ -f "$manual" ]; then cat "$manual" > "$notes"; printf '\n\n' >> "$notes"; else : > "$notes"; fi
+          cat >> "$notes" <<'EOF'
+          ## 安装（macOS Apple Silicon，未签名）
+
+          1. 下载 `Memmy-*-arm64-unsigned.dmg`，拖入「应用程序」。
+          2. 未签名应用首次打开会被拦截，执行：
+             `xattr -dr com.apple.quarantine /Applications/Memmy.app`
+          3. 用 `SHA256SUMS.txt` 校验下载文件。
+
+          本 fork 只支持 Claude Code 与 Codex，不会自动更新。
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Memmy $GITHUB_REF_NAME" \
+            --notes-file "$notes" \
+            --generate-notes \
+            release-assets/Memmy-* release-assets/SHA256SUMS.txt
