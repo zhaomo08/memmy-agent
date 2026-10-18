@@ -12,17 +12,39 @@
 
 内部 WebSocket 只用于桌面界面与本地 Agent Runtime 通信，不属于第三方消息渠道。
 
+## 安装
+
+从 [Releases](https://github.com/zhaomo08/memmy-agent/releases) 下载 `Memmy-*-arm64-unsigned.dmg`（仅 Apple Silicon），拖入「应用程序」。应用未签名，首次打开前执行：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Memmy.app
+```
+
+应用不会自动更新，新版本需手动下载替换。
+
 ## 开发
 
 ```bash
 npm install
-npm run build
-npm test
+npm run build          # 先构建 Memory，再构建各 workspace
+npm test               # 发布流程、Memory、各 workspace 与 Agent TUI 测试
+npm run dev:desktop    # 本地启动桌面端（renderer :19000 + Electron）
 ```
+
+- 打包过桌面应用后，`better-sqlite3` 会被重编为 Electron ABI；跑测试前先 `npm rebuild better-sqlite3`。
+- 本地打包：`npm run package:mac:unsigned`，产物在 `App/shell/desktop/release/`。打包前清掉各 `dist/`，否则已删除的源码会残留在安装包里：
+
+  ```bash
+  rm -rf App/memmy-agent/dist Memory/dist App/backend/dist App/shell/desktop/dist App/frontend/desktop/dist
+  ```
+
+- 发布：推送 `v<package.json 版本>-fork.<n>` 形式的 tag（如 `v1.0.9-fork.1`），GitHub Actions（`.github/workflows/release-macos.yml`）会构建 DMG 并发布 Release。不用纯 `vX.Y.Z`，那是上游的 tag。
 
 主要目录：
 
-- `App/backend`：本地 API、历史扫描、记忆读写、Skill 与 Hook 安装。
+- `Memory`：记忆核心服务（采集、检索、L1/L2/L3 演化、存储）与 `memmy-memory` CLI。
+- `Migrations`：本地数据与配置迁移。
+- `App/backend`：本地 API、历史扫描、记忆读写、Skill 与 Hook 安装、Agent 规则同步。
 - `App/frontend/desktop`：桌面管理界面。
 - `App/memmy-agent`：本地 Agent Runtime 与内部 WebSocket。
 - `App/shell/desktop`：macOS Electron 壳与菜单栏入口。
