@@ -19,6 +19,7 @@ import {
   writeLogLevel
 } from "../settings-page.js";
 import { formatMessage, zhCNMessages } from "../../i18n/messages.js";
+import { CHAT_ENABLED } from "../../app/routes.js";
 
 const settingsPageSourcePath = fileURLToPath(new URL("../settings-page.tsx", import.meta.url));
 const updateCoordinatorSourcePath = fileURLToPath(new URL("../../app/update-coordinator.tsx", import.meta.url));
@@ -98,18 +99,17 @@ describe("SettingsPageView", () => {
 
     expect(html).toContain("app-frame-page-content max-w-2xl mx-auto py-8");
     expect(html).toContain("bg-background-paper rounded-card-lg border-content-panel p-6");
-    expect(html).toContain("账户");
+    expect(html).not.toContain("账户");
     expect(html).toContain("Token 用量");
     expect(html).toContain("模型配置");
     expect(html).toContain("通用");
     expect(html).toContain("启动与窗口");
     expect(html).toContain("通知");
-    expect(html).toContain("隐私");
+    expect(html).not.toContain("隐私");
     expect(html).toContain("高级 / 开发者");
     expect(html).toContain("关于");
-    expect(html).toContain("g***@example.com");
-    expect(html).toContain("g***@example.com");
-    expect(html).toContain("注册时间：2026-04-12");
+    expect(html).not.toContain("g***@example.com");
+    expect(html).not.toContain("注册时间：2026-04-12");
     expect(html).toContain("Agent 任务额度已用 1.4M Token");
     expect(html).toContain("共 5.0M Token");
     expect(html).toContain("平台赠送大模型");
@@ -132,12 +132,12 @@ describe("SettingsPageView", () => {
   it("使用原型 SettingsPage 的 lucide 图标而不是字母占位", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createReadyState()));
 
-    expect(html).toContain("lucide-user");
+    expect(html).not.toContain("lucide-user");
     expect(html).toContain("lucide-zap");
     expect(html).toContain("lucide-brain");
     expect(html).toContain("lucide-palette");
     expect(html).toContain("lucide-rocket");
-    expect(html).toContain("lucide-shield");
+    expect(html).not.toContain("lucide-shield");
     expect(html).not.toContain('class="settings-page-title-mark">S</span>');
     expect(html).not.toContain('class="settings-card-icon">U</span>');
     expect(html).not.toContain('class="settings-card-icon">T</span>');
@@ -292,7 +292,8 @@ describe("SettingsPageView", () => {
     expect(source).not.toContain('setDeveloperFeedback({ tone: "error", message: t("settings.developer.exportDiagnosticsUnavailable") });');
   });
 
-  it("注册用户平台 Token 态对齐 PRD 的原型数据和状态", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册用户平台 Token 态对齐 PRD 的原型数据和状态", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createReadyState()));
 
     expect(html).toContain("g***@example.com");
@@ -317,7 +318,8 @@ describe("SettingsPageView", () => {
     expect(html).not.toContain("共 30.0M Token");
   });
 
-  it("注册时间只展示年月日", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册时间只展示年月日", () => {
     const state = appReducer(
       createAccountModeState(),
       appActions.accountUpdated({ registeredAt: "2026-06-08T15:20:30.000Z" })
@@ -338,7 +340,8 @@ describe("SettingsPageView", () => {
     expect(html).not.toContain("本月剩余 3/3 次");
   });
 
-  it("注册账号模式展示账户、Token 用量和平台赠送模型模式", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册账号模式展示账户、Token 用量和平台赠送模型模式", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createAccountModeState()));
     const modelConfigHtml = html.slice(html.indexOf("模型配置"), html.indexOf("Token 用量"));
 
@@ -367,7 +370,8 @@ describe("SettingsPageView", () => {
     expect(modelConfigHtml).not.toContain("mb-4");
   });
 
-  it("手机号注册账号区展示手机号，邮箱注册账号区展示邮箱", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("手机号注册账号区展示手机号，邮箱注册账号区展示邮箱", () => {
     const phoneHtml = normalizeSsrHtml(renderSettingsPageView(createPhoneAccountModeState()));
     const emailHtml = normalizeSsrHtml(renderSettingsPageView(createAccountModeState()));
 
@@ -376,14 +380,16 @@ describe("SettingsPageView", () => {
     expect(emailHtml).toContain("g***@example.com");
   });
 
-  it("注册账号缺少账号标识时不误提示未绑定邮箱", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册账号缺少账号标识时不误提示未绑定邮箱", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createAccountModeWithoutIdentifierState()));
 
     expect(html).toContain("未绑定手机号或邮箱");
     expect(html).not.toContain("未绑定邮箱");
   });
 
-  it("注册账号即使已有本地模型配置也先展示平台 Token 原型态", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册账号即使已有本地模型配置也先展示平台 Token 原型态", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createAccountModeWithSavedModelState()));
     const modelConfigHtml = html.slice(html.indexOf("模型配置"), html.indexOf("Token 用量"));
 
@@ -541,13 +547,12 @@ describe("SettingsPageView", () => {
   it("自填 API Key 模式仍展示 Token 用量并展示模型配置概要", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createByokModeState()));
 
-    expect(html).toContain("本地模式");
-    expect(html).toContain("无需注册账号 · 使用你自己的大模型 API Key");
-    expect(html).toContain("退出");
+    // Fork: no account section, and chat-only models (ASR, image generation) are hidden.
+    expect(html).not.toContain("本地模式");
     expect(html).toContain("自有 API Key");
     expect(html).toContain("修改配置");
     expect(html).toContain("space-y-2 p-3 bg-canvas-oat/40 rounded-card");
-    expect(html).toContain("Agent 执行任务");
+    expect(html).toContain("默认大模型");
     expect(html).toContain("主大模型");
     expect(html).toContain("记忆摘要");
     expect(html).toContain("整理对话 / 历史为记忆");
@@ -556,14 +561,10 @@ describe("SettingsPageView", () => {
     expect(html).toContain("Embedding 检索");
     expect(html).toContain("记忆向量化检索");
     expect(html).toContain("内嵌本地模型 - Xenova/all-MiniLM-L6-v2");
-    expect(html).toContain("语音识别 ASR");
-    expect(html).toContain("桌宠和主界面语音输入（可选，不配置不影响其他功能）");
-    expect(html).toContain("qwen3-asr-flash");
-    expect(html).toContain("生图模型");
-    expect(html).toContain("用于 Agent 生成图片");
+    expect(html).not.toContain("语音识别 ASR");
+    expect(html).not.toContain("生图模型");
     expect(html).toContain("未设置");
     expect(html).toContain("Token 用量");
-    expect(html).toContain("自有 API Key");
     expect(html).toContain("查看用量详情");
     expect(html).not.toContain("切换回平台 Token");
     expect(html).not.toContain("赠送大模型额度已用");
@@ -578,7 +579,7 @@ describe("SettingsPageView", () => {
     expect(html).not.toContain("注册于");
   });
 
-  it("自填 API Key 设置页从完整脱敏配置回填模型概要", () => {
+  it.skipIf(!CHAT_ENABLED)("自填 API Key 设置页从完整脱敏配置回填模型概要", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createByokModeWithSavedModelState()));
 
     expect(html).toContain("main-model");
@@ -590,7 +591,7 @@ describe("SettingsPageView", () => {
     expect(html).not.toContain("未设置");
   });
 
-  it("英文模式下 ASR 和生图模型配置概要使用英文文案", () => {
+  it.skipIf(!CHAT_ENABLED)("英文模式下 ASR 和生图模型配置概要使用英文文案", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createByokModeWithSavedModelState(), "en-US"));
 
     expect(html).toContain("Speech recognition ASR");
@@ -694,7 +695,8 @@ describe("SettingsPageView", () => {
     expect(saveFnBody).not.toContain("saveModelConfig");
   });
 
-  it("注册账号账户区使用首字母缩写头像，并把修改昵称和退出登录接到真实账号行为", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("注册账号账户区使用首字母缩写头像，并把修改昵称和退出登录接到真实账号行为", () => {
     const html = normalizeSsrHtml(renderSettingsPageView(createAccountModeState()));
     const source = readFileSync(settingsPageSourcePath, "utf8");
 
@@ -716,7 +718,8 @@ describe("SettingsPageView", () => {
     expect(source).toContain("if (shouldSaveAccountNicknameOnKeyDown(event))");
   });
 
-  it("设置页账户区长昵称和账号按真实溢出再显示提示", () => {
+  // Fork: no MemTensor account in this build.
+  it.skip("设置页账户区长昵称和账号按真实溢出再显示提示", () => {
     const longAccountState = appReducer(
       createAccountModeState(),
       appActions.accountUpdated({

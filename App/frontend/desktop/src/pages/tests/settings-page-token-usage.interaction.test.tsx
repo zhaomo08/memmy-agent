@@ -98,8 +98,8 @@ describe("SettingsPage platform scene quota details", () => {
     act(() => detailsButton?.click());
 
     expect(container.textContent).toContain("平台赠送额度");
-    expect(container.textContent).toContain("Agent 任务");
-    expect(container.textContent).toContain("6M/5MToken");
+    expect(container.textContent).not.toContain("Agent 任务"); // Fork: chat is off
+    expect(container.textContent).not.toContain("6M/5MToken");
     expect(container.textContent).toContain("记忆摘要");
     expect(container.textContent).toContain("15M/20MToken");
     expect(container.textContent).toContain("记忆进化");

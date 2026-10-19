@@ -166,6 +166,8 @@ function toTimestampMicros(eventTimeMillis: number): number {
 }
 
 export function postAnalyticsEvents(input: PostAnalyticsEventsInput): Promise<void> {
+  // Fork: desktop/backend analytics is off, like the CLI's (no improvement program in this build).
+  if (!input.baseUrl) return Promise.resolve();
   const clientId = input.clientId?.trim() || null;
   const userId = normalizeAnalyticsUserId(input.userId);
   const userModeParams = resolveAnalyticsUserModeParams(input.userMode);

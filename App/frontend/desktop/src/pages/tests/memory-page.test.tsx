@@ -11,9 +11,10 @@ describe("MemoryPageView", () => {
     expect(html).toContain("memory-page-back-button");
     expect(html).toContain("memory-page-return-row");
     expect(html).toContain('data-icon="panel-left"');
-    expect(html).toContain('data-icon="arrow-left"');
+    expect(html).not.toContain('data-icon="arrow-left"'); // Fork: chat is off, so this opens 设置
+    expect(html).toContain("设置");
     expect(html).not.toContain('data-icon="arrow-right"');
-    expect(html).toContain("返回");
+    expect(html).not.toContain("返回");
     expect(html).toContain('data-tour-anchor="product-tour-memory-nav"');
     expect(html).toContain('data-icon="layers"');
     expect(html).toContain('data-icon="brain-circuit"');

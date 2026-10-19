@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { buildMemorySubPageViewEvent } from "../analytics/page-view.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
 import { useApiClients } from "../app/providers.js";
+import { CHAT_ENABLED } from "../app/routes.js";
 import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR } from "../app/product-tour-layout.js";
 import type { MessageKey } from "../i18n/messages.js";
 import { useTranslation } from "../i18n/use-translation.js";
@@ -29,6 +30,7 @@ import {
   PanelLeft,
   PanelLeftCollapsed,
   ScrollText,
+  Settings2,
   Sparkles,
   UserRound,
   Wand2
@@ -146,7 +148,7 @@ export function MemoryPage(props: MemoryPageProps) {
     <MemoryPageView
       activePage={activePage}
       onActivePageChange={handleSubPageChange}
-      onBack={() => dispatch(appActions.navigate("/main"))}
+      onBack={() => dispatch(appActions.navigate(CHAT_ENABLED ? "/main" : "/settings"))}
       childByPage={childByPage}
     />
   );
@@ -214,13 +216,13 @@ export function MemoryPageView(props: MemoryPageViewProps) {
         <div className="memory-page-return-row">
           <button
             type="button"
-            aria-label={t("memory.back")}
-            title={t("memory.back")}
+            aria-label={t(CHAT_ENABLED ? "memory.back" : "settings.title")}
+            title={t(CHAT_ENABLED ? "memory.back" : "settings.title")}
             onClick={() => props.onBack?.()}
             className="memory-page-back-button"
           >
-            <ArrowLeft size={16} />
-            <span>{t("memory.back")}</span>
+            {CHAT_ENABLED ? <ArrowLeft size={16} /> : <Settings2 size={16} />}
+            <span>{t(CHAT_ENABLED ? "memory.back" : "settings.title")}</span>
           </button>
         </div>
         {memoryNavSections.map((section) => (

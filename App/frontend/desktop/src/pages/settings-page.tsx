@@ -6,7 +6,7 @@ import type { AgentLedgerClient } from "../api/agent-ledger-client.js";
 import { useApiClients } from "../app/providers.js";
 import { AgentLedgerPanel } from "./settings-agent-ledger.js";
 import { copyInvitationCode } from "../app/invitation-analytics.js";
-import { resolveGiftTokenUsage } from "../app/routes.js";
+import { CHAT_ENABLED, resolveGiftTokenUsage } from "../app/routes.js";
 import { useUpdateCoordinator, type UpdateCoordinatorValue, type UpdatePhase } from "../app/update-coordinator.js";
 import type { AnalyticsEvent } from "../analytics/analytics-events.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
@@ -159,7 +159,9 @@ const EMPTY_BYOK_TOKEN_USAGE: ByokTokenUsageSummary = {
 
 // Display order for both panels. Platform Cloud scenes omit embedding; BYOK
 // kinds already include it in the contract — no backend TokenUsageScene change.
-const TOKEN_USAGE_SCENES = ["agent_chat", "memory_summary", "memory_evolution", "embedding"] as const satisfies readonly ByokTokenUsageKind[];
+const TOKEN_USAGE_SCENES = (CHAT_ENABLED
+  ? ["agent_chat", "memory_summary", "memory_evolution", "embedding"]
+  : ["memory_summary", "memory_evolution", "embedding"]) satisfies readonly ByokTokenUsageKind[];
 
 let activeInvitationRequest: {
   client: Pick<AccountClient, "getInvitation">;
@@ -1254,6 +1256,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
       className="settings-page h-full overflow-y-auto"
     >
       <div className="app-frame-page-content max-w-2xl mx-auto py-8">
+        {/* Fork: local BYOK only — no MemTensor account, login or logout. */}
+        {false && (
         <Section icon={<User size={16} className="text-text-ink/60" />} title={t("settings.account")}>
           <div className="settings-account-summary">
             <div className="w-12 h-12 rounded-full bg-action-sky/15 flex items-center justify-center shrink-0">
@@ -1334,6 +1338,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             )}
           </div>
         </Section>
+        )}
 
         <Section icon={<Brain size={16} className="text-text-ink/60" />} title={t("settings.model")} sectionId="model-config">
           <div className={`flex items-center justify-between gap-3${modelHeaderSpacing}`}>
@@ -1391,16 +1396,20 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 desc={t("settings.model.embeddingDesc")}
                 model={embeddingMode === "cloud" ? t("settings.model.cloudEmbedding") : embeddingMode === "local" ? t("settings.model.localEmbedding") : embModelId || t("settings.model.notSet")}
               />
-              <ModuleRow
-                label={t("settings.model.asr")}
-                desc={t("settings.model.asrDesc")}
-                model={asrModelId || ASR_MODEL_ID}
-              />
-              <ModuleRow
-                label={t("apiKey.imageGen")}
-                desc={t("apiKey.imageGenHint")}
-                model={imageGenModel || t("settings.model.notSet")}
-              />
+              {CHAT_ENABLED && (
+                <>
+                  <ModuleRow
+                    label={t("settings.model.asr")}
+                    desc={t("settings.model.asrDesc")}
+                    model={asrModelId || ASR_MODEL_ID}
+                  />
+                  <ModuleRow
+                    label={t("apiKey.imageGen")}
+                    desc={t("apiKey.imageGenHint")}
+                    model={imageGenModel || t("settings.model.notSet")}
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -1504,6 +1513,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 )}
               </div>
 
+              {CHAT_ENABLED && (
+                <>
               <div className="bg-canvas-oat/40 rounded-card p-5 space-y-3.5">
                 <div className="flex items-center gap-2 mb-1">
                   <Mic size={16} className="text-action-sky" />
@@ -1588,6 +1599,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                   <TestButton status={imageGenValidation.status} onClick={testImageGenConnection} disabled={false} />
                 </div>
               </div>
+                </>
+              )}
 
               <div className="flex gap-3 justify-end">
                 <button
@@ -1792,8 +1805,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
         <Section icon={<Rocket size={16} className="text-text-ink/60" />} title={t("settings.window")} sectionId="pet-avatar">
           <div className="space-y-1">
             <ToggleRow label={t("settings.window.launchAtLogin")} description={t("settings.window.launchAtLoginDesc")} checked={launchAtLogin} onChange={setLaunchAtLogin} />
-            <Divider />
-            <SelectRow
+            {CHAT_ENABLED && <Divider />}
+            {CHAT_ENABLED && <SelectRow
               label={t("settings.preferredMode")}
               description={t("settings.window.defaultModeDesc")}
               value={defaultLaunchMode}
@@ -1803,7 +1816,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 { value: "full", label: t("settings.window.mode.full") },
                 { value: "last", label: t("settings.window.mode.last") }
               ]}
-            />
+            />}
             <Divider />
             <SelectRow
               label={t("settings.window.closeAction")}
@@ -1813,7 +1826,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
               options={[
                 { value: "quit", label: t("settings.window.close.quit") },
                 { value: "tray", label: t("settings.window.close.tray") },
-                { value: "pet", label: t("settings.window.close.pet") }
+                ...(CHAT_ENABLED ? [{ value: "pet", label: t("settings.window.close.pet") }] : [])
               ]}
             />
             <Divider />
@@ -1831,6 +1844,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
           </div>
         </Section>
 
+        {/* Fork: no MemTensor improvement program or telemetry consent. */}
+        {false && (
         <Section icon={<Shield size={16} className="text-text-ink/60" />} title={t("settings.privacy")}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1865,6 +1880,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             </button>
           </div>
         </Section>
+        )}
 
         {agentLedgerClient && (
           <Section
