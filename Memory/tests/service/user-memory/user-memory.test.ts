@@ -549,6 +549,20 @@ describe("User Memory", () => {
     db.close();
   });
 
+  it("lists the default local user's User Memory when the panel request carries no user", () => {
+    const { db, service } = createTestService();
+    const session = service.openSession({ namespace: { source: "codex", profileId: "default" } });
+    service.completeTurn("turn-panel-default-user", {
+      sessionId: session.sessionId,
+      query: "我最喜欢的水果是苹果",
+      answer: "好的。"
+    });
+
+    expect(service.panelItems({ layer: "UserMemory" })).toMatchObject({ total: 1 });
+    expect(service.panelOverviewSummary({}).counts.userMemories).toBe(1);
+    db.close();
+  });
+
   it("[BC-02 correction] archives only the targeted User Memory on explicit correction", () => {
     const { db, service } = createTestService();
     const session = open(service, "correction-user");

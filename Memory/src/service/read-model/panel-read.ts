@@ -1,5 +1,6 @@
 import type { MemmyConfig } from "../../config/index.js";
 import { isRecord } from "../../utils/json.js";
+import { normalizeNamespace } from "../namespace/namespace-scope.js";
 import type { StorageBackendCapabilities } from "../../storage/backend.js";
 import type {
   ApiLogRecord,
@@ -356,7 +357,7 @@ export class PanelReadModel {
     dailyActivity: Array<{ date: string; count: number }>;
   } {
     const memories = this.listAllMemoriesForStats();
-    const userId = input.userId ?? input.namespace?.userId;
+    const userId = input.userId ?? normalizeNamespace(input.namespace).userId;
     const dates = panelDateKeys(this.now(), PANEL_DAILY_ACTIVITY_DAYS);
     return {
       counts: {
@@ -439,7 +440,7 @@ export class PanelReadModel {
   } {
     const pageSize = normalizePanelItemsLimit(input.limit);
     if (input.layer === "UserMemory") {
-      const userId = input.userId ?? input.namespace?.userId;
+      const userId = input.userId ?? normalizeNamespace(input.namespace).userId;
       const requestedPage = normalizePageNumber(input.page);
       if (!userId || input.status === "resolving") {
         return emptyPanelItems(requestedPage, pageSize, this.now());
