@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { agentActions, appActions } from "../app-actions.js";
 import { agentChatScopeKey } from "../agent-composer-state.js";
 import { appReducer, createInitialAppState } from "../app-reducer.js";
+import { CHAT_ENABLED } from "../../app/routes.js";
 
 /** Definition for bootstrap. */
 const bootstrap = AppBootstrapResponseSchema.parse({
@@ -60,7 +61,14 @@ describe("app reducer", () => {
     expect(state.agent.chatViewVisible).toBe(false);
   });
 
-  it("sets chat view visibility from the bootstrap route", () => {
+  it.skipIf(CHAT_ENABLED)("lands chat routes on memory management while chat is off", () => {
+    const booted = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/main"));
+    expect(booted.navigation.currentPath).toBe("/memory");
+    expect(appReducer(booted, appActions.navigate("/pet")).navigation.currentPath).toBe("/memory");
+    expect(appReducer(booted, appActions.navigate("/settings")).navigation.currentPath).toBe("/settings");
+  });
+
+  it.skipIf(!CHAT_ENABLED)("sets chat view visibility from the bootstrap route", () => {
     const mainState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/main"));
     const settingsState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/settings"));
 
@@ -77,7 +85,7 @@ describe("app reducer", () => {
     expect(nextState.agent.chatViewVisible).toBe(false);
   });
 
-  it("updates chat view visibility on route changes", () => {
+  it.skipIf(!CHAT_ENABLED)("updates chat view visibility on route changes", () => {
     let state = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/main"));
     expect(state.agent.chatViewVisible).toBe(true);
 
@@ -91,7 +99,7 @@ describe("app reducer", () => {
     expect(state.agent.chatViewVisible).toBe(true);
   });
 
-  it("clears the current chat completion dot when navigation returns to the visible chat view", () => {
+  it.skipIf(!CHAT_ENABLED)("clears the current chat completion dot when navigation returns to the visible chat view", () => {
     let state = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/settings"));
     state = appReducer(state, agentActions.newChatCreated("chat-1"));
     state = appReducer(state, agentActions.wsEventReceived({ event: "goal_status", chat_id: "chat-1", status: "running", started_at: 1781240000000 }));
@@ -256,7 +264,7 @@ describe("app reducer", () => {
     expect(newChatState.agent.newChatRequestId).toBe(1);
   });
 
-  it("keeps the first report task draft visible after local onboarding completion", () => {
+  it.skipIf(!CHAT_ENABLED)("keeps the first report task draft visible after local onboarding completion", () => {
     const readyState = appReducer(createInitialAppState(), appActions.bootstrapLoaded(bootstrap, "/onboarding"));
     const nextRequestId = readyState.agent.newChatRequestId + 1;
     const draftScope = agentChatScopeKey(null, nextRequestId);

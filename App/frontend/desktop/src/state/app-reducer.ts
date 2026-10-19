@@ -1,6 +1,7 @@
 /** App reducer module. */
 import { ASR_DEFAULT_BASE_URL, QWEN_ASR_MODEL_ID, type AgentSourceView, type AppBootstrapResponse, type ScanPreferences } from "@memmy/local-api-contracts";
 import type { AppRoutePath, PreferredMode } from "../app/routes.js";
+import { withoutChatRoute } from "../app/routes.js";
 import type { InvitationToastKind } from "../app/invitation-result.js";
 import type { ModelProviderConfig } from "../api/config-client.js";
 import type { AgentSourceScanCompletion, AgentSourceScanProgress, AppAction, EventConnectionStatus } from "./app-actions.js";
@@ -156,37 +157,41 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         startup: { ...state.startup, status: "error", message: action.message }
       };
-    case "bootstrap/loaded":
+    case "bootstrap/loaded": {
+      const initialPath = withoutChatRoute(action.initialPath);
       return {
         ...state,
         startup: { ...state.startup, status: "ready", message: null },
         bootstrap: action.bootstrap,
         navigation: {
           ...state.navigation,
-          currentPath: action.initialPath,
-          history: [action.initialPath]
+          currentPath: initialPath,
+          history: [initialPath]
         },
         agentSources: {
           ...state.agentSources,
           scanPreferences: action.bootstrap.scanPreferences
         },
-        agent: agentReducer(state.agent, { type: "agent/chatViewVisibilityChanged", visible: isAgentChatViewPath(action.initialPath) })
+        agent: agentReducer(state.agent, { type: "agent/chatViewVisibilityChanged", visible: isAgentChatViewPath(initialPath) })
       };
+    }
     case "events/statusChanged":
       return {
         ...state,
         startup: { ...state.startup, eventStatus: action.status }
       };
-    case "navigation/changed":
+    case "navigation/changed": {
+      const path = withoutChatRoute(action.path);
       return {
         ...state,
         navigation: {
           ...state.navigation,
-          currentPath: action.path,
-          history: state.navigation.currentPath === action.path ? state.navigation.history : [...state.navigation.history, action.path]
+          currentPath: path,
+          history: state.navigation.currentPath === path ? state.navigation.history : [...state.navigation.history, path]
         },
-        agent: agentReducer(state.agent, { type: "agent/chatViewVisibilityChanged", visible: isAgentChatViewPath(action.path) })
+        agent: agentReducer(state.agent, { type: "agent/chatViewVisibilityChanged", visible: isAgentChatViewPath(path) })
       };
+    }
     case "invitationToast/shown":
       return {
         ...state,

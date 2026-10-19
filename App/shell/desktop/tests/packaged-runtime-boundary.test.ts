@@ -890,7 +890,7 @@ describe("desktop packaged runtime boundaries", () => {
     const source = readFileSync(runtimeServicesPath, "utf8");
     const startupIndex = source.indexOf("const memoryReady = ensureMemoryService");
     const gatewayIndex = source.indexOf(
-      "const agentGatewayStartupIssue = await startAgentGatewayWithRecovery",
+      "const agentGatewayStartupIssue = CHAT_AGENT_ENABLED",
       startupIndex,
     );
     const returnIndex = source.indexOf("return {", gatewayIndex);
@@ -903,6 +903,13 @@ describe("desktop packaged runtime boundaries", () => {
     expect(source.slice(returnIndex, source.indexOf("agentGateway:", returnIndex))).toContain("ready: memoryReady");
     expect(source).toContain("const MEMORY_STARTUP_TIMEOUT_MS = 120_000;");
     expect(readFileSync(mainSourcePath, "utf8")).toContain("memoryReady: services?.memory.ready");
+  });
+
+  it("does not start the chat Agent gateway while chat is off", () => {
+    const source = readFileSync(runtimeServicesPath, "utf8");
+    expect(source).toContain("const CHAT_AGENT_ENABLED = false;");
+    expect(source).toMatch(/CHAT_AGENT_ENABLED\s*\?\s*await startAgentGatewayWithRecovery/);
+    expect(readFileSync(mainSourcePath, "utf8")).not.toContain("桌宠模式");
   });
 
   it("exports shared config and workspace paths from dev-start", () => {

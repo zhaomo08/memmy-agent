@@ -18,6 +18,7 @@ import {
   isAgentRuntimeBridgeRoute,
   refreshAgentTaskList
 } from "../agent-runtime-bridge.js";
+import { CHAT_ENABLED } from "../routes.js";
 
 const bridgeSourcePath = fileURLToPath(new URL("../agent-runtime-bridge.tsx", import.meta.url));
 
@@ -35,7 +36,7 @@ describe("AgentRuntimeBridge", () => {
     expect(agentRuntimeConnectRetryDelayMs(99)).toBe(10000);
   });
 
-  it("enables websocket runtime only for the main workspace route family", () => {
+  it.skipIf(!CHAT_ENABLED)("enables websocket runtime only for the main workspace route family", () => {
     expect(isAgentRuntimeBridgeRoute("/main")).toBe(true);
     expect(isAgentRuntimeBridgeRoute("/settings")).toBe(true);
     expect(isAgentRuntimeBridgeRoute("/memory")).toBe(true);

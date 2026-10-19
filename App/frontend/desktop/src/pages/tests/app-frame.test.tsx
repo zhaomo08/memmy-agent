@@ -12,9 +12,10 @@ import { appReducer, createInitialAppState } from "../../state/app-reducer.js";
 import type { AgentTaskView } from "../../state/agent-chat-slice.js";
 import { mockBootstrap } from "./fixtures/bootstrap.js";
 import { AppFrame, TaskArchiveInlineAction, TaskRow, countProjectTasksToArchive, deriveSidebarPlacement, deriveVisibleSidebarPlacement, groupAgentTasks, groupTasksByTime, resolveSidebarAccountSummary, resolveSidebarContextMenuPlacement, resolveSidebarMenuOverlayStyle, resolveTaskAncestorGroupKeys, shouldCreateNewAgentDraft, truncateAccountDisplayText } from "../app-frame.js";
+import { CHAT_ENABLED } from "../../app/routes.js";
 
 describe("AppFrame", () => {
-  it("使用原型 MainLayout 的侧栏图标与导航文案", () => {
+  it.skipIf(!CHAT_ENABLED)("使用原型 MainLayout 的侧栏图标与导航文案", () => {
     const html = renderToString(
       <AppProviders>
         <AppFrame title="测试页面">

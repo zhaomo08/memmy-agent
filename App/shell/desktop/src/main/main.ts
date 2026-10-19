@@ -3227,11 +3227,6 @@ function syncMenuBarTray(enabled: boolean): void {
     },
     { type: "separator" },
     {
-      label: "桌宠模式",
-      click: () => setPetWindowMode(true, { petIntent: "user" })
-    },
-    { type: "separator" },
-    {
       label: "退出 Memmy",
       click: () => app.quit()
     }

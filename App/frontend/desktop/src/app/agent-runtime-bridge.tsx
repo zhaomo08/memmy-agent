@@ -15,6 +15,7 @@ import { updateSidebarStateForTask, type AgentState } from "../state/agent-chat-
 import { useAppState } from "../state/app-state.js";
 import { useApiClients } from "./providers.js";
 import type { AppRoutePath } from "./routes.js";
+import { CHAT_ENABLED } from "./routes.js";
 
 export interface AgentRuntimeBridgeValue {
   connection: MemmyAgentWebSocketConnection | null;
@@ -554,10 +555,10 @@ export function agentRuntimeConnectRetryDelayMs(attempt: number): number {
 
 /** Checks is agent runtime bridge route. */
 export function isAgentRuntimeBridgeRoute(path: AppRoutePath): boolean {
-  return path === "/main"
+  return CHAT_ENABLED && (path === "/main"
     || path === "/settings"
     || path === "/memory"
-    || path === "/memory-sources";
+    || path === "/memory-sources");
 }
 
 /** Handles agent runtime bridge. */

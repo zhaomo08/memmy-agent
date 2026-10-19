@@ -1,6 +1,15 @@
 /** Routes module. */
 import type { AccountSessionView, AppBootstrapResponse, DefaultLaunchMode, LastLaunchMode, OnboardingStateDto, OnboardingStep } from "@memmy/local-api-contracts";
 
+// Fork: the built-in chat Agent is switched off; this fork keeps only memory capture,
+// skill distillation and the Codex/Claude sync ledgers. Flip to restore the chat UI.
+export const CHAT_ENABLED = false;
+
+/** Lands chat-only routes on memory management while chat is off. */
+export function withoutChatRoute(path: AppRoutePath): AppRoutePath {
+  return !CHAT_ENABLED && (path === "/main" || path === "/pet") ? "/memory" : path;
+}
+
 /** Type definition for preferred mode. */
 export type PreferredMode = "full" | "pet" | "last";
 

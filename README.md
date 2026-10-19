@@ -7,6 +7,7 @@
 - 扫描 Codex 与 Claude Code 的本地历史会话并整理为记忆。
 - 为两者安装 `memmy-memory` Skill 与自动采集 Hook。
 - 在 macOS 菜单栏应用中启动本地服务、配置模型 API Key、查看和管理记忆。
+- 内置对话 Agent 已关闭（`CHAT_ENABLED` / `CHAT_AGENT_ENABLED`），应用只保留记忆采集、技能沉淀与 Codex/Claude 同步账本；夜间记忆维护由 launchd 任务 `com.memmy.nightly-memory-maintenance` 运行。
 - 支持 DeepSeek 等兼容模型作为 BYOK 推理供应商；DeepSeek 不是需要同步历史的 Agent。
 - 不包含 ChatWise、OpenCode、OpenClaw、Hermes、WorkBuddy、Telegram 或其他消息渠道的适配代码。
 

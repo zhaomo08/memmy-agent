@@ -122,6 +122,11 @@ export interface MemoryServerLock {
   sqlitePath?: string;
 }
 
+// Fork: the built-in chat Agent is switched off (see CHAT_ENABLED in the frontend routes), so its
+// gateway, bundled Agent skills and browser tooling are not started. Memory and the local backend
+// carry everything this fork keeps.
+const CHAT_AGENT_ENABLED = false;
+
 export async function startPackagedRuntimeServices(
   options: StartPackagedRuntimeServicesOptions
 ): Promise<PackagedRuntimeServices> {
@@ -143,22 +148,26 @@ export async function startPackagedRuntimeServices(
   let closing = false;
 
   try {
-    await syncBundledAgentSkills({
-      agentEntry: entries.agentEntry,
-      agentWorkspace: runtimeConfig.agentWorkspace
-    });
-    browserPreparation = startPackagedBrowserPreparation(
-      entries,
-      runtimeConfig,
-      options,
-      spawn,
-      browserPreparationAttemptId
-    );
+    if (CHAT_AGENT_ENABLED) {
+      await syncBundledAgentSkills({
+        agentEntry: entries.agentEntry,
+        agentWorkspace: runtimeConfig.agentWorkspace
+      });
+      browserPreparation = startPackagedBrowserPreparation(
+        entries,
+        runtimeConfig,
+        options,
+        spawn,
+        browserPreparationAttemptId
+      );
+    }
     const memoryReady = ensureMemoryService(entries, runtimeConfig, children, options);
     memoryStartup = memoryReady.catch((error) => {
       console.warn(`Memory service unavailable during desktop startup: ${errorMessage(error)}`);
     });
-    const agentGatewayStartupIssue = await startAgentGatewayWithRecovery(gatewaySupervisor);
+    const agentGatewayStartupIssue = CHAT_AGENT_ENABLED
+      ? await startAgentGatewayWithRecovery(gatewaySupervisor)
+      : undefined;
 
     return {
       memory: {

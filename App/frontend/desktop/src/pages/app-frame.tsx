@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from "react-dom";
 import { PRODUCT_TOUR_MEMORY_NAV_ANCHOR } from "../app/product-tour-layout.js";
 import type { AppRoutePath } from "../app/routes.js";
-import { clearDeferredGuidanceStep, clearFocusedAgentTarget, clearProductTourStep, readDeferredGuidanceStep, readGuidanceCompleted, routeTable, writeDeferredGuidanceStep, writeGuidanceCompleted } from "../app/routes.js";
+import { CHAT_ENABLED, clearDeferredGuidanceStep, clearFocusedAgentTarget, clearProductTourStep, readDeferredGuidanceStep, readGuidanceCompleted, routeTable, writeDeferredGuidanceStep, writeGuidanceCompleted } from "../app/routes.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
 import {
   useOptionalAgentRuntimeBridge,
@@ -161,8 +161,10 @@ export interface AccountDisplayText {
 }
 
 const navItems: NavItem[] = [
-  { path: "/main", icon: <MessageSquarePlus size={16} /> },
-  { action: "search", icon: <Search size={16} />, labelKey: "appFrame.search" },
+  ...(CHAT_ENABLED ? [
+    { path: "/main", icon: <MessageSquarePlus size={16} /> },
+    { action: "search", icon: <Search size={16} />, labelKey: "appFrame.search" }
+  ] satisfies NavItem[] : []),
   { path: "/memory", icon: <BrainCircuit size={16} /> }
 ];
 
@@ -324,7 +326,7 @@ export function AppFrame(props: AppFrameProps) {
 
   useEffect(() => {
     const openSearchPalette = (event: globalThis.KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k" || event.shiftKey || event.altKey) {
+      if (!CHAT_ENABLED || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k" || event.shiftKey || event.altKey) {
         return;
       }
       const target = event.target;
@@ -1058,6 +1060,7 @@ export function AppFrame(props: AppFrameProps) {
           })}
         </nav>
 
+        {CHAT_ENABLED ? (
         <div ref={taskScrollRef} className={`app-frame-task-scroll flex-1 overflow-y-auto${taskScrollFade ? " app-frame-task-scroll--faded" : ""}`}>
           <div className="app-frame-task-list">
             <div className="app-frame-task-list-header">
@@ -1306,6 +1309,7 @@ export function AppFrame(props: AppFrameProps) {
             />
           ) : null}
         </div>
+        ) : <div className="flex-1" />}
 
         <button
           type="button"
