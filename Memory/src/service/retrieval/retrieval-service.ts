@@ -53,7 +53,7 @@ import type {
   UserMemoryRecord
 } from "../../types.js";
 import { newId, stableHash } from "../../utils/id.js";
-import { nowIso } from "../../utils/time.js";
+import { formatZonedTime, nowIso } from "../../utils/time.js";
 import { recordApiLog } from "../model-audit/model-call-audit.js";
 import {
   sourceMemoryIdsFromMemory
@@ -708,18 +708,10 @@ function buildTimeFilteredInjectedContext(
 }
 
 function formatTimeFilteredTraceTimestamp(timestamp: number, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(new Date(timestamp));
-  const part = (type: Intl.DateTimeFormatPartTypes): string =>
-    parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}`;
+  // resolveTimeZone normalizes IANA zones to a fixed UTC offset (for example +08:00).
+  // Intl.DateTimeFormat accepts IANA names but rejects fixed offsets, so use the
+  // shared offset-aware formatter instead of passing the normalized value to Intl.
+  return formatZonedTime(timestamp, timeZone).slice(0, 16);
 }
 
 function displaySourceAgent(agentId: string | undefined): string {
