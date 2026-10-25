@@ -5,6 +5,8 @@ import {
   ModelConfigTestInputSchema,
   ModelConfigTestResultSchema,
   ModelConfigViewSchema,
+  ModelListInputSchema,
+  ModelListResultSchema,
   OnboardingStateDtoSchema,
   PatchAppSettingsInputSchema,
   PatchOnboardingInputSchema,
@@ -105,6 +107,16 @@ export function registerAppConfigRoutes(app: FastifyInstance, options: RegisterA
       const input = ModelConfigTestInputSchema.parse(request.body);
       const response = ModelConfigTestResultSchema.parse(await options.appConfig.testModelConfig(input));
       return reply.send(response);
+    })
+  );
+
+  app.post(
+    "/api/app/model-config/models",
+    { preHandler: options.authenticateRuntimeToken },
+    withErrorEnvelope(async (request, reply) => {
+      const input = ModelListInputSchema.parse(request.body);
+      const result = (await options.appConfig.listModels?.(input)) ?? { ok: false, models: [], message: "当前版本不支持拉取模型列表" };
+      return reply.send(ModelListResultSchema.parse(result));
     })
   );
 

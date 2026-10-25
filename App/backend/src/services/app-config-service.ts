@@ -9,6 +9,8 @@ import type {
   ModelConfigInput,
   ModelConfigTestInput,
   ModelConfigTestResult,
+  ModelListInput,
+  ModelListResult,
   ModelConfigView,
   OnboardingStateDto,
   PatchAppSettingsInput,
@@ -41,6 +43,7 @@ export interface AppConfigService {
   getModelConfig(): Promise<ModelConfigView>;
   setModelConfig(input: ModelConfigInput): Promise<ModelConfigView>;
   testModelConfig(input: ModelConfigTestInput): Promise<ModelConfigTestResult>;
+  listModels?(input: ModelListInput): Promise<ModelListResult>;
   listAvatars(): Promise<AvatarOption[]>;
   setAvatar(input: SetAvatarInput): Promise<{ avatarId: string }>;
   setSkin(input: SetSkinInput): Promise<{ skinId: string }>;
@@ -181,6 +184,14 @@ export function createAppConfigService(options: CreateAppConfigServiceOptions): 
 
     async testModelConfig(input) {
       return modelConfigTester.test(resolveModelConfigTestInput(input, options.modelConfigRepository));
+    },
+
+    async listModels(input) {
+      if (!modelConfigTester.listModels) {
+        return { ok: false, models: [], message: "当前版本不支持拉取模型列表" };
+      }
+      const resolved = resolveModelConfigTestInput({ ...input, modelId: input.modelId ?? "" }, options.modelConfigRepository);
+      return modelConfigTester.listModels(resolved);
     },
 
     async listAvatars() {

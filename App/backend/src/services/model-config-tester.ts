@@ -1,12 +1,16 @@
 /** Model config tester module. */
-import type { ModelConfigTestInput, ModelConfigTestResult, ModelProvider } from "@memmy/local-api-contracts";
+import type { ModelConfigTestInput, ModelConfigTestResult, ModelListResult, ModelProvider } from "@memmy/local-api-contracts";
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /** Contract for model config tester. */
 export interface ModelConfigTester {
   test(input: ResolvedModelConfigTestInput): Promise<ModelConfigTestResult>;
+  listModels?(input: ResolvedModelListInput): Promise<ModelListResult>;
 }
+
+/** Type definition for resolved model list input. */
+export type ResolvedModelListInput = Pick<ResolvedModelConfigTestInput, "provider" | "baseUrl" | "apiKey">;
 
 /** Type definition for resolved model config test input. */
 type ResolvedModelConfigTestInput = ModelConfigTestInput & { apiKey: string };
@@ -58,8 +62,63 @@ export function createHttpModelConfigTester(options: CreateHttpModelConfigTester
       } catch (error) {
         return result(false, redactSecret(normalizeThrownError(error), input.apiKey), now);
       }
+    },
+
+    async listModels(input) {
+      try {
+        const response = await runModelListRequest(fetchImpl, input, timeoutMs);
+        if (!response.ok) {
+          return { ok: false, models: [], message: redactSecret(await readErrorMessage(response), input.apiKey) };
+        }
+        const models = extractModelIds(await readJsonSafely(response));
+        return models.length > 0
+          ? { ok: true, models, message: "" }
+          : { ok: false, models: [], message: INVALID_SUCCESS_BODY_MESSAGE };
+      } catch (error) {
+        return { ok: false, models: [], message: redactSecret(normalizeThrownError(error), input.apiKey) };
+      }
     }
   };
+}
+
+/** Requests the provider's model list endpoint. */
+function runModelListRequest(fetchImpl: FetchLike, input: ResolvedModelListInput, timeoutMs: number): Promise<Response> {
+  const signal = AbortSignal.timeout(timeoutMs);
+  if (input.provider === "anthropic") {
+    return fetchImpl(endpoint(input.baseUrl, "/v1/models?limit=1000"), {
+      method: "GET",
+      headers: { "x-api-key": input.apiKey, "anthropic-version": ANTHROPIC_VERSION },
+      signal
+    });
+  }
+  if (input.provider === "google") {
+    return fetchImpl(endpoint(input.baseUrl, "/v1beta/models?pageSize=1000"), {
+      method: "GET",
+      headers: { "x-goog-api-key": input.apiKey },
+      signal
+    });
+  }
+  return fetchImpl(endpoint(input.baseUrl, "/models"), {
+    method: "GET",
+    headers: openAiCompatibleHeaders(input.provider, input.apiKey),
+    signal
+  });
+}
+
+/** Reads model ids from OpenAI/Anthropic (`data[].id`) or Gemini (`models[].name`) list bodies, sorted and deduplicated. */
+export function extractModelIds(body: unknown): string[] {
+  if (!body || typeof body !== "object") return [];
+  const record = body as { data?: unknown; models?: unknown };
+  const items = Array.isArray(record.data) ? record.data : Array.isArray(record.models) ? record.models : [];
+  const ids = items
+    .map((item) => {
+      if (typeof item === "string") return item;
+      const entry = item as { id?: unknown; name?: unknown } | null;
+      const raw = typeof entry?.id === "string" ? entry.id : typeof entry?.name === "string" ? entry.name : "";
+      return raw.replace(/^models\//u, "");
+    })
+    .filter((id) => id.length > 0);
+  return [...new Set(ids)].sort((a, b) => a.localeCompare(b));
 }
 
 /** Validates validate successful probe response. */

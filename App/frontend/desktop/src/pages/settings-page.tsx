@@ -1,7 +1,7 @@
 /** Settings page for account, model, token usage, and desktop preferences. */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from "react";
 import { Brain, Palette, Rocket, Settings2, Shield, User, Zap, ArrowRight, ArrowLeft, Bell, ExternalLink, FolderOpen, Gift, Info, KeyRound, LogOut, Wrench, Search, Eye, EyeOff, ChevronDown, ChevronUp, ChevronRight, Database, Loader2, CheckCircle2, XCircle, Check, AlertTriangle, Mic, Image as ImageIcon, Copy, Link2} from "lucide-react";
-import type { AccountInvitationView, AppSettingsDto, ByokTokenUsageByKind, ByokTokenUsageKind, ByokTokenUsageSummary, Language, PrivacySettingsDto, TokenQuotaEligibility, TokenSceneUsageDto, TokenUsageDto } from "@memmy/local-api-contracts";
+import type { AccountInvitationView, AppSettingsDto, ModelListResult, ByokTokenUsageByKind, ByokTokenUsageKind, ByokTokenUsageSummary, Language, PrivacySettingsDto, TokenQuotaEligibility, TokenSceneUsageDto, TokenUsageDto } from "@memmy/local-api-contracts";
 import type { AgentLedgerClient } from "../api/agent-ledger-client.js";
 import { useApiClients } from "../app/providers.js";
 import { AgentLedgerPanel } from "./settings-agent-ledger.js";
@@ -72,6 +72,7 @@ import {
   type ModelConfig
 } from "./model-config.js";
 import { ValidationMessage } from "./api-key-form-fields.js";
+import { ModelIdField } from "./model-id-field.js";
 import { OverflowTooltipText } from "../components/overflow-tooltip-text.js";
 import type { MessageKey, MessageValues } from "../i18n/messages.js";
 
@@ -861,6 +862,12 @@ export function SettingsPageView(props: SettingsPageViewProps) {
     });
   }
 
+  /** Lists the models the memory/skill card's endpoint exposes. */
+  function fetchModelList(config: ModelConfig, secretTarget: "memory" | "skill"): Promise<ModelListResult> {
+    const values = createModelFormValues(config, primaryModelValues);
+    return configClient!.listModels!(values, secretTarget);
+  }
+
   /**
    * Runs a real model connection test.
    *
@@ -1424,7 +1431,13 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 <p className="text-xs text-text-ink/50 -mt-1">{t("apiKey.llmHint")}</p>
 
                 <ProtocolSelect value={protocol} onChange={handleProtocolChange} />
-                <Field label={t("apiKey.model")} placeholder={`${t("apiKey.examplePrefix")} ${DEFAULT_MODEL_IDS[protocol]}`} value={modelId} onChange={setModelId} />
+                <ModelIdField
+                  label={t("apiKey.model")}
+                  placeholder={`${t("apiKey.examplePrefix")} ${DEFAULT_MODEL_IDS[protocol]}`}
+                  value={modelId}
+                  onChange={setModelId}
+                  onFetch={configClient?.listModels ? () => configClient.listModels!({ provider: mainModelFormValues.provider, endpoint, apiKey }, "primary") : undefined}
+                />
                 <Field label={t("apiKey.endpoint")} placeholder={`${t("apiKey.examplePrefix")} ${DEFAULT_ENDPOINTS[protocol]}`} value={endpoint} onChange={setEndpoint} />
                 <PasswordField label={t("apiKey.key")} placeholder="sk-..." maskedValue={apiKeyMasked} value={apiKey} onChange={setApiKey} show={showKey} onToggle={() => setShowKey(!showKey)} />
 
@@ -1453,6 +1466,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 cfg={memoryModel}
                 onPatch={patchMemoryModel}
                 onTest={() => testModelConfigConnection(memoryModel, patchMemoryModel, "memory")}
+                onFetchModels={configClient?.listModels ? () => fetchModelList(memoryModel, "memory") : undefined}
                 primary={primaryModelValues}
               />
 
@@ -1463,6 +1477,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
                 cfg={skillModel}
                 onPatch={patchSkillModel}
                 onTest={() => testModelConfigConnection(skillModel, patchSkillModel, "skill")}
+                onFetchModels={configClient?.listModels ? () => fetchModelList(skillModel, "skill") : undefined}
                 primary={primaryModelValues}
               />
 
@@ -2822,6 +2837,7 @@ interface ModelConfigCardProps {
   cfg: ModelConfig;
   onPatch: (patch: Partial<ModelConfig>) => void;
   onTest: () => void;
+  onFetchModels?: () => Promise<ModelListResult>;
   primary: PrimaryModelValues;
 }
 
@@ -2885,11 +2901,12 @@ function ModelConfigCard(props: ModelConfigCardProps) {
             value={props.cfg.protocol}
             onChange={(value) => props.onPatch(createModelProtocolPatch(value))}
           />
-          <Field
+          <ModelIdField
             label={t("apiKey.model")}
             placeholder={`${t("apiKey.examplePrefix")} ${DEFAULT_MODEL_IDS[props.cfg.protocol]}`}
             value={props.cfg.modelId}
             onChange={(value) => props.onPatch({ modelId: value })}
+            onFetch={props.onFetchModels}
           />
           <Field label={t("apiKey.endpoint")} placeholder={`${t("apiKey.examplePrefix")} ${DEFAULT_ENDPOINTS[props.cfg.protocol]}`} value={props.cfg.endpoint} onChange={(value) => props.onPatch({ endpoint: value })} />
           <PasswordField label={t("apiKey.key")} placeholder="sk-..." maskedValue={props.cfg.apiKeyMasked} value={props.cfg.apiKey} onChange={(value) => props.onPatch({ apiKey: value })} show={props.cfg.showKey} onToggle={() => props.onPatch({ showKey: !props.cfg.showKey })} />

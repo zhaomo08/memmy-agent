@@ -4,6 +4,7 @@ import type {
   ModelConfigInput,
   ModelConfigTestCapability,
   ModelConfigTestResult,
+  ModelListResult,
   ModelConfigTestSecretTarget,
   ModelConfigView,
   ModelProvider,
@@ -20,6 +21,8 @@ import {
   ModelConfigInputSchema,
   ModelConfigTestInputSchema,
   ModelConfigTestResultSchema,
+  ModelListInputSchema,
+  ModelListResultSchema,
   ModelConfigViewSchema,
   OnboardingStateDtoSchema,
   PatchAppSettingsInputSchema,
@@ -100,6 +103,7 @@ export interface ConfigClient {
   getModelConfig(): Promise<ModelProviderConfig>;
   saveModelConfig(config: ModelProviderConfig): Promise<ModelProviderConfig>;
   testModelConfig(config: ModelProviderConfig, capability?: ModelConfigTestCapability, secretTarget?: ModelConfigTestSecretTarget): Promise<ModelConfigTestResult>;
+  listModels?(config: Pick<ModelProviderConfig, "provider" | "endpoint" | "apiKey">, secretTarget?: ModelConfigTestSecretTarget): Promise<ModelListResult>;
   updatePreferredMode(mode: PreferredMode): Promise<PreferredMode>;
 }
 
@@ -201,6 +205,20 @@ export function createHttpConfigClient(config: RuntimeConfig): ConfigClient {
         body: ModelConfigTestInputSchema.parse({
           ...toModelConfigInput(modelConfig),
           capability,
+          secretTarget
+        })
+      });
+    },
+
+    async listModels(modelConfig, secretTarget) {
+      return requestJson({
+        config,
+        path: "/api/app/model-config/models",
+        schema: ModelListResultSchema,
+        body: ModelListInputSchema.parse({
+          provider: toModelProvider(modelConfig.provider),
+          baseUrl: modelConfig.endpoint,
+          apiKey: modelConfig.apiKey || undefined,
           secretTarget
         })
       });

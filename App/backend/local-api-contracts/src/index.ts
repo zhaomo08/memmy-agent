@@ -635,6 +635,18 @@ export const ModelConfigTestResultSchema = z.object({
 });
 export type ModelConfigTestResult = z.infer<typeof ModelConfigTestResultSchema>;
 
+/** Schema for listing the models a provider endpoint exposes; modelId is not needed. */
+export const ModelListInputSchema = ModelConfigTestInputSchema.partial({ modelId: true });
+export type ModelListInput = z.infer<typeof ModelListInputSchema>;
+
+/** Schema for model list result. */
+export const ModelListResultSchema = z.object({
+    ok: z.boolean(),
+    models: z.array(z.string()),
+    message: z.string()
+});
+export type ModelListResult = z.infer<typeof ModelListResultSchema>;
+
 /** Schema for local embedding config view. */
 export const LocalEmbeddingConfigViewSchema = z.object({
     mode: z.literal("local"),

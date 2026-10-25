@@ -1,6 +1,6 @@
 /** Model config tester tests. */
 import { describe, expect, it } from "vitest";
-import { createHttpModelConfigTester, DEFAULT_PROBE_TIMEOUT_MS } from "../model-config-tester.js";
+import { createHttpModelConfigTester, DEFAULT_PROBE_TIMEOUT_MS, extractModelIds } from "../model-config-tester.js";
 
 describe("model config tester", () => {
   it("gives slow aggregation gateways at least 30s before the probe aborts", () => {
@@ -556,5 +556,30 @@ describe("model config tester", () => {
     expect(result.message).toContain("API 返回格式不符合模型接口");
     expect(result.message).toContain("以 /v1 结尾");
     expect(result.message).toContain("https://api.openai.com/v1");
+  });
+
+  it("lists OpenAI-compatible models sorted and deduplicated, keeping the key out of errors", async () => {
+    const calls: string[] = [];
+    const tester = createHttpModelConfigTester({
+      fetch: async (input) => {
+        calls.push(input.toString());
+        return new Response(JSON.stringify({ data: [{ id: "b-model" }, { id: "a-model" }, { id: "b-model" }] }), { status: 200 });
+      }
+    });
+    const result = await tester.listModels!({ provider: "openai_compatible", baseUrl: "https://gw.example/v1/", apiKey: "sk-secret" });
+    expect(calls).toEqual(["https://gw.example/v1/models"]);
+    expect(result).toEqual({ ok: true, models: ["a-model", "b-model"], message: "" });
+
+    const failing = createHttpModelConfigTester({
+      fetch: async () => new Response(JSON.stringify({ error: { message: "bad key sk-secret" } }), { status: 401 })
+    });
+    const failed = await failing.listModels!({ provider: "openai_compatible", baseUrl: "https://gw.example/v1", apiKey: "sk-secret" });
+    expect(failed.ok).toBe(false);
+    expect(failed.message).not.toContain("sk-secret");
+  });
+
+  it("reads Gemini model names without the models/ prefix", () => {
+    expect(extractModelIds({ models: [{ name: "models/gemini-3.5-flash-lite" }] })).toEqual(["gemini-3.5-flash-lite"]);
+    expect(extractModelIds({ unexpected: true })).toEqual([]);
   });
 });
