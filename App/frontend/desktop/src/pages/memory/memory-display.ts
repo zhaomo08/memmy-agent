@@ -170,3 +170,13 @@ function stringValue(value: unknown): string | undefined {
 function recordValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
+
+/** Two-line list previews read as prose: drop emphasis, code ticks and heading marks. */
+export function plainMarkdownPreview(value?: string | null): string {
+  return (value ?? "")
+    .replace(/```[\s\S]*?```/gu, " ")
+    .replace(/(\*\*|`)/gu, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gmu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}

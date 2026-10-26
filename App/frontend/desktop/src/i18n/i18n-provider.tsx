@@ -1,6 +1,7 @@
 /** I18n provider module. */
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { Language } from "@memmy/local-api-contracts";
+import { configureUserLocale } from "../lib/user-time-zone.js";
 import {
   formatMessage,
   messageCatalogs,
@@ -19,6 +20,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider(props: { language: Language | string | undefined; children: ReactNode }) {
   const language = resolveLanguage(props.language);
+  configureUserLocale(language);
   const value = useMemo<I18nContextValue>(
     () => ({
       language,

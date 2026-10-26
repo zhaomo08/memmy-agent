@@ -59,8 +59,8 @@ describe("SkillsSubPage", () => {
     expect(html).not.toContain("耗时 8ms");
     expect(html).toContain('data-icon="search"');
     expect(html).toContain("搜索技能");
-    expect(html).toContain("记忆分页");
-    expect(html).toContain("/ 1 页");
+    // A single page renders no pagination controls.
+    expect(html).not.toContain("记忆分页");
     expect(html).not.toContain("memory-card__summary");
     expect(html).not.toContain(">activated<");
   });

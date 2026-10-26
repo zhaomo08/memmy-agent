@@ -10,6 +10,7 @@ import {
 import { useAnalytics } from "../../analytics/use-analytics.js";
 import { formatMessage, type MessageKey, type MessageValues, type ResolvedLanguage, zhCNMessages } from "../../i18n/messages.js";
 import { useTranslation } from "../../i18n/use-translation.js";
+import { formatUserDateTime } from "../../lib/user-time-zone.js";
 import { ChevronRight, ListChecks, Search, X } from "./memory-prototype-icons.js";
 import { MemoryDrawerDeleteAction } from "./memory-delete-action.js";
 import { MemoryMarkdown } from "./memory-markdown.js";
@@ -19,6 +20,8 @@ import {
   readMemoryPanelCacheFirst,
   writeMemoryPanelCaches
 } from "./memory-panel-cache.js";
+import { MemoryListTime } from "./memory-card-meta.js";
+import { plainMarkdownPreview } from "./memory-display.js";
 import { type MemoryPageInfo, MemoryPagination, normalizePage } from "./memory-pagination.js";
 import { MemoryRefreshButton } from "./memory-refresh-button.js";
 import { MemoryStateBox } from "./memory-state-box.js";
@@ -338,12 +341,11 @@ export function TasksSubPageView(props: TasksSubPageViewProps) {
               >
                 <div className="memory-card__body">
                   <div className="memory-card__title">{task.title}</div>
-                  <div className="memory-card__summary">{task.summary}</div>
+                  <div className="memory-card__summary">{plainMarkdownPreview(task.summary)}</div>
                   <div className="memory-card__meta">
                     <span className={`memory-pill memory-pill--task-${taskStatusTone(task.status)}`}>{taskStatusLabel(task.status, t)}</span>
                     {skillLabel && <span className={`memory-pill memory-pill--skill-${skillStatusTone(task.skillStatus)}`}>{skillLabel}</span>}
-                    <span>{`${t("memory.tasks.startedAt")}: ${formatDateTime(task.startedAt)}`}</span>
-                    {task.endedAt && <span>{`${t("memory.tasks.endedAt")}: ${formatDateTime(task.endedAt)}`}</span>}
+                    <MemoryListTime value={task.startedAt} label={t("memory.tasks.startedAt")} />
                     {task.turnCount !== undefined && <span>{t("memory.tasks.turnCount", { count: task.turnCount })}</span>}
                     {task.toolCallCount > 0 && <span>{t("memory.tasks.toolCount", { count: task.toolCallCount })}</span>}
                     {task.rTask !== undefined && <span>{`${t("memory.tasks.rTask")} ${formatDecimal(task.rTask, 2)}`}</span>}
@@ -675,7 +677,7 @@ function removeFirstTurnThinking(source: string, segment: string): string {
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? value : formatUserDateTime(date);
 }
 
 function formatTime(value: string): string {

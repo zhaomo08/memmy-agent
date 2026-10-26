@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { PanelOverviewOutput } from "@memmy/local-api-contracts";
 import type { MemoryRuntimeClient } from "../../api/memory-runtime-client.js";
 import { Tooltip } from "../../components/tooltip.js";
 import type { MessageKey } from "../../i18n/messages.js";
 import { useTranslation } from "../../i18n/use-translation.js";
-import { BarChart3, BrainCircuit, Globe2, Layers, Sparkles, UserRound, Wand2 } from "./memory-prototype-icons.js";
+import { agentSourceDisplayName } from "../agent-source-logos.js";
+import { BarChart3, ChevronRight, Layers } from "./memory-prototype-icons.js";
 import {
   memoryPanelCacheKey,
   readMemoryPanelCache,
@@ -18,7 +19,6 @@ interface OverviewCountCard {
   labelKey: MessageKey;
   value: number;
   hintKey: MessageKey;
-  icon: ReactNode;
 }
 
 type OverviewCountTargetPage = "memories" | "policies" | "world-model" | "skills" | "user-memories";
@@ -104,7 +104,7 @@ export function OverviewSubPageView(props: {
   return (
     <section className="memory-page-section">
       <header className="mb-5">
-        <h3 className="memory-page-content-title text-base text-text-ink gap-2">
+        <h3 className="memory-page-content-title">
           <Layers size={18} className="text-text-ink/60" />
           {t("memory.overview.title")}
         </h3>
@@ -125,10 +125,21 @@ function OverviewContent(props: {
 
   return (
     <>
-      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))" }}>
-        {countCards.map((item) => (
-          <CountCard key={item.id} item={item} onNavigate={props.onNavigate} />
-        ))}
+      {/* L1 → L2 → L3 is a distillation chain; skills and user memory stand beside it. */}
+      <div className="memory-strata">
+        <div className="memory-strata__chain">
+          {countCards.slice(0, 3).map((item, index) => (
+            <div key={item.id} className="memory-strata__link">
+              {index > 0 && <ChevronRight size={16} className="memory-strata__arrow" aria-hidden="true" />}
+              <CountCard item={item} onNavigate={props.onNavigate} />
+            </div>
+          ))}
+        </div>
+        <div className="memory-strata__side">
+          {countCards.slice(3).map((item) => (
+            <CountCard key={item.id} item={item} onNavigate={props.onNavigate} />
+          ))}
+        </div>
       </div>
 
       <DailyActivityCard values={props.data.dailyActivity} />
@@ -139,11 +150,11 @@ function OverviewContent(props: {
 
 function buildCountCards(data: PanelOverviewOutput): OverviewCountCard[] {
   return [
-    { id: "memories", targetPage: "memories", labelKey: "memory.overview.memories", value: data.counts.memories, hintKey: "memory.overview.memoriesHint", icon: <BrainCircuit size={18} /> },
-    { id: "experiences", targetPage: "policies", labelKey: "memory.overview.policies", value: data.counts.experiences, hintKey: "memory.overview.policiesHint", icon: <Sparkles size={18} /> },
-    { id: "worldModels", targetPage: "world-model", labelKey: "memory.overview.worldModels", value: data.counts.worldModels, hintKey: "memory.overview.worldModelsHint", icon: <Globe2 size={18} /> },
-    { id: "skills", targetPage: "skills", labelKey: "memory.overview.skills", value: data.counts.skills, hintKey: "memory.overview.skillsHint", icon: <Wand2 size={18} /> },
-    { id: "userMemories", targetPage: "user-memories", labelKey: "memory.overview.userMemories", value: data.counts.userMemories, hintKey: "memory.overview.userMemoriesHint", icon: <UserRound size={18} /> }
+    { id: "memories", targetPage: "memories", labelKey: "memory.overview.memories", value: data.counts.memories, hintKey: "memory.overview.memoriesHint" },
+    { id: "experiences", targetPage: "policies", labelKey: "memory.overview.policies", value: data.counts.experiences, hintKey: "memory.overview.policiesHint" },
+    { id: "worldModels", targetPage: "world-model", labelKey: "memory.overview.worldModels", value: data.counts.worldModels, hintKey: "memory.overview.worldModelsHint" },
+    { id: "skills", targetPage: "skills", labelKey: "memory.overview.skills", value: data.counts.skills, hintKey: "memory.overview.skillsHint" },
+    { id: "userMemories", targetPage: "user-memories", labelKey: "memory.overview.userMemories", value: data.counts.userMemories, hintKey: "memory.overview.userMemoriesHint" }
   ];
 }
 
@@ -158,19 +169,11 @@ function CountCard(props: {
       type="button"
       data-overview-target={props.item.targetPage}
       onClick={() => props.onNavigate?.(props.item.targetPage)}
-      className="w-full bg-background-paper border-content-panel rounded-card p-4 flex flex-col justify-between text-left transition-all cursor-pointer hover:bg-canvas-oat/25 hover:border-action-sky/30 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-action-sky/25"
-      style={{ minHeight: 132 }}
+      className="memory-strata__item"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-xs text-text-ink/60">{t(props.item.labelKey)}</div>
-        <span className="w-8 h-8 rounded-card bg-action-sky/10 text-action-sky flex items-center justify-center shrink-0">
-          {props.item.icon}
-        </span>
-      </div>
-      <div>
-        <div className="text-2xl font-extrabold text-text-ink tabular-nums">{formatInteger(props.item.value)}</div>
-        <div className="mt-1 text-[11px] leading-snug text-text-ink/45">{t(props.item.hintKey)}</div>
-      </div>
+      <span className="memory-strata__label">{t(props.item.labelKey)}</span>
+      <span className="memory-strata__value">{formatInteger(props.item.value)}</span>
+      <span className="memory-strata__hint">{t(props.item.hintKey)}</span>
     </button>
   );
 }
@@ -263,7 +266,7 @@ function DailyActivityCard(props: { values: PanelOverviewOutput["dailyActivity"]
                 role="img"
                 aria-label={t("memory.overview.dailyActivity")}
               >
-                {weeks.flatMap((week) => week.cells.map((cell) => {
+                {weeks.flatMap((week, weekIndex) => week.cells.map((cell) => {
                   const tooltipText = formatActivityTooltip(cell, language, t);
                   return (
                     <Tooltip key={cell.date} content={tooltipText}>
@@ -278,7 +281,8 @@ function DailyActivityCard(props: { values: PanelOverviewOutput["dailyActivity"]
                           height: activityLayout.cellSize,
                           borderRadius: activityLayout.cellRadius,
                           backgroundColor: activityCellColor(cell, maxCount),
-                          boxSizing: "border-box"
+                          boxSizing: "border-box",
+                          ["--week" as string]: weekIndex
                         }}
                       />
                     </Tooltip>
@@ -321,6 +325,7 @@ function DailyActivityLegend(props: { maxCount: number; layout: ActivityGridLayo
 
 function SourceDistributionCard(props: { values: PanelOverviewOutput["sourceDistribution"] }) {
   const { t } = useTranslation();
+  const rows = foldMinorSources(props.values, t("memory.overview.otherSources"));
 
   return (
     <article className="bg-background-paper border-content-panel rounded-card p-5">
@@ -331,17 +336,17 @@ function SourceDistributionCard(props: { values: PanelOverviewOutput["sourceDist
         </div>
       </div>
       <div>
-        {props.values.length === 0 && <div className="text-sm text-text-ink/55">{t("memory.overview.empty")}</div>}
-        {props.values.length > 0 && (
+        {rows.length === 0 && <div className="text-sm text-text-ink/55">{t("memory.overview.empty")}</div>}
+        {rows.length > 0 && (
           <div className="space-y-3.5">
-            {props.values.map((item, index) => (
+            {rows.map((item, index) => (
               <div
                 key={item.source}
                 data-source-distribution-row={item.source}
                 className="grid items-center gap-x-3"
                 style={{ gridTemplateColumns: "96px minmax(0, 1fr) 96px" }}
               >
-                <span className="min-w-0 text-xs text-text-ink/70 truncate">{item.source}</span>
+                <span className="min-w-0 text-xs text-text-ink/70 truncate" title={item.source}>{agentSourceDisplayName(item.source)}</span>
                 <div className="h-3 rounded-pill bg-canvas-oat overflow-hidden">
                   <div className="h-full rounded-pill" style={{ width: `${item.percentage}%`, backgroundColor: sourceBarColor(index) }} />
                 </div>
@@ -355,6 +360,18 @@ function SourceDistributionCard(props: { values: PanelOverviewOutput["sourceDist
       </div>
     </article>
   );
+}
+
+/** Folds sources under 1% into one row once there are two or more of them. */
+export function foldMinorSources(
+  values: PanelOverviewOutput["sourceDistribution"],
+  otherLabel: string
+): PanelOverviewOutput["sourceDistribution"] {
+  const minor = values.filter((item) => item.percentage < 1);
+  if (minor.length < 2) return values;
+  const count = minor.reduce((sum, item) => sum + item.count, 0);
+  const percentage = Math.round(minor.reduce((sum, item) => sum + item.percentage, 0) * 10) / 10;
+  return [...values.filter((item) => item.percentage >= 1), { source: otherLabel, count, percentage }];
 }
 
 function StateBox(props: { message: string; tone?: "error" }) {

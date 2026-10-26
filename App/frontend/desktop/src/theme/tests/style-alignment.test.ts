@@ -86,13 +86,13 @@ describe("prototype style alignment", () => {
     const sidebarTransitionRule = globalCss.match(/\.sidebar-shell \.app-frame-sidebar,\s*\.sidebar-shell \.memory-page-sidebar\s*\{[^}]*\}/)?.[0] ?? "";
     const hiddenSidebarRule = globalCss.match(/\.sidebar-shell--hidden \.app-frame-sidebar,\s*\.sidebar-shell--hidden \.memory-page-sidebar\s*\{[^}]*\}/)?.[0] ?? "";
     const hiddenResizeHandleRule = globalCss.match(/\.sidebar-shell--hidden \.sidebar-resize-handle\s*\{[^}]*\}/)?.[0] ?? "";
-    const memoryTitleRowRule = globalCss.match(/\.memory-page-title-row,\s*\.memory-page-content-title\s*\{[^}]*\}/)?.[0] ?? "";
-    const memoryTitleTextRule = globalCss.match(/\.memory-page-title,\s*\.memory-page-content-title\s*\{[^}]*\}/)?.[0] ?? "";
+    const memoryTitleRowRule = globalCss.match(/\.memory-page-title-row\s*\{[^}]*\}/)?.[0] ?? "";
+    const memoryTitleTextRule = globalCss.match(/\.memory-page-title\s*\{[^}]*\}/)?.[0] ?? "";
     const memoryPanelRule = globalCss.match(/\.memory-panel\s*\{[^}]*\}/)?.[0] ?? "";
     const memoryPageSectionRule = globalCss.match(/\.memory-page-section\s*\{[^}]*\}/)?.[0] ?? "";
     const memorySingleLineHeaderRule = globalCss.match(/\.memory-panel__header--single-line\s*\{[^}]*\}/)?.[0] ?? "";
     const memoryHeaderActionsRule = globalCss.match(/\.memory-panel__header-actions\s*\{[^}]*\}/)?.[0] ?? "";
-    const memoryPanelTitleRule = globalCss.match(/\.memory-panel__title\s*\{[^}]*\}/)?.[0] ?? "";
+    const memoryPanelTitleRule = globalCss.match(/\.memory-panel__title,\s*\.memory-page-content-title\s*\{[^}]*\}/)?.[0] ?? "";
     const memorySidebarRule = Array.from(globalCss.matchAll(/^\.memory-page-sidebar\s*\{[^}]*\}/gm)).at(-1)?.[0] ?? "";
     const memoryToolbarRule = globalCss.match(/\.memory-page-toolbar\s*\{[^}]*\}/)?.[0] ?? "";
     const memoryReturnRowRule = globalCss.match(/\.memory-page-return-row\s*\{[^}]*\}/)?.[0] ?? "";
@@ -118,7 +118,7 @@ describe("prototype style alignment", () => {
     expect(appNavButtonLayoutRule).toContain("margin: 0 12px;");
     expect(appNavButtonLayoutRule).toContain("padding: 8px 8px;");
     const appNavButtonActiveRule = globalCss.match(/\.app-frame-nav-button--active\s*\{[^}]*\}/)?.[0] ?? "";
-    expect(appNavButtonActiveRule).toContain("color: var(--color-action-sky-hover);");
+    expect(appNavButtonActiveRule).toContain("color: var(--color-action-ink);");
     expect(appNavButtonActiveRule).toContain("background: var(--color-nav-active-bg);");
     expect(tokenCss).toContain("--color-nav-active-bg: color-mix(in srgb, var(--color-action-sky) 16%, white);");
     expect(appFooterActionLayoutRule).toContain("width: calc(100% - 16px);");
@@ -163,18 +163,21 @@ describe("prototype style alignment", () => {
     expect(memorySingleLineHeaderRule).toContain("align-items: flex-start;");
     expect(memoryHeaderActionsRule).toContain("align-self: flex-start;");
     expect(memoryHeaderActionsRule).toContain("transform: translateY(-7px);");
-    expect(memoryPanelTitleRule).toContain("min-height: 20px;");
-    expect(memoryPanelTitleRule).toContain("line-height: 20px;");
+    // Page titles share one 20px/28px rule across overview and panel pages.
+    expect(memoryPanelTitleRule).toContain("min-height: 28px;");
+    expect(memoryPanelTitleRule).toContain("line-height: 28px;");
     expect(memorySidebarRule).toContain("width: var(--codex-sidebar-width);");
     expect(memorySidebarRule).toContain("flex: 0 0 var(--codex-sidebar-width);");
     expect(memorySidebarRule).toContain("padding-top: 0;");
     expect(memoryToolbarRule).toContain("flex: 0 0 var(--codex-toolbar-height);");
     expect(memoryToolbarRule).toContain("min-height: var(--codex-toolbar-height);");
-    expect(memoryReturnRowRule).toContain("padding: 6px 14px 12px 30px;");
-    expect(memoryBackButtonRule).toContain("height: 32px;");
+    // Settings sits at the sidebar foot; labels and settings share the 20px nav icon rail.
+    expect(memoryReturnRowRule).toContain("margin-top: auto;");
+    expect(memoryReturnRowRule).toContain("padding: 12px 12px 0;");
+    expect(memoryBackButtonRule).toContain("height: 34px;");
     expect(memoryBackButtonRule).toContain("gap: 10px;");
-    expect(memoryBackButtonRule).toContain("font-size: var(--codex-text-base);");
-    expect(memorySectionHeaderRule).toContain("padding: 0 14px 0 30px;");
+    expect(memoryBackButtonRule).toContain("padding: 0 8px;");
+    expect(memorySectionHeaderRule).toContain("padding: 0 14px 0 20px;");
     expect(dragRegionRule).toContain("position: fixed;");
     expect(dragRegionRule).toContain("right: 0;");
     expect(dragRegionRule).toContain("left: 0;");

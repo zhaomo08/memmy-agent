@@ -855,6 +855,11 @@ body:has(.memory-drawer) .window-drag-region {
   padding-right: var(--codex-content-padding-x);
 }
 
+/* Lists and prose stop growing on wide windows; the page stays left-aligned. */
+.app-frame-page-content > * {
+  max-width: 1080px;
+}
+
 .app-frame-content-topbar {
   position: absolute;
   top: 0;
@@ -2526,7 +2531,7 @@ code {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .memory-panel__header--single-line {
@@ -2547,35 +2552,41 @@ code {
   min-width: 0;
 }
 
-.memory-panel__title {
+.memory-panel__title,
+.memory-page-content-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 20px;
+  gap: 10px;
+  min-height: 28px;
   color: var(--color-text-ink);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 20px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
-.memory-page-title-row,
-.memory-page-content-title {
+.memory-panel__title svg,
+.memory-page-content-title svg {
+  color: var(--color-action-sky-hover);
+}
+
+.memory-page-title-row {
   display: flex;
   min-height: 20px;
   align-items: center;
 }
 
-.memory-page-title,
-.memory-page-content-title {
+.memory-page-title {
   line-height: 20px;
 }
 
 .memory-panel__subtitle {
   margin: 6px 0 0;
+  max-width: 60ch;
   color: color-mix(in srgb, var(--color-text-ink) 56%, transparent);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .memory-refresh-button {
@@ -2583,28 +2594,28 @@ code {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border-content-panel);
+  width: 32px;
+  height: 32px;
+  border: 0;
   border-radius: var(--radius-btn);
-  background: var(--color-background-paper);
-  color: color-mix(in srgb, var(--color-text-ink) 66%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text-ink) 50%, transparent);
   cursor: pointer;
   box-shadow: none;
   -webkit-app-region: no-drag;
   transition:
-    border-color var(--duration-fast),
-    color var(--duration-fast),
-    transform var(--duration-fast);
+    background var(--duration-fast),
+    color var(--duration-fast);
 }
 
 .memory-refresh-button:hover {
-  color: var(--color-action-sky-hover);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-canvas-oat) 80%, transparent);
+  color: var(--color-action-ink);
 }
 
 .memory-refresh-button:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .memory-toolbar {
@@ -2618,16 +2629,21 @@ code {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  height: 44px;
+  height: 40px;
   align-items: stretch;
-  border: 1px solid var(--border-content-panel);
+  border: 1px solid transparent;
   border-radius: var(--radius-input);
-  background: var(--color-background-paper);
-  transition: border-color var(--duration-fast);
+  background: color-mix(in srgb, var(--color-canvas-oat) 70%, var(--color-background-paper));
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast);
 }
 
 .memory-source-search-control:focus-within {
-  border-color: color-mix(in srgb, var(--color-action-sky) 36%, var(--border-content-panel));
+  border-color: color-mix(in srgb, var(--color-action-sky) 60%, transparent);
+  background: var(--color-background-paper);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-action-sky) 16%, transparent);
 }
 
 .memory-source-search-control .memory-search {
@@ -2635,7 +2651,7 @@ code {
 }
 
 .memory-source-search-control .memory-search__input {
-  height: 42px;
+  height: 38px;
   border: 0;
   border-radius: var(--radius-input) 0 0 var(--radius-input);
   background: transparent;
@@ -2648,8 +2664,8 @@ code {
 }
 
 .memory-source-search-control .memory-source-filter__button {
-  height: 42px;
-  min-height: 42px;
+  height: 38px;
+  min-height: 38px;
   border: 0;
   border-radius: 0 var(--radius-input) var(--radius-input) 0;
   background: transparent;
@@ -2765,23 +2781,43 @@ code {
 
 .memory-search__input {
   width: 100%;
-  height: 44px;
-  border: 1px solid var(--border-content-panel);
+  height: 40px;
+  border: 1px solid transparent;
   border-radius: var(--radius-input);
-  background: var(--color-background-paper);
+  background: color-mix(in srgb, var(--color-canvas-oat) 70%, var(--color-background-paper));
   color: var(--color-text-ink);
-  padding: 0 16px 0 42px;
-  font-size: 14px;
+  padding: 0 16px 0 40px;
+  font-size: 13px;
   outline: none;
   box-shadow: none;
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast);
 }
 
 .memory-search__input::placeholder {
-  color: color-mix(in srgb, var(--color-text-ink) 38%, transparent);
+  color: color-mix(in srgb, var(--color-text-ink) 42%, transparent);
+}
+
+.memory-search__input:hover {
+  background: color-mix(in srgb, var(--color-canvas-oat) 100%, var(--color-background-paper));
 }
 
 .memory-search__input:focus {
   outline: none;
+  border-color: color-mix(in srgb, var(--color-action-sky) 60%, transparent);
+  background: var(--color-background-paper);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-action-sky) 16%, transparent);
+}
+
+/* Inside the combined search+filter control the outer frame owns border and focus. */
+.memory-source-search-control .memory-search__input,
+.memory-source-search-control .memory-search__input:hover,
+.memory-source-search-control .memory-search__input:focus {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .memory-log-filter {
@@ -2820,6 +2856,9 @@ code {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
+  /* Fixed width so every summary starts on the same column. */
+  min-width: 104px;
   min-height: 22px;
   border-radius: var(--radius-tag);
   padding: 3px 9px;
@@ -2840,20 +2879,20 @@ code {
 
 .memory-log-card {
   overflow: hidden;
-  border: 1px solid var(--border-content-panel);
-  border-radius: var(--radius-card-lg);
-  background: var(--color-background-paper);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text-ink);
   box-shadow: none;
-  transition:
-    border-color var(--duration-fast),
-    transform var(--duration-fast),
-    background var(--duration-fast);
+  transition: background var(--duration-fast);
+}
+
+.memory-log-card + .memory-log-card {
+  border-top: 1px solid color-mix(in srgb, var(--color-border-stone) 45%, transparent);
 }
 
 .memory-log-card:hover {
-  background: color-mix(in srgb, var(--color-background-paper) 88%, var(--color-canvas-oat));
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-canvas-oat) 55%, var(--color-background-paper));
 }
 
 .memory-log-card--expanded {
@@ -2990,7 +3029,30 @@ code {
 }
 
 .memory-log-card__meta + .memory-log-card__meta {
-  min-width: 112px;
+  min-width: 76px;
+}
+
+.memory-list:has(> .memory-log-card) {
+  container-type: inline-size;
+}
+
+/* Narrow windows keep tool, summary and time; duration and the expand hint go. */
+@container (max-width: 560px) {
+  .memory-log-card__button {
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .memory-log-card__meta:not(.memory-log-card__meta + .memory-log-card__meta),
+  .memory-log-card__action,
+  .memory-log-card__summary-tail {
+    display: none;
+  }
+
+  .memory-log-card__summary {
+    flex-basis: 0;
+    max-width: none;
+  }
 }
 
 .memory-log-card__action {
@@ -3299,41 +3361,54 @@ code {
   border-top: 1px solid color-mix(in srgb, var(--color-border-stone) 16%, transparent);
 }
 
+/* One grouped surface with hairline row separators, like a macOS inset list. */
 .memory-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-content-panel);
+  border-radius: var(--radius-card);
+  background: var(--color-background-paper);
 }
 
 .memory-card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  border: 1px solid var(--border-content-panel);
-  border-radius: var(--radius-card-lg);
-  background: var(--color-background-paper);
-  padding: 16px 18px;
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 18px 14px 20px;
   text-align: left;
   cursor: pointer;
   box-shadow: none;
-  transition:
-    border-color var(--duration-fast),
-    transform var(--duration-fast),
-    background var(--duration-fast);
+  transition: background var(--duration-fast);
+}
+
+.memory-card + .memory-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-stone) 45%, transparent);
 }
 
 .memory-card:hover {
-  background: color-mix(in srgb, var(--color-background-paper) 88%, var(--color-canvas-oat));
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-canvas-oat) 55%, var(--color-background-paper));
 }
 
 .memory-card:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
 }
 
+/* Selected rows carry a teal rail so the open drawer's source stays findable. */
 .memory-card--selected {
   background: color-mix(in srgb, var(--color-action-sky) 9%, var(--color-background-paper));
+  box-shadow: inset 3px 0 0 var(--color-action-sky-hover);
 }
 
 .memory-card__body {
@@ -3341,10 +3416,10 @@ code {
 }
 
 .memory-card__title {
-  color: color-mix(in srgb, var(--color-text-ink) 76%, transparent);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-text-ink) 90%, transparent);
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.5;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3352,11 +3427,12 @@ code {
 }
 
 .memory-card__summary {
-  margin-top: 5px;
-  color: color-mix(in srgb, var(--color-text-ink) 62%, transparent);
+  margin-top: 4px;
+  max-width: 72ch;
+  color: color-mix(in srgb, var(--color-text-ink) 60%, transparent);
   display: -webkit-box;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.55;
   overflow: hidden;
   overflow-wrap: anywhere;
   text-overflow: ellipsis;
@@ -3368,11 +3444,22 @@ code {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  color: color-mix(in srgb, var(--color-text-ink) 46%, transparent);
-  font-size: 11px;
+  gap: 6px 10px;
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--color-text-ink) 50%, transparent);
+  font-size: 12px;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-card__tag {
+  color: color-mix(in srgb, var(--color-text-ink) 46%, transparent);
+}
+
+.memory-card__tag::before {
+  content: "#";
+  margin-right: 1px;
+  color: color-mix(in srgb, var(--color-action-sky) 80%, transparent);
 }
 
 .memory-card__score {
@@ -3390,8 +3477,15 @@ code {
 
 .memory-card:hover .memory-card__tail,
 .memory-card--selected .memory-card__tail {
-  color: var(--color-action-sky-hover);
+  color: var(--color-action-ink);
   transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memory-card:hover .memory-card__tail,
+  .memory-card--selected .memory-card__tail {
+    transform: none;
+  }
 }
 
 .memory-pagination {
@@ -3446,7 +3540,8 @@ code {
 }
 
 .memory-pagination__button:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .memory-pagination__button:disabled {
@@ -3482,6 +3577,8 @@ code {
 
 .memory-pagination__input:focus {
   outline: none;
+  border-color: color-mix(in srgb, var(--color-action-sky) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-action-sky) 16%, transparent);
 }
 
 .memory-pill {
@@ -3590,6 +3687,33 @@ code {
 .memory-pill--skill-deleted {
   background: color-mix(in srgb, var(--color-status-error) 12%, var(--color-background-paper));
   color: var(--color-status-error);
+}
+
+/* In list rows the normal state is a quiet dot; only exceptions get a filled pill. */
+.memory-card__meta :is(
+  .memory-pill--policy-active,
+  .memory-pill--world-model-active,
+  .memory-pill--skill-active,
+  .memory-pill--task-closed
+) {
+  gap: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text-ink) 62%, transparent);
+  padding-left: 0;
+  padding-right: 2px;
+}
+
+.memory-card__meta :is(
+  .memory-pill--policy-active,
+  .memory-pill--world-model-active,
+  .memory-pill--skill-active,
+  .memory-pill--task-closed
+)::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-status-success);
 }
 
 .memory-pill--task-open,
@@ -3733,11 +3857,12 @@ code {
 }
 
 .memory-drawer__title {
-  margin: 0;
-  color: color-mix(in srgb, var(--color-text-ink) 76%, transparent);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.7;
+  margin: 2px 0 0;
+  color: var(--color-text-ink);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -7283,7 +7408,13 @@ input[type="checkbox"].check-sky:checked::after {
 
 .app-frame-nav-button--active {
   background: var(--color-nav-active-bg);
-  color: var(--color-action-sky-hover);
+  color: var(--color-action-ink);
+  font-weight: 600;
+}
+
+.app-frame-nav-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
 }
 
 .app-frame-footer-action {
@@ -8346,6 +8477,8 @@ input[type="checkbox"].check-sky:checked::after {
 }
 
 .memory-page-sidebar {
+  display: flex;
+  flex-direction: column;
   width: var(--codex-sidebar-width);
   flex: 0 0 var(--codex-sidebar-width);
   padding-top: 0;
@@ -8372,30 +8505,39 @@ input[type="checkbox"].check-sky:checked::after {
   min-height: var(--codex-toolbar-height);
 }
 
+.memory-page-sidebar > * {
+  flex-shrink: 0;
+}
+
+/* Settings sits at the foot of the sidebar, the macOS place for it. */
 .memory-page-return-row {
+  order: 99;
   display: flex;
-  min-height: 44px;
   align-items: center;
-  padding: 6px 14px 12px 30px;
+  margin-top: auto;
+  padding: 12px 12px 0;
+  border-top: 1px solid var(--color-sidebar-divider);
 }
 
 .memory-page-back-button {
   display: flex;
   min-width: 0;
-  height: 32px;
+  width: 100%;
+  height: 34px;
   align-items: center;
   gap: 10px;
-  padding: 0;
+  padding: 0 8px;
   border: 0;
-  border-radius: var(--radius-input);
+  border-radius: 8px;
   background: transparent;
-  color: color-mix(in srgb, var(--color-text-ink) 52%, transparent);
+  color: color-mix(in srgb, var(--color-text-ink) 62%, transparent);
+  font-size: 13px;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: var(--codex-text-base);
   font-weight: 400;
   line-height: var(--codex-leading-base);
   transition:
+    background var(--duration-fast),
     color var(--duration-fast);
 }
 
@@ -8405,8 +8547,8 @@ input[type="checkbox"].check-sky:checked::after {
 }
 
 .memory-page-section-header {
-  padding: 0 14px 0 30px;
-  margin-bottom: 6px;
+  padding: 0 14px 0 20px;
+  margin-bottom: 4px;
 }
 
 .memory-page-section-label {
@@ -8417,7 +8559,8 @@ input[type="checkbox"].check-sky:checked::after {
 }
 
 .memory-page-back-button:hover {
-  color: color-mix(in srgb, var(--color-text-ink) 70%, transparent);
+  background: color-mix(in srgb, var(--color-canvas-oat) 60%, transparent);
+  color: color-mix(in srgb, var(--color-text-ink) 85%, transparent);
 }
 
 .memory-page-back-button:focus-visible {
@@ -8934,6 +9077,131 @@ input[type="checkbox"].check-sky:checked::after {
 
 .memory-daily-activity-cell {
   cursor: default;
+}
+
+/* The page's one orchestrated moment: the year fills in, week by week. */
+@media (prefers-reduced-motion: no-preference) {
+  .memory-daily-activity-cell {
+    animation: memory-activity-cell-in 360ms var(--ease-out-quart) both;
+    animation-delay: calc(var(--week, 0) * 8ms);
+  }
+}
+
+@keyframes memory-activity-cell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* Overview counts: the L1 → L2 → L3 distillation chain, then the two side stores. */
+.memory-strata {
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-content-panel);
+  border-radius: var(--radius-card);
+  background: var(--color-background-paper);
+  overflow: hidden;
+}
+
+.memory-strata__chain,
+.memory-strata__side {
+  display: grid;
+  min-width: 0;
+}
+
+.memory-strata__chain {
+  flex: 3 1 380px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: color-mix(in srgb, var(--color-action-sky) 5%, var(--color-background-paper));
+}
+
+.memory-strata__side {
+  flex: 2 1 238px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-left: 1px solid var(--border-content-panel);
+}
+
+.memory-strata__link {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.memory-strata__arrow {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  color: var(--color-action-sky-hover);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.memory-strata__item {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  padding: 18px 20px 18px 22px;
+  color: var(--color-text-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.memory-strata__item:hover {
+  background: color-mix(in srgb, var(--color-action-sky) 9%, transparent);
+}
+
+.memory-strata__item:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.memory-strata__label {
+  color: color-mix(in srgb, var(--color-text-ink) 62%, transparent);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.memory-strata__value {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-strata__hint {
+  color: color-mix(in srgb, var(--color-text-ink) 48%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@container (max-width: 619px) {
+  .memory-strata__side {
+    border-top: 1px solid var(--border-content-panel);
+    border-left: 0;
+  }
+}
+
+@container (max-width: 380px) {
+  .memory-strata__chain {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-strata__arrow {
+    top: 0;
+    left: 32px;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
 }
 
 .history-dag-panel {

@@ -5,6 +5,7 @@ import type { MessageKey } from "../../i18n/messages.js";
 import { formatUserDateTime } from "../../lib/user-time-zone.js";
 import { useTranslation } from "../../i18n/use-translation.js";
 import { MemoryDrawerDeleteAction } from "./memory-delete-action.js";
+import { MemoryListTime } from "./memory-card-meta.js";
 import { MemoryPagination, normalizePage } from "./memory-pagination.js";
 import { ChevronRight, Search, UserRound, X } from "./memory-prototype-icons.js";
 import { MemoryRefreshButton } from "./memory-refresh-button.js";
@@ -117,7 +118,7 @@ export function UserMemoriesSubPage(props: UserMemoriesSubPageProps) {
                   <div className="memory-card__meta">
                     <span>{userMemoryTypeLabel(item, t)}</span>
                     <span>{userMemoryStatusLabel(item.status, t)}</span>
-                    <span>{formatUserDateTime(item.updatedAt)}</span>
+                    <MemoryListTime value={item.updatedAt} label={t("memory.memories.updatedAt")} />
                   </div>
                 </div>
                 <div className="memory-card__tail"><ChevronRight size={16} /></div>

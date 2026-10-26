@@ -10,6 +10,8 @@ import {
 import { useAnalytics } from "../../analytics/use-analytics.js";
 import type { MessageKey } from "../../i18n/messages.js";
 import { useTranslation } from "../../i18n/use-translation.js";
+import { agentSourceDisplayName } from "../agent-source-logos.js";
+import { formatUserDateTime } from "../../lib/user-time-zone.js";
 import { ChevronRight, Search, Sparkles, X } from "./memory-prototype-icons.js";
 import { MemoryDrawerDeleteAction } from "./memory-delete-action.js";
 import { toMemoryDetailErrorMessage } from "./memory-detail-error.js";
@@ -21,6 +23,7 @@ import {
   readMemoryPanelCacheFirst,
   writeMemoryPanelCaches
 } from "./memory-panel-cache.js";
+import { MemoryCardTags, MemoryListTime } from "./memory-card-meta.js";
 import { MemoryPagination, normalizePage } from "./memory-pagination.js";
 import { MemoryRefreshButton } from "./memory-refresh-button.js";
 import { MemoryStateBox } from "./memory-state-box.js";
@@ -256,10 +259,8 @@ function ExperienceState(props: {
               <div className="memory-card__title">{displayMemoryTitle(item)}</div>
               <div className="memory-card__meta">
                 <PolicyStatusPill status={item.status} />
-                <span>{t("memory.memories.updatedAt")}: {formatDateTime(item.updatedAt)}</span>
-                {item.tags.slice(0, 4).map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
+                <MemoryListTime value={item.updatedAt} label={t("memory.memories.updatedAt")} />
+                <MemoryCardTags tags={item.tags} />
               </div>
             </div>
             <div className="memory-card__tail">
@@ -333,7 +334,7 @@ function ExperienceDetail(props: { detail: GetMemoryOutput }) {
         {experience.source && (
           <div className="memory-policy-source">
             <span>{t("memory.tasks.source")}</span>
-            {experience.source}
+            {agentSourceDisplayName(experience.source)}
           </div>
         )}
       </section>
@@ -558,7 +559,7 @@ function formatDateTime(value: string | undefined): string {
   }
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? value : formatUserDateTime(date);
 }
 
 function compactId(id: string): string {

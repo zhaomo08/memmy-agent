@@ -14,6 +14,7 @@ import { useAnalytics } from "../../analytics/use-analytics.js";
 import { ApiRequestError } from "../../api/http.js";
 import type { MessageKey } from "../../i18n/messages.js";
 import { useTranslation } from "../../i18n/use-translation.js";
+import { formatUserDateTime } from "../../lib/user-time-zone.js";
 import { AlertTriangle, BrainCircuit, CheckCircle2, ChevronRight, Loader2, RefreshCw, Search, Settings2, Sparkles, X } from "./memory-prototype-icons.js";
 import {
   MEMORY_SOURCE_AGENT_EXCLUSIONS,
@@ -31,6 +32,7 @@ import {
   readMemoryPanelCacheFirst,
   writeMemoryPanelCaches
 } from "./memory-panel-cache.js";
+import { MemoryListTime } from "./memory-card-meta.js";
 import { MemoryPagination, normalizePage } from "./memory-pagination.js";
 import { MemoryRefreshButton } from "./memory-refresh-button.js";
 import { MemoryStateBox } from "./memory-state-box.js";
@@ -550,8 +552,8 @@ function MemoryListState(input: { props: MemoriesSubPageViewProps }) {
                 <div className="memory-card__title">{displayMemoryTitle(item)}</div>
                 <div className="memory-card__meta">
                   <MemoryAgentSourceTag sourceAgent={memoryDisplaySource(item)} label={t("memory.memories.source")} />
-                  <span>{formatDateTime(item.createdAt)}</span>
-                  <span className="memory-card__score">{formatMemoryScore(item.metrics)}</span>
+                  <MemoryListTime value={item.createdAt} label={t("memory.memories.createdAt")} />
+                  {(item.metrics?.value || item.metrics?.alpha) ? <span className="memory-card__score">{formatMemoryScore(item.metrics)}</span> : null}
                   {processingStatus && (
                     <span className={`memory-pill memory-pill--processing${processingStatus === "failed" ? " memory-pill--failed" : ""}`}>
                       {t(MEMORY_PROCESSING_STATUS_LABELS[processingStatus])}
@@ -1113,7 +1115,7 @@ function formatDateTime(value: string): string {
     return value;
   }
 
-  return date.toLocaleString();
+  return formatUserDateTime(date);
 }
 
 function formatMemoryScore(metrics: MemoryDetailOutput["item"]["metrics"] | undefined): string {

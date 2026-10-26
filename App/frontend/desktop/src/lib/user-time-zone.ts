@@ -1,4 +1,10 @@
 let configuredTimeZone: string | undefined;
+let configuredLocale: string | undefined;
+
+/** 时间格式跟随界面语言，而不是系统区域（否则中文界面里会出现 26/10/2026）。 */
+export function configureUserLocale(value?: string): void {
+  configuredLocale = value;
+}
 
 /** 设置从 agents.defaults.timezone 读取的用户时区。 */
 export function configureUserTimeZone(value?: string): void {
@@ -23,7 +29,30 @@ export function formatUserDateTime(value: string | number | Date): string {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime())
     ? String(value)
-    : date.toLocaleString(undefined, { timeZone: userTimeZone() });
+    : date.toLocaleString(configuredLocale, { timeZone: userTimeZone() });
+}
+
+/** 列表里的短时间：今天/昨天只显示钟点，今年省略年份，更早才写全日期。 */
+export function formatUserListTime(
+  value: string | number | Date,
+  language: "zh-CN" | "en-US",
+  words: { today: string; yesterday: string },
+  now = new Date()
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const timeZone = userTimeZone();
+  const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone }).format(d);
+  const clock = new Intl.DateTimeFormat(language, { timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+  if (day(date) === day(now)) return `${words.today} ${clock}`;
+  if (day(date) === day(new Date(now.getTime() - 86_400_000))) return `${words.yesterday} ${clock}`;
+  const sameYear = day(date).slice(0, 4) === day(now).slice(0, 4);
+  return new Intl.DateTimeFormat(language, {
+    timeZone,
+    year: sameYear ? undefined : "numeric",
+    month: language === "zh-CN" ? "long" : "short",
+    day: "numeric"
+  }).format(date);
 }
 
 /** 以用户时区格式化绝对时间，只返回时间部分。 */
@@ -31,7 +60,7 @@ export function formatUserTime(value: string | number | Date): string {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime())
     ? String(value)
-    : date.toLocaleTimeString(undefined, { timeZone: userTimeZone() });
+    : date.toLocaleTimeString(configuredLocale, { timeZone: userTimeZone() });
 }
 
 function normalizeTimeZoneOffset(value: string): string {

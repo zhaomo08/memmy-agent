@@ -26,6 +26,7 @@ import {
   readMemoryPanelCacheFirst,
   writeMemoryPanelCaches
 } from "./memory-panel-cache.js";
+import { MemoryListTime } from "./memory-card-meta.js";
 import { MemoryPagination, type MemoryPageInfo, normalizePage } from "./memory-pagination.js";
 import { MemoryRefreshButton } from "./memory-refresh-button.js";
 import { type RemoteData, toErrorMessage } from "./remote-state.js";
@@ -264,7 +265,7 @@ export function LogsSubPageView(props: LogsSubPageViewProps) {
                   <span className={`memory-log-card__summary${summary.tail ? " memory-log-card__summary--with-tail" : ""}`}>{summary.text}</span>
                   {summary.tail && <span className="memory-log-card__summary-tail">{summary.tail}</span>}
                   <span className="memory-log-card__meta">{formatDuration(log.durationMs)}</span>
-                  <span className="memory-log-card__meta">{formatDate(log.calledAt)}</span>
+                  <span className="memory-log-card__meta"><MemoryListTime value={log.calledAt} label={t("memory.logs.calledAt")} /></span>
                   <span className="memory-log-card__action">{isExpanded ? t("memory.logs.collapse") : t("memory.logs.expand")}</span>
                 </button>
                 {isExpanded && (
@@ -711,14 +712,6 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function formatDuration(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`;
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString();
 }
 
 function isMissingLogsRoute(error: unknown): boolean {

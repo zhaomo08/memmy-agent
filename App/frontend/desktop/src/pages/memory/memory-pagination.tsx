@@ -49,6 +49,11 @@ export function MemoryPagination(props: MemoryPaginationProps) {
     setDraftPage(String(clampPage(Number.parseInt(value, 10), totalPages)));
   }
 
+  // A single page has nowhere to go; the controls would only be noise.
+  if (totalPages <= 1 && currentPage === 1) {
+    return null;
+  }
+
   return (
     <nav className="memory-pagination" aria-label={t("memory.memories.paginationLabel")}>
       <div className="memory-pagination__controls">

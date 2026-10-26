@@ -38,6 +38,10 @@
   --color-action-sky: #5cbfae;
   --color-action-sky-hover: #3aa893;
   --color-nav-active-bg: color-mix(in srgb, var(--color-action-sky) 16%, white);
+  /* Teal dark enough for text on paper and on the nav highlight (>= 4.5:1). */
+  --color-action-ink: #24796a;
+  --color-focus-ring: color-mix(in srgb, var(--color-action-sky) 55%, transparent);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --color-footer-slate: #b6e6db;
   --color-icon-ember: #f59e6b;
   --color-accent-pink: #ffc4cf;

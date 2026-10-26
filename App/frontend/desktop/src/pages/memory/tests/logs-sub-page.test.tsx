@@ -642,7 +642,7 @@ describe("LogsSubPage", () => {
     expect(summaryTailRule).toContain("margin-right: auto;");
     expect(summaryTailRule).toContain("white-space: nowrap;");
     expect(metaRule).toContain("text-align: right;");
-    expect(styles).toContain(".memory-log-card__meta + .memory-log-card__meta {\n  min-width: 112px;\n}");
+    expect(styles).toContain(".memory-log-card__meta + .memory-log-card__meta {\n  min-width: 76px;\n}"); // short list time ("今天 14:46") needs less room
     expect(styles).toContain(".memory-log-card__action {\n  min-width: 34px;");
   });
 
@@ -698,7 +698,7 @@ describe("LogsSubPage", () => {
     const buttonRule = cssRule(styles, ".memory-source-search-control .memory-source-filter__button");
 
     expect(controlRule).toContain("grid-template-columns: minmax(0, 1fr) max-content;");
-    expect(controlRule).toContain("border: 1px solid var(--border-content-panel);");
+    expect(controlRule).toContain("border: 1px solid transparent;");
     expect(inputRule).toContain("border: 0;");
     expect(agentRule).not.toContain("border-left:");
     expect(agentRule).toContain("width: max-content;");

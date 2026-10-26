@@ -92,8 +92,8 @@ describe("WorldModelSubPage", () => {
     expect(html).not.toContain("Environment</div>");
     expect(html).toContain('data-icon="search"');
     expect(html).toContain("搜索场域认知");
-    expect(html).toContain("记忆分页");
-    expect(html).toContain("/ 1 页");
+    // A single page renders no pagination controls.
+    expect(html).not.toContain("记忆分页");
     expect(html).not.toContain("memory-card__summary");
     expect(html).not.toContain(">v2<");
     expect(html).not.toContain("查询");
