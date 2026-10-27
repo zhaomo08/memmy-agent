@@ -1070,6 +1070,46 @@ describe("MemoryService / retrieval / query and filtering", () => {
       "retrieval.retrieval.filter.v5"
     ]);
     expect(failedSummaryRecall.hits).toHaveLength(1);
+
+    // Same model at the same endpoint: retrying it would only double the wait.
+    Object.assign(evolutionLlm.config, { endpoint: summaryLlm.config.endpoint, model: summaryLlm.config.model });
+    summaryCalls.length = 0;
+    evolutionCalls.length = 0;
+    const sameTargetRecall = await service.search({
+      namespace: {
+        source: "codex",
+        profileId: "jiang",
+        userId: "user-filter-evolution"
+      },
+      query: "python pytest failure"
+    });
+
+    expect(summaryCalls.map((call) => call.operation)).toEqual(["retrieval.retrieval.filter.v5"]);
+    expect(evolutionCalls.map((call) => call.operation)).toEqual(["retrieval.retrieval.query.extract.v2"]);
+    expect(sameTargetRecall.status).toContain("llm_filter:llm_failed_fallback_cap");
+
+    // Past the retrieval deadline the filter is skipped, not awaited.
+    summaryFails = false;
+    summaryCalls.length = 0;
+    const realNow = Date.now;
+    const startedAt = realNow();
+    Date.now = () => startedAt + (summaryCalls.length === 0 && evolutionCalls.length > 0 ? 10_000 : 0);
+    evolutionCalls.length = 0;
+    try {
+      const lateRecall = await service.search({
+        namespace: {
+          source: "codex",
+          profileId: "jiang",
+          userId: "user-filter-evolution"
+        },
+        query: "python pytest failure"
+      });
+      expect(summaryCalls).toHaveLength(0);
+      expect(lateRecall.status).toContain("llm_filter:deadline_fallback_cap");
+      expect(lateRecall.hits.length).toBeGreaterThan(0);
+    } finally {
+      Date.now = realNow;
+    }
     db.close();
   });
 

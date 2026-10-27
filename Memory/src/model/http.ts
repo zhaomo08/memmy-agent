@@ -1,4 +1,9 @@
+import { Agent } from "undici";
 import { createMemoryLogger, memoryErrorFields } from "../logging/logger.js";
+
+// Turns arrive minutes apart and the default 4s keep-alive drops the TLS
+// connection in between, so every recall paid a fresh handshake (0.6-1.3s).
+const keepAliveDispatcher = new Agent({ keepAliveTimeout: 300_000, keepAliveMaxTimeout: 600_000 });
 
 const logger = createMemoryLogger("model-http");
 
@@ -27,8 +32,9 @@ export async function postJsonWithRetry<T>(
             ...(input.headers ?? {})
           },
           body: JSON.stringify(input.body),
-          signal: controller.signal
-        });
+          signal: controller.signal,
+          dispatcher: keepAliveDispatcher
+        } as RequestInit);
         const text = await response.text();
         if (!response.ok) {
           throw new Error(formatHttpFailure(input.provider, response, text));

@@ -86,9 +86,12 @@ type PolicyMeta = NonNullable<ReturnType<typeof policyMetaFromMemory>>;
 type TraceMeta = NonNullable<ReturnType<typeof traceMetaFromMemory>>;
 type RetrievalTimeFilter = NonNullable<RetrievalQueryExtract["timeFilter"]>;
 
-const RETRIEVAL_QUERY_EXTRACT_TIMEOUT_MS = 60_000;
+// Retrieval blocks the agent's turn, so its model calls share one deadline
+// from the start of the search; past it, ranking alone decides.
+const RETRIEVAL_QUERY_EXTRACT_TIMEOUT_MS = 2_000;
 
-const RETRIEVAL_FILTER_TIMEOUT_MS = 30_000;
+const RETRIEVAL_LLM_DEADLINE_MS = 4_000;
+const RETRIEVAL_FILTER_MIN_TIMEOUT_MS = 500;
 
 const QUERY_REWRITE_TIMEOUT_MS = 30_000;
 
@@ -507,6 +510,14 @@ function memoryUsesStalePolicy(memory: MemoryRow, stalePolicyIds: ReadonlySet<st
       ? worldModelMetaFromMemory(memory)?.policyIds ?? []
       : [];
   return sourcePolicyIds.some((policyId) => stalePolicyIds.has(policyId));
+}
+
+function sameLlmTarget(a: LlmClient, b: LlmClient): boolean {
+  return a === b || (
+    a.config.provider === b.config.provider &&
+    a.config.model === b.config.model &&
+    (a.config.endpoint ?? "") === (b.config.endpoint ?? "")
+  );
 }
 
 function llmFilterFallbackCap(hits: RecallHit[], maxKeep: number): RecallHit[] {
@@ -1880,7 +1891,7 @@ export class RetrievalService {
       ? { hits: retrieval.hits, status: ["first_report_handoff:latest_only"] }
       : timeFilter
       ? { hits: retrieval.hits, status: ["time_filter:l1"] }
-      : await this.filterRecallHits(queryVectorText, merged.hits);
+      : await this.filterRecallHits(queryVectorText, merged.hits, startedAt + RETRIEVAL_LLM_DEADLINE_MS);
     const hits = onboardingFirstReportHit || timeFilter
       ? filteredHits.hits
       : mmrRecallHits(filteredHits.hits, retrievalLimit, tuning.mmrLambda);
@@ -2219,7 +2230,7 @@ export class RetrievalService {
     };
   }
 
-  private async filterRecallHits(query: string, hits: RecallHit[]): Promise<{
+  private async filterRecallHits(query: string, hits: RecallHit[], deadline: number): Promise<{
     hits: RecallHit[];
     status: string[];
   }> {
@@ -2249,6 +2260,13 @@ export class RetrievalService {
       };
     }
 
+    if (deadline - Date.now() < RETRIEVAL_FILTER_MIN_TIMEOUT_MS) {
+      return {
+        hits: llmFilterFallbackCap(hits, config.llmFilterFallbackMaxKeep),
+        status: ["llm_filter:deadline_fallback_cap"]
+      };
+    }
+
     try {
       const bodyChars = Math.max(120, config.llmFilterCandidateBodyChars);
       const candidates = hits.map((hit, index) =>
@@ -2273,7 +2291,7 @@ export class RetrievalService {
           operation: `retrieval.${RETRIEVAL_FILTER_PROMPT.id}.v${RETRIEVAL_FILTER_PROMPT.version}`,
           thinkingMode: "disabled",
           temperature: 0,
-          timeoutMs: RETRIEVAL_FILTER_TIMEOUT_MS,
+          timeoutMs: Math.max(0, deadline - Date.now()),
           maxRetries: 0,
           maxTokens: isSummaryLlm
             ? MEMORY_SUMMARY_MAX_TOKENS
@@ -2285,9 +2303,11 @@ export class RetrievalService {
       try {
         result = await completeFilter(filterLlm, usesSummaryLlm);
       } catch (primaryError) {
+        // Retrying the same model at the same endpoint only doubles the wait.
         const evolutionFallback = usesSummaryLlm &&
           this.deps.skillLlm.isConfigured() &&
-          this.deps.skillLlm !== filterLlm
+          !sameLlmTarget(this.deps.skillLlm, filterLlm) &&
+          deadline - Date.now() >= RETRIEVAL_FILTER_MIN_TIMEOUT_MS
           ? this.deps.skillLlm
           : undefined;
         if (!evolutionFallback) throw primaryError;
