@@ -9,7 +9,9 @@ import type {
   EpisodeRecord,
   EvolutionJobRecord,
   RawTurnRecord,
-  Repositories
+  RecallEventRecord,
+  Repositories,
+  SkillTrialRecord
 } from "../../storage/repositories.js";
 import { detailSummaryForMemory } from "./memory.js";
 import type {
@@ -45,6 +47,7 @@ import {
 
 const PANEL_ITEMS_PAGE_SIZE = 20;
 const PANEL_DAILY_ACTIVITY_DAYS = 371;
+const PANEL_USAGE_EVENT_LIMIT = 10_000;
 
 type PanelChange = {
   seq: number;
@@ -391,8 +394,17 @@ export class PanelReadModel {
     const dates = panelLastSevenDateKeys(this.now());
     const memories = this.listAllMemoriesForStats();
     const skillMemories = memories.filter((memory) => memory.memoryLayer === "Skill");
+    const activeSkillIds = new Set(
+      skillMemories.filter((memory) => memory.status === "activated").map((memory) => memory.id)
+    );
     const logs = this.deps.repos.runtime.listApiLogs({ limit: 10_000, offset: 0 }).logs
       .filter((log) => dates.includes(panelDateKey(log.calledAt)));
+    const recentlyUsedSkills = panelActivatedSkillUseCount({
+      activeSkillIds,
+      recallEvents: this.deps.repos.runtime.listRecallEvents({ limit: PANEL_USAGE_EVENT_LIMIT }),
+      skillTrials: this.deps.repos.runtime.listSkillTrials({ limit: PANEL_USAGE_EVENT_LIMIT }),
+      dates
+    });
     const recallScores = logs
       .filter((log) => log.toolName === "memory_search")
       .map((log) => panelRecallScore(log.outputJson))
@@ -402,8 +414,8 @@ export class PanelReadModel {
       metrics: {
         avgRecallScore: panelRoundDecimal(panelAverage(recallScores), 2),
         recallEvents: logs.filter((log) => log.toolName === "memory_search").length,
-        activeSkills: skillMemories.filter((memory) => memory.status === "activated").length,
-        recentlyUsedSkills: skillMemories.filter((memory) => dates.includes(panelDateKey(memory.updatedAt))).length,
+        activeSkills: activeSkillIds.size,
+        recentlyUsedSkills,
         avgToolLatencyMs: panelRoundInt(panelAverage(durations)),
         p95ToolLatencyMs: panelPercentile95(durations)
       },
@@ -792,4 +804,23 @@ function changeSource(source: string): PanelChange["source"] {
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Seven-day uses of activated skills: each invocation, plus each recall event that surfaced one. */
+export function panelActivatedSkillUseCount(input: {
+  activeSkillIds: ReadonlySet<string>;
+  recallEvents: RecallEventRecord[];
+  skillTrials: SkillTrialRecord[];
+  dates: string[];
+}): number {
+  if (input.activeSkillIds.size === 0) return 0;
+  const dates = new Set(input.dates);
+  const invoked = input.skillTrials.filter((trial) =>
+    input.activeSkillIds.has(trial.skillMemoryId) && dates.has(panelDateKey(trial.createdAt))
+  ).length;
+  const recalled = input.recallEvents.reduce((count, event) => {
+    if (!dates.has(panelDateKey(event.createdAt))) return count;
+    return count + new Set(event.hitMemoryIds.filter((memoryId) => input.activeSkillIds.has(memoryId))).size;
+  }, 0);
+  return invoked + recalled;
 }

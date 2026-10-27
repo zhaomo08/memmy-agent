@@ -2330,6 +2330,28 @@ export class RuntimeRepository {
     return event;
   }
 
+  listRecallEvents(input: {
+    userId?: string;
+    limit?: number;
+  } = {}): RecallEventRecord[] {
+    const clauses = ["1=1"];
+    const params: SqlValue[] = [];
+    if (input.userId) {
+      clauses.push("user_id = ?");
+      params.push(input.userId);
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT *
+         FROM recall_events
+         WHERE ${clauses.join(" AND ")}
+         ORDER BY created_at DESC
+         LIMIT ?`
+      )
+      .all(...params, input.limit ?? 10_000) as SqlRecallEventRow[];
+    return rows.map(recallEventFromSql);
+  }
+
   getRecallEvent(id: string): RecallEventRecord | undefined {
     const row = this.db
       .prepare(`SELECT * FROM recall_events WHERE id = ?`)
